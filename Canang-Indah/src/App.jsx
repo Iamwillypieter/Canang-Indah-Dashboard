@@ -3,6 +3,7 @@ import DashboardLayout from "./dashboard/DashboardLayout.jsx";
 import LabPBAdmin1 from "./pages/sub_menu/LabPBAdmin1.jsx";
 import QCAnalisaForm from "./forms/QCAnalisaForm.jsx";
 import DokumenList from "./forms/DokumenList.jsx";
+import QCAnalisaView from "./forms/QCAnalisaView.jsx"; // Import komponen baru
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="lab/pb/admin1">
           <Route index element={<LabPBAdmin1 />} />
           <Route path="analisa" element={<QCAnalisaForm />} />
+          <Route path="analisa/:id" element={<QCAnalisaView />} /> {/* Route untuk view/edit */}
           <Route path="dokumen" element={<DokumenList />} />
           {/* <Route path="moisture" element={<LabPBForm />} />
           <Route path="flakes" element={<FlakesForm />} />

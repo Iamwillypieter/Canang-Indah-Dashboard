@@ -7,12 +7,39 @@ export default function DocumentList() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/qc-analisa-documents")
-        .then(res => res.json())
-        .then(data => setDocuments(data))
-        .catch(err => console.error(err));
-    }, []);
+    fetchDocuments();
+  }, []);
 
+  const fetchDocuments = async () => {
+    try {
+      const res = await fetch("http://localhost:3001/api/qc-analisa-documents");
+      const data = await res.json();
+      setDocuments(data);
+    } catch (err) {
+      console.error(err);
+      alert("Gagal memuat daftar dokumen");
+    }
+  };
+
+  const handleDelete = async (id, title) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus "${title}"?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:3001/api/qc-analisa-documents/${id}`, {
+        method: "DELETE"
+      });
+
+      if (!res.ok) throw new Error("Gagal menghapus dokumen");
+
+      alert("✅ Dokumen berhasil dihapus");
+      fetchDocuments(); // Refresh list
+    } catch (err) {
+      console.error(err);
+      alert("❌ Gagal menghapus dokumen");
+    }
+  };
 
   const filteredDocs = documents.filter(doc =>
     (doc.title || "QC Analisa")
@@ -46,7 +73,11 @@ export default function DocumentList() {
                   {doc.title || "QC Analisa"}
                 </div>
                 <div className="doc-date">
-                  {new Date(doc.created_at).toLocaleDateString()}
+                  {new Date(doc.created_at).toLocaleDateString('id-ID', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
                 </div>
               </div>
             </div>
@@ -55,11 +86,24 @@ export default function DocumentList() {
               <Link
                 to={`/lab/pb/admin1/analisa/${doc.id}`}
                 title="Lihat / Edit"
+                className="action-btn"
               >
                 👁
               </Link>
-              <button title="Edit">✏️</button>
-              <button title="Hapus">🗑</button>
+              <button 
+                title="Edit" 
+                className="action-btn"
+                onClick={() => window.location.href = `/lab/pb/admin1/analisa/${doc.id}`}
+              >
+                ✏️
+              </button>
+              <button 
+                title="Hapus" 
+                className="action-btn delete-btn"
+                onClick={() => handleDelete(doc.id, doc.title)}
+              >
+                🗑
+              </button>
             </div>
           </div>
         ))}
