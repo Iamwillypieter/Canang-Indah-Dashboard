@@ -1,0 +1,141 @@
+/* =======================
+   GLOBAL
+======================= */
+.resin-view {
+  padding: 24px;
+  background: #f8fafc;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* =======================
+   HEADER
+======================= */
+.resin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: #ffffff;
+  padding: 20px 24px;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+  margin-bottom: 24px;
+}
+
+.resin-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.resin-header p {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* =======================
+   ACTION BUTTONS
+======================= */
+.resin-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.resin-actions button {
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.resin-actions button:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+.btn-edit { background: #2563eb; color: #fff; }
+.btn-save { background: #16a34a; color: #fff; }
+.btn-cancel { background: #64748b; color: #fff; }
+.btn-delete { background: #dc2626; color: #fff; }
+.btn-back { background: #0f172a; color: #fff; }
+
+/* =======================
+   SECTION
+======================= */
+.resin-section {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+}
+
+.resin-section h3 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* =======================
+   TABLE
+======================= */
+.resin-table-wrapper {
+  overflow-x: auto;
+}
+
+.resin-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1100px;
+  font-size: 13px;
+}
+
+.resin-table th {
+  background: #0f172a;
+  color: #ffffff;
+  padding: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.resin-table td {
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  text-align: center;
+  background: #ffffff;
+}
+
+.resin-table tbody tr:nth-child(even) td {
+  background: #f9fafb;
+}
+
+/* =======================
+   INPUT
+======================= */
+.resin-table input {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5f5;
+  outline: none;
+}
+
+.resin-table input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37,99,235,0.3);
+}
+
+/* =======================
+   SAMPLE TIME
+======================= */
+.sample-time {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #1e293b;
+}

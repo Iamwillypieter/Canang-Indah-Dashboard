@@ -270,6 +270,167 @@ app.put("/api/qc-analisa/:id", async (req, res) => {
   }
 });
 
+
+
+
+
+
+app.post("/api/resin-inspection", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { date, shift, group, inspection, solidContent, comment_by, createdBy } = req.body;
+
+    await client.query("BEGIN");
+
+    const doc = await client.query(
+      `INSERT INTO resin_inspection_documents
+       (title, date, shift, group_name, comment_by, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING id`,
+      [`Resin Inspection ${date} ${shift}`, date, shift, group, comment_by, createdBy]
+    );
+
+    const documentId = doc.rows[0].id;
+
+    inspection.forEach((row, i) => {
+      client.query(
+        `INSERT INTO resin_inspection_inspection
+         (document_id, load_no, cert_test_no, resin_tank, quantity,
+          specific_gravity, viscosity, ph, gel_time, water_tolerance, appearance, solids)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        [
+          documentId, i + 1,
+          row.certTestNo, row.resinTank, row.quantity,
+          row.specificGravity, row.viscosity, row.ph,
+          row.gelTime, row.waterTolerance, row.appearance, row.solids
+        ]
+      );
+    });
+
+    solidContent.forEach(sample => {
+      sample.rows.forEach((row, idx) => {
+        client.query(
+          `INSERT INTO resin_inspection_solids
+           (document_id, sample_time, row_no, alum_foil_no,
+            wt_alum_foil, wt_glue, wt_alum_foil_dry_glue,
+            wt_dry_glue, solids_content, remark)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          [
+            documentId, sample.sampleTime, idx + 1,
+            row.alumFoilNo, row.wtAlumFoil, row.wtGlue,
+            row.wtAlumFoilDryGlue, row.wtDryGlue,
+            row.solidsContent, row.remark
+          ]
+        );
+      });
+    });
+
+    await client.query("COMMIT");
+    res.json({ message: "Resin Inspection tersimpan", documentId });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ error: "Gagal simpan" });
+  } finally {
+    client.release();
+  }
+});
+
+
+app.get("/api/resin-inspection-documents", async (req, res) => {
+  const result = await pool.query(
+    `SELECT id, title, created_at FROM resin_inspection_documents ORDER BY created_at DESC`
+  );
+  res.json(result.rows);
+});
+
+app.get("/api/resin-inspection/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const doc = await pool.query(
+    `SELECT * FROM resin_inspection_documents WHERE id=$1`, [id]
+  );
+  const inspection = await pool.query(
+    `SELECT * FROM resin_inspection_inspection WHERE document_id=$1 ORDER BY load_no`, [id]
+  );
+  const solids = await pool.query(
+    `SELECT * FROM resin_inspection_solids WHERE document_id=$1 ORDER BY sample_time, row_no`, [id]
+  );
+
+  res.json({
+    document: doc.rows[0],
+    inspection: inspection.rows,
+    solidContent: solids.rows
+  });
+});
+
+app.put("/api/resin-inspection/:id", async (req, res) => {
+  const client = await pool.connect();
+  const { id } = req.params;
+  const { date, shift, group, inspection, solidContent, comment_by, createdBy } = req.body;
+
+  try {
+    await client.query("BEGIN");
+
+    await client.query(
+      `UPDATE resin_inspection_documents
+       SET title=$1, date=$2, shift=$3, group_name=$4,
+           comment_by=$5, created_by=$6
+       WHERE id=$7`,
+      [`Resin Inspection ${date} ${shift}`, date, shift, group, comment_by, createdBy, id]
+    );
+
+    await client.query(`DELETE FROM resin_inspection_inspection WHERE document_id=$1`, [id]);
+    await client.query(`DELETE FROM resin_inspection_solids WHERE document_id=$1`, [id]);
+
+    inspection.forEach((row, i) => {
+      client.query(
+        `INSERT INTO resin_inspection_inspection
+         (document_id, load_no, cert_test_no, resin_tank, quantity,
+          specific_gravity, viscosity, ph, gel_time, water_tolerance, appearance, solids)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        [
+          id, i + 1,
+          row.certTestNo, row.resinTank, row.quantity,
+          row.specificGravity, row.viscosity, row.ph,
+          row.gelTime, row.waterTolerance, row.appearance, row.solids
+        ]
+      );
+    });
+
+    solidContent.forEach(sample => {
+      sample.rows.forEach((row, idx) => {
+        client.query(
+          `INSERT INTO resin_inspection_solids
+           (document_id, sample_time, row_no, alum_foil_no,
+            wt_alum_foil, wt_glue, wt_alum_foil_dry_glue,
+            wt_dry_glue, solids_content, remark)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          [
+            id, sample.sampleTime, idx + 1,
+            row.alumFoilNo, row.wtAlumFoil, row.wtGlue,
+            row.wtAlumFoilDryGlue, row.wtDryGlue,
+            row.solidsContent, row.remark
+          ]
+        );
+      });
+    });
+
+    await client.query("COMMIT");
+    res.json({ message: "Update berhasil" });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ error: "Gagal update" });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete("/api/resin-inspection-documents/:id", async (req, res) => {
+  await pool.query(`DELETE FROM resin_inspection_documents WHERE id=$1`, [req.params.id]);
+  res.json({ message: "Dokumen dihapus" });
+});
+
+
 app.listen(3001, () =>
   console.log("✅ Backend running on port 3001")
 );
