@@ -274,6 +274,7 @@ app.put("/api/qc-analisa/:id", async (req, res) => {
 
 
 
+/* Resin Inspection Backend*/
 
 app.post("/api/resin-inspection", async (req, res) => {
   const client = await pool.connect();
@@ -429,6 +430,377 @@ app.delete("/api/resin-inspection-documents/:id", async (req, res) => {
   await pool.query(`DELETE FROM resin_inspection_documents WHERE id=$1`, [req.params.id]);
   res.json({ message: "Dokumen dihapus" });
 });
+
+
+
+
+/* =========================
+   FLAKES DOCUMENTS API
+========================= */
+
+// CREATE - Simpan Flakes Document Baru
+app.post("/api/flakes-documents", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
+
+    // Validasi input
+    if (!header || !detail || detail.length === 0) {
+      return res.status(400).json({ error: "Data tidak lengkap" });
+    }
+
+    if (!header.tanggal) {
+      return res.status(400).json({ error: "Tanggal harus diisi" });
+    }
+
+    await client.query("BEGIN");
+
+    try {
+      // 1️⃣ Insert dokumen utama
+      const docResult = await client.query(
+        `INSERT INTO flakes_documents (title, created_at, updated_at)
+         VALUES ($1, NOW(), NOW())
+         RETURNING id`,
+        [`Flakes ${header.tanggal}`]
+      );
+
+      const documentId = docResult.rows[0].id;
+
+      // 2️⃣ Insert header
+      await client.query(
+        `INSERT INTO flakes_header (
+          document_id, tanggal, jam, shift, ukuran_papan, 
+          "group", jarak_pisau, keterangan, pemeriksa, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
+        [
+          documentId,
+          header.tanggal,
+          header.jam || null,
+          header.shift || null,
+          header.ukuranPapan || null,
+          header.group || null,
+          header.jarakPisau || null,
+          header.keterangan || null,
+          header.pemeriksa || null
+        ]
+      );
+
+      // 3️⃣ Insert detail rows
+      for (const row of detail) {
+        await client.query(
+          `INSERT INTO flakes_detail (document_id, tebal, jumlah, total_ketebalan, created_at)
+           VALUES ($1, $2, $3, $4, NOW())`,
+          [
+            documentId,
+            parseFloat(row.tebal) || 0,
+            parseInt(row.jumlah) || 0,
+            parseFloat(row.tebal * row.jumlah) || 0
+          ]
+        );
+      }
+
+      // 4️⃣ Insert summary
+      await client.query(
+        `INSERT INTO flakes_summary (
+          document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at
+        ) VALUES ($1, $2, $3, $4, NOW())`,
+        [
+          documentId,
+          parseInt(total_jumlah) || 0,
+          parseFloat(grand_total_ketebalan) || 0,
+          parseFloat(rata_rata) || 0
+        ]
+      );
+
+      await client.query("COMMIT");
+
+      res.status(201).json({
+        message: "Flakes document berhasil disimpan",
+        documentId,
+        success: true
+      });
+
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+
+  } catch (err) {
+    console.error("❌ ERROR CREATE FLAKES:", err);
+    res.status(500).json({ 
+      error: "Gagal menyimpan Flakes document",
+      message: err.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// READ - List semua Flakes documents
+app.get("/api/flakes-documents", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        fd.id, 
+        fd.title, 
+        fd.created_at,
+        fh.tanggal,
+        fh.shift,
+        fh."group"
+      FROM flakes_documents fd
+      LEFT JOIN flakes_header fh ON fd.id = fh.document_id
+      ORDER BY fd.created_at DESC
+    `);
+
+    const documents = result.rows.map(doc => ({
+      id: doc.id,
+      title: doc.title || `Flakes ${doc.tanggal ? new Date(doc.tanggal).toLocaleDateString('id-ID') : 'Baru'}`,
+      created_at: doc.created_at,
+      tanggal: doc.tanggal,
+      shift: doc.shift,
+      group: doc.group,
+      type: "flakes"
+    }));
+
+    res.json(documents);
+  } catch (err) {
+    console.error("❌ ERROR GET FLAKES LIST:", err);
+    res.status(500).json({ error: "Gagal memuat daftar Flakes" });
+  }
+});
+
+// READ - Detail Flakes document
+app.get("/api/flakes-documents/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Get document info
+    const docResult = await pool.query(
+      `SELECT fd.*, fh.*
+       FROM flakes_documents fd
+       LEFT JOIN flakes_header fh ON fd.id = fh.document_id
+       WHERE fd.id = $1`,
+      [id]
+    );
+
+    if (docResult.rows.length === 0) {
+      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+    }
+
+    const doc = docResult.rows[0];
+
+    // Get detail
+    const detailResult = await pool.query(
+      `SELECT * FROM flakes_detail 
+       WHERE document_id = $1 
+       ORDER BY tebal ASC`,
+      [id]
+    );
+
+    // Get summary
+    const summaryResult = await pool.query(
+      `SELECT * FROM flakes_summary 
+       WHERE document_id = $1`,
+      [id]
+    );
+
+    const header = {
+      tanggal: doc.tanggal,
+      jam: doc.jam,
+      shift: doc.shift,
+      ukuranPapan: doc.ukuran_papan,
+      group: doc.group,
+      jarakPisau: doc.jarak_pisau,
+      keterangan: doc.keterangan,
+      pemeriksa: doc.pemeriksa
+    };
+
+    const detail = detailResult.rows.map(row => ({
+      tebal: parseFloat(row.tebal),
+      jumlah: parseInt(row.jumlah),
+      total_ketebalan: parseFloat(row.total_ketebalan)
+    }));
+
+    const summary = summaryResult.rows[0] || {};
+
+    res.json({
+      id: parseInt(id),
+      header,
+      detail,
+      summary: {
+        total_jumlah: summary.total_jumlah || 0,
+        grand_total_ketebalan: summary.grand_total_ketebalan || 0,
+        rata_rata: summary.rata_rata_ketebalan || 0
+      }
+    });
+
+  } catch (err) {
+    console.error("❌ ERROR GET FLAKES DETAIL:", err);
+    res.status(500).json({ error: "Gagal memuat detail Flakes" });
+  }
+});
+
+// UPDATE - Update Flakes document
+app.put("/api/flakes-documents/:id", async (req, res) => {
+  const { id } = req.params;
+  const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
+  const client = await pool.connect();
+
+  try {
+    if (!header || !detail || detail.length === 0) {
+      return res.status(400).json({ error: "Data tidak lengkap" });
+    }
+
+    await client.query("BEGIN");
+
+    try {
+      // Update header
+      await client.query(
+        `UPDATE flakes_header SET
+          tanggal = $1, jam = $2, shift = $3, ukuran_papan = $4,
+          "group" = $5, jarak_pisau = $6, keterangan = $7, pemeriksa = $8,
+          created_at = NOW()
+         WHERE document_id = $9`,
+        [
+          header.tanggal,
+          header.jam || null,
+          header.shift || null,
+          header.ukuranPapan || null,
+          header.group || null,
+          header.jarakPisau || null,
+          header.keterangan || null,
+          header.pemeriksa || null,
+          parseInt(id)
+        ]
+      );
+
+      // Delete old detail
+      await client.query(
+        `DELETE FROM flakes_detail WHERE document_id = $1`,
+        [parseInt(id)]
+      );
+
+      // Insert new detail
+      for (const row of detail) {
+        await client.query(
+          `INSERT INTO flakes_detail (document_id, tebal, jumlah, total_ketebalan, created_at)
+           VALUES ($1, $2, $3, $4, NOW())`,
+          [
+            parseInt(id),
+            parseFloat(row.tebal) || 0,
+            parseInt(row.jumlah) || 0,
+            parseFloat(row.tebal * row.jumlah) || 0
+          ]
+        );
+      }
+
+      // Update summary
+      const summaryCheck = await client.query(
+        `SELECT id FROM flakes_summary WHERE document_id = $1`,
+        [parseInt(id)]
+      );
+
+      if (summaryCheck.rows.length > 0) {
+        await client.query(
+          `UPDATE flakes_summary SET
+            total_jumlah = $1, 
+            grand_total_ketebalan = $2, 
+            rata_rata_ketebalan = $3,
+            created_at = NOW()
+           WHERE document_id = $4`,
+          [
+            parseInt(total_jumlah) || 0,
+            parseFloat(grand_total_ketebalan) || 0,
+            parseFloat(rata_rata) || 0,
+            parseInt(id)
+          ]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO flakes_summary (
+            document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at
+          ) VALUES ($1, $2, $3, $4, NOW())`,
+          [
+            parseInt(id),
+            parseInt(total_jumlah) || 0,
+            parseFloat(grand_total_ketebalan) || 0,
+            parseFloat(rata_rata) || 0
+          ]
+        );
+      }
+
+      // Update document title
+      await client.query(
+        `UPDATE flakes_documents SET
+          title = $1,
+          updated_at = NOW()
+         WHERE id = $2`,
+        [`Flakes ${header.tanggal}`, parseInt(id)]
+      );
+
+      await client.query("COMMIT");
+
+      res.json({
+        message: "Flakes document berhasil diperbarui",
+        success: true
+      });
+
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+
+  } catch (err) {
+    console.error("❌ ERROR UPDATE FLAKES:", err);
+    res.status(500).json({ 
+      error: "Gagal memperbarui Flakes document",
+      message: err.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE - Hapus Flakes document
+app.delete("/api/flakes-documents/:id", async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Delete dari tabel yang punya foreign key terlebih dahulu
+    await client.query(`DELETE FROM flakes_summary WHERE document_id = $1`, [id]);
+    await client.query(`DELETE FROM flakes_detail WHERE document_id = $1`, [id]);
+    await client.query(`DELETE FROM flakes_header WHERE document_id = $1`, [id]);
+
+    // Delete dokumen utama
+    const result = await client.query(
+      `DELETE FROM flakes_documents WHERE id = $1 RETURNING id`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+    }
+
+    await client.query("COMMIT");
+
+    res.json({ 
+      message: "Flakes document berhasil dihapus",
+      success: true 
+    });
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("❌ ERROR DELETE FLAKES:", err);
+    res.status(500).json({ error: "Gagal menghapus Flakes document" });
+  } finally {
+    client.release();
+  }
+});
+
 
 
 app.listen(3001, () =>

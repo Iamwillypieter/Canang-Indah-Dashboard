@@ -1,3 +1,4 @@
+// App.jsx
 import { Routes, Route } from "react-router-dom";
 import DashboardLayout from "./dashboard/DashboardLayout.jsx";
 
@@ -7,10 +8,12 @@ import LabPBAdmin1 from "./pages/sub_menu/LabPBAdmin1.jsx";
 // Forms
 import QCAnalisaForm from "./forms/QCAnalisaForm.jsx";
 import ResinInspectionForm from "./forms/ResinInspectionForm.jsx";
+import FlakesForm from "./forms/FlakesForm.jsx";
 
 // Views
 import QCAnalisaView from "./forms/QCAnalisaView.jsx";
 import ResinInspectionView from "./forms/ResinInspectionView.jsx";
+import FlakesFormView from "./forms/FlakesFormView.jsx";
 
 // Shared
 import DokumenList from "./forms/DokumenList.jsx";
@@ -28,20 +31,20 @@ export default function App() {
           <Route path="analisa" element={<QCAnalisaForm />} />
           <Route path="analisa/:id" element={<QCAnalisaView />} />
 
-          {/* RESIN INSPECTION */}
+          {/* RESIN */}
           <Route path="resin" element={<ResinInspectionForm />} />
           <Route path="resin/:id" element={<ResinInspectionView />} />
 
-          {/* DOKUMEN LIST (GABUNGAN) */}
+          {/* FLAKES */}
+          {/* Flakes Routes */}
+          <Route path="flakes" element={<FlakesForm />} />
+          <Route path="flakes/:id" element={<FlakesForm />} />
+          <Route path="flakes/:id/edit" element={<FlakesForm isEditMode={true} />} />
+
+
+          {/* DOKUMEN */}
           <Route path="dokumen" element={<DokumenList />} />
         </Route>
-
-        {/* ================= ADMIN 2 (SUPERVISOR – NANTI) ================= */}
-        {/*
-        <Route path="lab/pb/admin2">
-          <Route index element={<SupervisorDashboard />} />
-        </Route>
-        */}
 
       </Route>
     </Routes>

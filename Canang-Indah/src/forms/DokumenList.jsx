@@ -2,142 +2,174 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "./DokumenList.css";
 
+const API_BASE = "http://localhost:3001/api";
+
+/* ================= FORM REGISTRY ================= */
+const FORM_TYPES = {
+  qc: {
+    label: "QC Analisa",
+    icon: "🧪",
+    route: "/lab/pb/admin1/analisa",
+    endpoint: `${API_BASE}/qc-analisa-documents`
+  },
+  resin: {
+    label: "Resin Inspection",
+    icon: "🧴",
+    route: "/lab/pb/admin1/resin",
+    endpoint: `${API_BASE}/resin-inspection-documents`
+  },
+  flakes: {
+    label: "Flakes Inspection",
+    icon: "🪵",
+    route: "/lab/pb/admin1/flakes",
+    endpoint: `${API_BASE}/flakes-documents`
+  }
+};
+
 export default function DocumentList() {
   const [documents, setDocuments] = useState([]);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDocuments();
   }, []);
 
   const fetchDocuments = async () => {
+    setLoading(true);
     try {
-      const [qcRes, resinRes] = await Promise.all([
-        fetch("http://localhost:3001/api/qc-analisa-documents"),
-        fetch("http://localhost:3001/api/resin-inspection-documents")
-      ]);
+      const requests = Object.entries(FORM_TYPES).map(
+        async ([key, config]) => {
+          const res = await fetch(config.endpoint);
+          if (!res.ok) {
+            console.warn(`Failed to fetch ${config.label}:`, res.status);
+            return [];
+          }
 
-      const qcDocs = await qcRes.json();
-      const resinDocs = await resinRes.json();
-
-      const mergedDocs = [
-        ...qcDocs.map(doc => ({ ...doc, type: "qc" })),
-        ...resinDocs.map(doc => ({ ...doc, type: "resin" }))
-      ].sort(
-        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+          const data = await res.json();
+          return data.map(doc => ({
+            ...doc,
+            type: key
+          }));
+        }
       );
+
+      const results = await Promise.all(requests);
+
+      const mergedDocs = results
+        .flat()
+        .sort(
+          (a, b) =>
+            new Date(b.created_at) - new Date(a.created_at)
+        );
 
       setDocuments(mergedDocs);
     } catch (err) {
       console.error(err);
       alert("❌ Gagal memuat daftar dokumen");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async (doc) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus "${doc.title}"?`)) {
-      return;
-    }
+    const config = FORM_TYPES[doc.type];
 
-    const url =
-      doc.type === "qc"
-        ? `http://localhost:3001/api/qc-analisa-documents/${doc.id}`
-        : `http://localhost:3001/api/resin-inspection-documents/${doc.id}`;
+    if (
+      !window.confirm(
+        `Apakah Anda yakin ingin menghapus "${doc.title || config.label}"?`
+      )
+    ) return;
 
     try {
-      const res = await fetch(url, { method: "DELETE" });
+      const res = await fetch(
+        `${config.endpoint}/${doc.id}`,
+        { method: "DELETE" }
+      );
+
       if (!res.ok) throw new Error();
 
       alert("✅ Dokumen berhasil dihapus");
       fetchDocuments();
     } catch (err) {
-      console.error(err);
       alert("❌ Gagal menghapus dokumen");
     }
   };
 
-  const filteredDocs = documents.filter(doc =>
-    (doc.title || "")
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
-
-  const getRoute = (doc) =>
-    doc.type === "qc"
-      ? `/lab/pb/admin1/analisa/${doc.id}`
-      : `/lab/pb/admin1/resin/${doc.id}`;
-
-  const getIcon = (type) =>
-    type === "qc" ? "🧪" : "🧴";
-
-  const getLabel = (type) =>
-    type === "qc" ? "QC Analisa" : "Resin Inspection";
+  const filteredDocs = documents.filter(doc => {
+    const term = search.toLowerCase();
+    return (
+      (doc.title || "").toLowerCase().includes(term) ||
+      FORM_TYPES[doc.type].label.toLowerCase().includes(term)
+    );
+  });
 
   return (
     <div className="doc-container">
       <h2>📁 My Documents</h2>
 
-      {/* Toolbar */}
       <div className="doc-toolbar">
         <input
           type="text"
-          placeholder="Search documents..."
+          placeholder="Cari dokumen..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <button className="filter-btn">Filter</button>
+        <button onClick={fetchDocuments}>Refresh</button>
       </div>
 
-      {/* Document List */}
       <div className="doc-list">
-        {filteredDocs.map(doc => (
-          <div className="doc-item" key={`${doc.type}-${doc.id}`}>
-            <div className="doc-info">
-              <div className="doc-icon">{getIcon(doc.type)}</div>
-              <div>
-                <div className="doc-title">
-                  {doc.title || getLabel(doc.type)}
-                </div>
-                <div className="doc-date">
-                  {getLabel(doc.type)} •{" "}
-                  {new Date(doc.created_at).toLocaleDateString("id-ID", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric"
-                  })}
+        {loading && <div className="empty">Memuat data...</div>}
+
+        {!loading && filteredDocs.map(doc => {
+          const config = FORM_TYPES[doc.type];
+          return (
+            <div className="doc-item" key={`${doc.type}-${doc.id}`}>
+              <div className="doc-info">
+                <div className="doc-icon">{config.icon}</div>
+                <div>
+                  <div className="doc-title">
+                    {doc.title || config.label}
+                  </div>
+                  <div className="doc-date">
+                    <span className={`badge badge-${doc.type}`}>
+                      {config.label}
+                    </span>{" "}
+                    •{" "}
+                    {new Date(doc.created_at).toLocaleDateString("id-ID")}
+                  </div>
                 </div>
               </div>
+
+              <div className="doc-actions">
+                <Link
+                  to={`${config.route}/${doc.id}`}
+                  className="action-btn"
+                  title="Detail"
+                >
+                  👁
+                </Link>
+
+                <Link
+                  to={`${config.route}/${doc.id}/edit`}
+                  className="action-btn"
+                  title="Edit"
+                >
+                  ✏️
+                </Link>
+
+                <button
+                  className="action-btn delete-btn"
+                  onClick={() => handleDelete(doc)}
+                >
+                  🗑
+                </button>
+              </div>
             </div>
+          );
+        })}
 
-            <div className="doc-actions">
-              <Link
-                to={getRoute(doc)}
-                title="Lihat / Edit"
-                className="action-btn"
-              >
-                👁
-              </Link>
-
-              <button
-                title="Edit"
-                className="action-btn"
-                onClick={() => (window.location.href = getRoute(doc))}
-              >
-                ✏️
-              </button>
-
-              <button
-                title="Hapus"
-                className="action-btn delete-btn"
-                onClick={() => handleDelete(doc)}
-              >
-                🗑
-              </button>
-            </div>
-          </div>
-        ))}
-
-        {filteredDocs.length === 0 && (
+        {!loading && filteredDocs.length === 0 && (
           <div className="empty">📭 Tidak ada dokumen</div>
         )}
       </div>
