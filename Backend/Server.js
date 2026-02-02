@@ -1569,6 +1569,20 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/lab-pb-form-documents', async (req, res) => {
+  const result = await pool.query(`
+    SELECT 
+      id,
+      board_no AS title,
+      created_at
+    FROM lab_pb_documents
+    ORDER BY created_at DESC
+  `);
+
+  res.json(result.rows);
+});
+
+
 /* =========================
 ERROR HANDLING MIDDLEWARE
 ========================= */

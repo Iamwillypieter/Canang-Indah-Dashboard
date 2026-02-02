@@ -28,7 +28,7 @@ const FORM_TYPES = {
     label: "Lab PB Form",
     icon: "🏭",
     route: "/lab/pb/admin1/lab-pb-form",
-    endpoint: `${API_BASE}/lab-pb-form-documents`
+    endpoint: `${API_BASE}/lab-pb-documents`
   }
 };
 
@@ -48,12 +48,18 @@ export default function DocumentList() {
         async ([key, config]) => {
           const res = await fetch(config.endpoint);
           if (!res.ok) {
-            console.warn(`Failed to fetch ${config.label}:`, res.status);
+            console.warn(`Failed to fetch ${config.label}`);
             return [];
           }
 
           const data = await res.json();
-          return data.map(doc => ({
+
+          // 🔥 NORMALISASI DI SINI
+          const docsArray = Array.isArray(data)
+            ? data
+            : data.documents || [];
+
+          return docsArray.map(doc => ({
             ...doc,
             type: key
           }));
@@ -77,6 +83,7 @@ export default function DocumentList() {
       setLoading(false);
     }
   };
+
 
   const handleDelete = async (doc) => {
     const config = FORM_TYPES[doc.type];
