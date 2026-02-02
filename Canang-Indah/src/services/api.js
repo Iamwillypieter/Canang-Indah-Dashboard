@@ -1,106 +1,137 @@
-import express from "express";
-import pool from "../db.js";
+// src/components/services/Api.js
+const API_BASE_URL = 'http://localhost:3001/api';
 
-const router = express.Router();
-
-/* ================= CREATE ================= */
-router.post("/", async (req, res) => {
+/**
+ * Submit Lab Report
+ * @param {string} reportType - 'lab_pb' atau tipe lain
+ * @param {object} data - Data form yang akan dikirim
+ */
+export const submitLabReport = async (reportType, data) => {
   try {
-    const {
-      header,
-      detail,
-      total_jumlah,
-      grand_total_ketebalan,
-      rata_rata
-    } = req.body;
-
-    const result = await pool.query(
-      `
-      INSERT INTO flakes_documents
-      (header, detail, total_jumlah, grand_total_ketebalan, rata_rata)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id
-      `,
-      [header, detail, total_jumlah, grand_total_ketebalan, rata_rata]
-    );
-
-    res.json({ documentId: result.rows[0].id });
-  } catch (err) {
-    console.error("❌ FLAKES POST ERROR:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/* ================= GET BY ID ================= */
-router.get("/:id", async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT * FROM flakes_documents WHERE id = $1",
-      [req.params.id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Not found" });
+    // Pastikan reportType adalah 'lab_pb'
+    if (reportType !== 'lab_pb') {
+      throw new Error('Tipe laporan tidak didukung');
     }
 
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("❌ FLAKES GET ERROR:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
+    const response = await fetch(`${API_BASE_URL}/lab-pb`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
 
-/* ================= UPDATE ================= */
-router.put("/:id", async (req, res) => {
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Gagal mengirim laporan');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('❌ Error submitting lab report:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get List of Lab PB Documents
+ */
+export const getLabPbDocuments = async (params = {}) => {
   try {
-    const {
-      header,
-      detail,
-      total_jumlah,
-      grand_total_ketebalan,
-      rata_rata
-    } = req.body;
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams 
+      ? `${API_BASE_URL}/lab-pb-documents?${queryParams}` 
+      : `${API_BASE_URL}/lab-pb-documents`;
 
-    await pool.query(
-      `
-      UPDATE flakes_documents SET
-        header = $1,
-        detail = $2,
-        total_jumlah = $3,
-        grand_total_ketebalan = $4,
-        rata_rata = $5,
-        updated_at = NOW()
-      WHERE id = $6
-      `,
-      [
-        header,
-        detail,
-        total_jumlah,
-        grand_total_ketebalan,
-        rata_rata,
-        req.params.id
-      ]
-    );
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error('Gagal mengambil daftar dokumen');
+    }
 
-    res.json({ success: true });
-  } catch (err) {
-    console.error("❌ FLAKES PUT ERROR:", err.message);
-    res.status(500).json({ error: err.message });
+    return await response.json();
+  } catch (error) {
+    console.error('❌ Error fetching documents:', error);
+    throw error;
   }
-});
+};
 
-/* ================= DELETE ================= */
-router.delete("/:id", async (req, res) => {
+/**
+ * Get Lab PB Document Detail
+ */
+export const getLabPbDetail = async (id) => {
   try {
-    await pool.query(
-      "DELETE FROM flakes_documents WHERE id = $1",
-      [req.params.id]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    console.error("❌ FLAKES DELETE ERROR:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
+    const response = await fetch(`${API_BASE_URL}/lab-pb/${id}`);
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Dokumen tidak ditemukan');
+      }
+      throw new Error('Gagal mengambil detail dokumen');
+    }
 
-export default router;
+    return await response.json();
+  } catch (error) {
+    console.error('❌ Error fetching document detail:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update Lab PB Document
+ */
+export const updateLabPb = async (id, data) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/lab-pb/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Gagal memperbarui laporan');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('❌ Error updating lab report:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete Lab PB Document
+ */
+export const deleteLabPb = async (id) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/lab-pb-documents/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Gagal menghapus dokumen');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('❌ Error deleting document:', error);
+    throw error;
+  }
+};
+
+/**
+ * Health Check
+ */
+export const healthCheck = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`);
+    return await response.json();
+  } catch (error) {
+    console.error('❌ Health check failed:', error);
+    throw error;
+  }
+};

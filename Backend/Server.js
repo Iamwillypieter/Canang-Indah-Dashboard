@@ -4,8 +4,9 @@ import { Pool } from "pg";
 
 const app = express();
 app.use(cors());
-app.use(express.json());
-
+// app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 const pool = new Pool({
   host: "localhost",
   user: "postgres",
@@ -801,6 +802,790 @@ app.delete("/api/flakes-documents/:id", async (req, res) => {
   }
 });
 
+
+
+/* =========================
+SIMPAN LAPORAN LAB PB BARU
+========================= */
+app.post('/api/lab-pb', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const {
+      timestamp, board_no, set_weight, shift_group, tested_by,
+      density_min, density_max, board_type, glue_sl, glue_cl,
+      thick_min, thick_max, samples = [],
+      ibData = {}, bsData = {}, screwData = {}, densityProfileData = {},
+      mcBoardData = {}, swellingData = {}, surfaceSoundnessData = {},
+      tebalFlakesData = {}, consHardenerData = {}, geltimeData = {}
+    } = req.body;
+
+    if (!board_no || !tested_by) {
+      return res.status(400).json({ error: "Board No dan Tested By wajib diisi" });
+    }
+
+    await client.query('BEGIN');
+
+    // 1️⃣ Simpan dokumen utama
+    const docResult = await client.query(
+      `INSERT INTO lab_pb_documents (
+        timestamp, board_no, set_weight, shift_group, tested_by,
+        density_min, density_max, board_type, glue_sl, glue_cl,
+        thick_min, thick_max
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING id, board_no, timestamp`,
+      [
+        timestamp, board_no, set_weight || null, shift_group, tested_by,
+        density_min || null, density_max || null, board_type || null, 
+        glue_sl || null, glue_cl || null, thick_min || null, thick_max || null
+      ]
+    );
+    const documentId = docResult.rows[0].id;
+
+    // 2️⃣ Simpan samples (24 pcs)
+    for (const sample of samples) {
+      await client.query(
+        `INSERT INTO lab_pb_samples (
+          document_id, sample_no, weight_gr, thickness_mm, length_mm, width_mm
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          documentId,
+          sample.no,
+          sample.weight_gr || null,
+          sample.thickness_mm || null,
+          sample.length_mm || null,
+          sample.width_mm || null
+        ]
+      );
+    }
+
+    // 3️⃣ Simpan Internal Bonding
+    const positions = ['le', 'ml', 'md', 'mr', 'ri'];
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_internal_bonding (
+          document_id, position, ib_value, density_value, avg_ib, avg_density
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          documentId,
+          pos,
+          ibData[`ib_${pos}`] || null,
+          ibData[`density_${pos}`] || null,
+          ibData.ib_avg || null,
+          ibData.density_avg || null
+        ]
+      );
+    }
+
+    // 4️⃣ Simpan Bending Strength
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_bending_strength (
+          document_id, position, mor_value, density_value, avg_mor, avg_density
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          documentId,
+          pos,
+          bsData[`mor_${pos}`] || null,
+          bsData[`density_${pos}`] || null,
+          bsData.mor_avg || null,
+          bsData.bs_density_avg || null
+        ]
+      );
+    }
+
+    // 5️⃣ Simpan Screw Test
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_screw_test (
+          document_id, position, face_value, edge_value, avg_face, avg_edge
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          documentId,
+          pos,
+          screwData[`face_${pos}`] || null,
+          screwData[`edge_${pos}`] || null,
+          screwData.face_avg || null,
+          screwData.edge_avg || null
+        ]
+      );
+    }
+
+    // 6️⃣ Simpan Density Profile
+    for (const pos of positions) {
+      const min = densityProfileData[`min_${pos}`];
+      const mean = densityProfileData[`mean_${pos}`];
+      const minMeanRatio = min && mean ? (parseFloat(min) / parseFloat(mean) * 100) : null;
+
+      await client.query(
+        `INSERT INTO lab_pb_density_profile (
+          document_id, position, max_top, max_bot, min_value, mean_value, min_mean_ratio
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          documentId,
+          pos,
+          densityProfileData[`max_top_${pos}`] || null,
+          densityProfileData[`max_bot_${pos}`] || null,
+          min || null,
+          mean || null,
+          minMeanRatio || null
+        ]
+      );
+    }
+
+    // 7️⃣ Simpan MC Board
+    for (const pos of positions) {
+      const w1 = mcBoardData[`w1_${pos}`];
+      const w2 = mcBoardData[`w2_${pos}`];
+      const mc = w1 && w2 ? ((parseFloat(w1) - parseFloat(w2)) / parseFloat(w2) * 100) : null;
+
+      await client.query(
+        `INSERT INTO lab_pb_mc_board (
+          document_id, position, w1, w2, mc_value, avg_w1, avg_w2, avg_mc
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          documentId,
+          pos,
+          w1 || null,
+          w2 || null,
+          mc || null,
+          mcBoardData.avg_w1 || null,
+          mcBoardData.avg_w2 || null,
+          mcBoardData.avg_mc || null
+        ]
+      );
+    }
+
+    // 8️⃣ Simpan Swelling 2h
+    for (const pos of positions) {
+      const t1 = swellingData[`t1_${pos}`];
+      const t2 = swellingData[`t2_${pos}`];
+      const ts = t1 && t2 ? ((parseFloat(t2) - parseFloat(t1)) / parseFloat(t1) * 100) : null;
+
+      await client.query(
+        `INSERT INTO lab_pb_swelling (
+          document_id, position, t1, t2, ts_value, avg_t1, avg_t2, avg_ts
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          documentId,
+          pos,
+          t1 || null,
+          t2 || null,
+          ts || null,
+          swellingData.avg_t1 || null,
+          swellingData.avg_t2 || null,
+          swellingData.avg_ts || null
+        ]
+      );
+    }
+
+    // 9️⃣ Simpan Surface Soundness
+    for (const pos of ['le', 'ri']) {
+      await client.query(
+        `INSERT INTO lab_pb_surface_soundness (
+          document_id, position, t1_value, avg_surface
+        ) VALUES ($1, $2, $3, $4)`,
+        [
+          documentId,
+          pos,
+          surfaceSoundnessData[`t1_${pos}_surface`] || null,
+          surfaceSoundnessData.avg_surface || null
+        ]
+      );
+    }
+
+    // 🔟 Simpan Additional Tests (single row)
+    await client.query(
+      `INSERT INTO lab_pb_additional_tests (
+        document_id, avg_tebal_flakes, avg_cons_hardener, geltime_sl, geltime_cl
+      ) VALUES ($1, $2, $3, $4, $5)`,
+      [
+        documentId,
+        tebalFlakesData.avg_tebal || null,
+        consHardenerData.avg_cons || null,
+        geltimeData.sl || null,
+        geltimeData.cl || null
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      message: "Laporan Lab PB berhasil disimpan",
+      documentId,
+      boardNo: board_no,
+      timestamp: docResult.rows[0].timestamp
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error("❌ ERROR SIMPAN LAB PB:", err);
+    res.status(500).json({ 
+      error: "Gagal menyimpan laporan Lab PB",
+      detail: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  } finally {
+    client.release();
+  }
+});
+
+/* =========================
+LIST DOKUMEN (dengan pagination & filter)
+========================= */
+app.get('/api/lab-pb-documents', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, board_no = '', date_from, date_to } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Build query dengan filter
+    let query = `
+      SELECT id, board_no, timestamp, shift_group, tested_by, 
+             created_at, updated_at
+      FROM lab_pb_documents
+      WHERE ($1 = '' OR board_no ILIKE $1)
+    `;
+    const params = [`%${board_no}%`];
+    let paramCount = 2;
+
+    if (date_from) {
+      query += ` AND timestamp >= $${paramCount}`;
+      params.push(date_from);
+      paramCount++;
+    }
+    if (date_to) {
+      query += ` AND timestamp <= $${paramCount}`;
+      params.push(date_to);
+      paramCount++;
+    }
+
+    query += ` ORDER BY timestamp DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(parseInt(limit), offset);
+
+    const result = await pool.query(query, params);
+
+    // Hitung total untuk pagination
+    let countQuery = `
+      SELECT COUNT(*) as total 
+      FROM lab_pb_documents 
+      WHERE ($1 = '' OR board_no ILIKE $1)
+    `;
+    let countParams = [`%${board_no}%`];
+    paramCount = 2;
+
+    if (date_from) {
+      countQuery += ` AND timestamp >= $${paramCount}`;
+      countParams.push(date_from);
+      paramCount++;
+    }
+    if (date_to) {
+      countQuery += ` AND timestamp <= $${paramCount}`;
+      countParams.push(date_to);
+    }
+
+    const countResult = await pool.query(countQuery, countParams);
+
+    res.json({
+      documents: result.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: parseInt(countResult.rows[0].total),
+        totalPages: Math.ceil(parseInt(countResult.rows[0].total) / parseInt(limit))
+      }
+    });
+
+  } catch (err) {
+    console.error("❌ ERROR LIST DOKUMEN:", err);
+    res.status(500).json({ error: "Gagal mengambil daftar dokumen" });
+  }
+});
+
+/* =========================
+DETAIL DOKUMEN (VIEW)
+========================= */
+app.get('/api/lab-pb/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Ambil dokumen utama
+    const docResult = await pool.query(
+      `SELECT * FROM lab_pb_documents WHERE id = $1`,
+      [id]
+    );
+    if (docResult.rows.length === 0) {
+      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+    }
+
+    const doc = docResult.rows[0];
+
+    // Ambil semua data terkait
+    const [
+      samples,
+      ibTests,
+      bsTests,
+      screwTests,
+      densityProfiles,
+      mcBoards,
+      swellings,
+      surfaceTests,
+      additionalTests
+    ] = await Promise.all([
+      pool.query('SELECT * FROM lab_pb_samples WHERE document_id = $1 ORDER BY sample_no', [id]),
+      pool.query('SELECT * FROM lab_pb_internal_bonding WHERE document_id = $1 ORDER BY position', [id]),
+      pool.query('SELECT * FROM lab_pb_bending_strength WHERE document_id = $1 ORDER BY position', [id]),
+      pool.query('SELECT * FROM lab_pb_screw_test WHERE document_id = $1 ORDER BY position', [id]),
+      pool.query('SELECT * FROM lab_pb_density_profile WHERE document_id = $1 ORDER BY position', [id]),
+      pool.query('SELECT * FROM lab_pb_mc_board WHERE document_id = $1 ORDER BY position', [id]),
+      pool.query('SELECT * FROM lab_pb_swelling WHERE document_id = $1 ORDER BY position', [id]),
+      pool.query('SELECT * FROM lab_pb_surface_soundness WHERE document_id = $1 ORDER BY position', [id]),
+      pool.query('SELECT * FROM lab_pb_additional_tests WHERE document_id = $1', [id])
+    ]);
+
+    // Format data sesuai struktur frontend
+    const formattedData = {
+      document: {
+        id: doc.id,
+        timestamp: doc.timestamp.toISOString().slice(0, 16),
+        board_no: doc.board_no,
+        set_weight: doc.set_weight,
+        shift_group: doc.shift_group,
+        tested_by: doc.tested_by,
+        density_min: doc.density_min,
+        density_max: doc.density_max,
+        board_type: doc.board_type,
+        glue_sl: doc.glue_sl,
+        glue_cl: doc.glue_cl,
+        thick_min: doc.thick_min,
+        thick_max: doc.thick_max,
+        created_at: doc.created_at,
+        updated_at: doc.updated_at
+      },
+      samples: samples.rows.map(s => ({
+        no: s.sample_no,
+        weight_gr: s.weight_gr || '',
+        thickness_mm: s.thickness_mm || '',
+        length_mm: s.length_mm || '',
+        width_mm: s.width_mm || ''
+      })),
+      ibData: {
+        ib_le: ibTests.rows.find(r => r.position === 'le')?.ib_value || '',
+        ib_ml: ibTests.rows.find(r => r.position === 'ml')?.ib_value || '',
+        ib_md: ibTests.rows.find(r => r.position === 'md')?.ib_value || '',
+        ib_mr: ibTests.rows.find(r => r.position === 'mr')?.ib_value || '',
+        ib_ri: ibTests.rows.find(r => r.position === 'ri')?.ib_value || '',
+        density_le: ibTests.rows.find(r => r.position === 'le')?.density_value || '',
+        density_ml: ibTests.rows.find(r => r.position === 'ml')?.density_value || '',
+        density_md: ibTests.rows.find(r => r.position === 'md')?.density_value || '',
+        density_mr: ibTests.rows.find(r => r.position === 'mr')?.density_value || '',
+        density_ri: ibTests.rows.find(r => r.position === 'ri')?.density_value || '',
+        ib_avg: ibTests.rows[0]?.avg_ib || null,
+        density_avg: ibTests.rows[0]?.avg_density || null
+      },
+      bsData: {
+        mor_le: bsTests.rows.find(r => r.position === 'le')?.mor_value || '',
+        mor_ml: bsTests.rows.find(r => r.position === 'ml')?.mor_value || '',
+        mor_md: bsTests.rows.find(r => r.position === 'md')?.mor_value || '',
+        mor_mr: bsTests.rows.find(r => r.position === 'mr')?.mor_value || '',
+        mor_ri: bsTests.rows.find(r => r.position === 'ri')?.mor_value || '',
+        density_le: bsTests.rows.find(r => r.position === 'le')?.density_value || '',
+        density_ml: bsTests.rows.find(r => r.position === 'ml')?.density_value || '',
+        density_md: bsTests.rows.find(r => r.position === 'md')?.density_value || '',
+        density_mr: bsTests.rows.find(r => r.position === 'mr')?.density_value || '',
+        density_ri: bsTests.rows.find(r => r.position === 'ri')?.density_value || '',
+        mor_avg: bsTests.rows[0]?.avg_mor || null,
+        bs_density_avg: bsTests.rows[0]?.avg_density || null
+      },
+      screwData: {
+        face_le: screwTests.rows.find(r => r.position === 'le')?.face_value || '',
+        face_ml: screwTests.rows.find(r => r.position === 'ml')?.face_value || '',
+        face_md: screwTests.rows.find(r => r.position === 'md')?.face_value || '',
+        face_mr: screwTests.rows.find(r => r.position === 'mr')?.face_value || '',
+        face_ri: screwTests.rows.find(r => r.position === 'ri')?.face_value || '',
+        edge_le: screwTests.rows.find(r => r.position === 'le')?.edge_value || '',
+        edge_ml: screwTests.rows.find(r => r.position === 'ml')?.edge_value || '',
+        edge_md: screwTests.rows.find(r => r.position === 'md')?.edge_value || '',
+        edge_mr: screwTests.rows.find(r => r.position === 'mr')?.edge_value || '',
+        edge_ri: screwTests.rows.find(r => r.position === 'ri')?.edge_value || '',
+        face_avg: screwTests.rows[0]?.avg_face || null,
+        edge_avg: screwTests.rows[0]?.avg_edge || null
+      },
+      densityProfileData: {
+        max_top_le: densityProfiles.rows.find(r => r.position === 'le')?.max_top || '',
+        max_top_ml: densityProfiles.rows.find(r => r.position === 'ml')?.max_top || '',
+        max_top_md: densityProfiles.rows.find(r => r.position === 'md')?.max_top || '',
+        max_top_mr: densityProfiles.rows.find(r => r.position === 'mr')?.max_top || '',
+        max_top_ri: densityProfiles.rows.find(r => r.position === 'ri')?.max_top || '',
+        max_bot_le: densityProfiles.rows.find(r => r.position === 'le')?.max_bot || '',
+        max_bot_ml: densityProfiles.rows.find(r => r.position === 'ml')?.max_bot || '',
+        max_bot_md: densityProfiles.rows.find(r => r.position === 'md')?.max_bot || '',
+        max_bot_mr: densityProfiles.rows.find(r => r.position === 'mr')?.max_bot || '',
+        max_bot_ri: densityProfiles.rows.find(r => r.position === 'ri')?.max_bot || '',
+        min_le: densityProfiles.rows.find(r => r.position === 'le')?.min_value || '',
+        min_ml: densityProfiles.rows.find(r => r.position === 'ml')?.min_value || '',
+        min_md: densityProfiles.rows.find(r => r.position === 'md')?.min_value || '',
+        min_mr: densityProfiles.rows.find(r => r.position === 'mr')?.min_value || '',
+        min_ri: densityProfiles.rows.find(r => r.position === 'ri')?.min_value || '',
+        mean_le: densityProfiles.rows.find(r => r.position === 'le')?.mean_value || '',
+        mean_ml: densityProfiles.rows.find(r => r.position === 'ml')?.mean_value || '',
+        mean_md: densityProfiles.rows.find(r => r.position === 'md')?.mean_value || '',
+        mean_mr: densityProfiles.rows.find(r => r.position === 'mr')?.mean_value || '',
+        mean_ri: densityProfiles.rows.find(r => r.position === 'ri')?.mean_value || ''
+      },
+      mcBoardData: {
+        w1_le: mcBoards.rows.find(r => r.position === 'le')?.w1 || '',
+        w1_ml: mcBoards.rows.find(r => r.position === 'ml')?.w1 || '',
+        w1_md: mcBoards.rows.find(r => r.position === 'md')?.w1 || '',
+        w1_mr: mcBoards.rows.find(r => r.position === 'mr')?.w1 || '',
+        w1_ri: mcBoards.rows.find(r => r.position === 'ri')?.w1 || '',
+        w2_le: mcBoards.rows.find(r => r.position === 'le')?.w2 || '',
+        w2_ml: mcBoards.rows.find(r => r.position === 'ml')?.w2 || '',
+        w2_md: mcBoards.rows.find(r => r.position === 'md')?.w2 || '',
+        w2_mr: mcBoards.rows.find(r => r.position === 'mr')?.w2 || '',
+        w2_ri: mcBoards.rows.find(r => r.position === 'ri')?.w2 || '',
+        avg_w1: mcBoards.rows[0]?.avg_w1 || null,
+        avg_w2: mcBoards.rows[0]?.avg_w2 || null,
+        avg_mc: mcBoards.rows[0]?.avg_mc || null
+      },
+      swellingData: {
+        t1_le: swellings.rows.find(r => r.position === 'le')?.t1 || '',
+        t1_ml: swellings.rows.find(r => r.position === 'ml')?.t1 || '',
+        t1_md: swellings.rows.find(r => r.position === 'md')?.t1 || '',
+        t1_mr: swellings.rows.find(r => r.position === 'mr')?.t1 || '',
+        t1_ri: swellings.rows.find(r => r.position === 'ri')?.t1 || '',
+        t2_le: swellings.rows.find(r => r.position === 'le')?.t2 || '',
+        t2_ml: swellings.rows.find(r => r.position === 'ml')?.t2 || '',
+        t2_md: swellings.rows.find(r => r.position === 'md')?.t2 || '',
+        t2_mr: swellings.rows.find(r => r.position === 'mr')?.t2 || '',
+        t2_ri: swellings.rows.find(r => r.position === 'ri')?.t2 || '',
+        avg_t1: swellings.rows[0]?.avg_t1 || null,
+        avg_t2: swellings.rows[0]?.avg_t2 || null,
+        avg_ts: swellings.rows[0]?.avg_ts || null
+      },
+      surfaceSoundnessData: {
+        t1_le_surface: surfaceTests.rows.find(r => r.position === 'le')?.t1_value || '',
+        t1_ri_surface: surfaceTests.rows.find(r => r.position === 'ri')?.t1_value || '',
+        avg_surface: surfaceTests.rows[0]?.avg_surface || null
+      },
+      tebalFlakesData: {
+        avg_tebal: additionalTests.rows[0]?.avg_tebal_flakes || ''
+      },
+      consHardenerData: {
+        avg_cons: additionalTests.rows[0]?.avg_cons_hardener || ''
+      },
+      geltimeData: {
+        sl: additionalTests.rows[0]?.geltime_sl || '',
+        cl: additionalTests.rows[0]?.geltime_cl || ''
+      }
+    };
+
+    res.json(formattedData);
+
+  } catch (err) {
+    console.error("❌ ERROR DETAIL DOKUMEN:", err);
+    res.status(500).json({ error: "Gagal mengambil detail dokumen" });
+  }
+});
+
+/* =========================
+UPDATE DOKUMEN (EDIT)
+========================= */
+app.put('/api/lab-pb/:id', async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+  try {
+    const {
+      timestamp, board_no, set_weight, shift_group, tested_by,
+      density_min, density_max, board_type, glue_sl, glue_cl,
+      thick_min, thick_max, samples = [],
+      ibData = {}, bsData = {}, screwData = {}, densityProfileData = {},
+      mcBoardData = {}, swellingData = {}, surfaceSoundnessData = {},
+      tebalFlakesData = {}, consHardenerData = {}, geltimeData = {}
+    } = req.body;
+
+    if (!board_no || !tested_by) {
+      return res.status(400).json({ error: "Board No dan Tested By wajib diisi" });
+    }
+
+    await client.query('BEGIN');
+
+    // 1️⃣ Update dokumen utama
+    await client.query(
+      `UPDATE lab_pb_documents SET
+        timestamp = $1, board_no = $2, set_weight = $3, shift_group = $4,
+        tested_by = $5, density_min = $6, density_max = $7, board_type = $8,
+        glue_sl = $9, glue_cl = $10, thick_min = $11, thick_max = $12,
+        updated_at = NOW()
+      WHERE id = $13`,
+      [
+        timestamp, board_no, set_weight || null, shift_group, tested_by,
+        density_min || null, density_max || null, board_type || null,
+        glue_sl || null, glue_cl || null, thick_min || null, thick_max || null,
+        id
+      ]
+    );
+
+    // 2️⃣ Hapus data lama terkait
+    await Promise.all([
+      client.query('DELETE FROM lab_pb_samples WHERE document_id = $1', [id]),
+      client.query('DELETE FROM lab_pb_internal_bonding WHERE document_id = $1', [id]),
+      client.query('DELETE FROM lab_pb_bending_strength WHERE document_id = $1', [id]),
+      client.query('DELETE FROM lab_pb_screw_test WHERE document_id = $1', [id]),
+      client.query('DELETE FROM lab_pb_density_profile WHERE document_id = $1', [id]),
+      client.query('DELETE FROM lab_pb_mc_board WHERE document_id = $1', [id]),
+      client.query('DELETE FROM lab_pb_swelling WHERE document_id = $1', [id]),
+      client.query('DELETE FROM lab_pb_surface_soundness WHERE document_id = $1', [id]),
+      client.query('DELETE FROM lab_pb_additional_tests WHERE document_id = $1', [id])
+    ]);
+
+    // 3️⃣ Insert ulang semua data (sama seperti POST)
+    // Simpan samples
+    for (const sample of samples) {
+      await client.query(
+        `INSERT INTO lab_pb_samples (
+          document_id, sample_no, weight_gr, thickness_mm, length_mm, width_mm
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          id,
+          sample.no,
+          sample.weight_gr || null,
+          sample.thickness_mm || null,
+          sample.length_mm || null,
+          sample.width_mm || null
+        ]
+      );
+    }
+
+    // Simpan Internal Bonding
+    const positions = ['le', 'ml', 'md', 'mr', 'ri'];
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_internal_bonding (
+          document_id, position, ib_value, density_value, avg_ib, avg_density
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          id,
+          pos,
+          ibData[`ib_${pos}`] || null,
+          ibData[`density_${pos}`] || null,
+          ibData.ib_avg || null,
+          ibData.density_avg || null
+        ]
+      );
+    }
+
+    // Simpan Bending Strength
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_bending_strength (
+          document_id, position, mor_value, density_value, avg_mor, avg_density
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          id,
+          pos,
+          bsData[`mor_${pos}`] || null,
+          bsData[`density_${pos}`] || null,
+          bsData.mor_avg || null,
+          bsData.bs_density_avg || null
+        ]
+      );
+    }
+
+    // Simpan Screw Test
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_screw_test (
+          document_id, position, face_value, edge_value, avg_face, avg_edge
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          id,
+          pos,
+          screwData[`face_${pos}`] || null,
+          screwData[`edge_${pos}`] || null,
+          screwData.face_avg || null,
+          screwData.edge_avg || null
+        ]
+      );
+    }
+
+    // Simpan Density Profile
+    for (const pos of positions) {
+      const min = densityProfileData[`min_${pos}`];
+      const mean = densityProfileData[`mean_${pos}`];
+      const minMeanRatio = min && mean ? (parseFloat(min) / parseFloat(mean) * 100) : null;
+
+      await client.query(
+        `INSERT INTO lab_pb_density_profile (
+          document_id, position, max_top, max_bot, min_value, mean_value, min_mean_ratio
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          id,
+          pos,
+          densityProfileData[`max_top_${pos}`] || null,
+          densityProfileData[`max_bot_${pos}`] || null,
+          min || null,
+          mean || null,
+          minMeanRatio || null
+        ]
+      );
+    }
+
+    // Simpan MC Board
+    for (const pos of positions) {
+      const w1 = mcBoardData[`w1_${pos}`];
+      const w2 = mcBoardData[`w2_${pos}`];
+      const mc = w1 && w2 ? ((parseFloat(w1) - parseFloat(w2)) / parseFloat(w2) * 100) : null;
+
+      await client.query(
+        `INSERT INTO lab_pb_mc_board (
+          document_id, position, w1, w2, mc_value, avg_w1, avg_w2, avg_mc
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          id,
+          pos,
+          w1 || null,
+          w2 || null,
+          mc || null,
+          mcBoardData.avg_w1 || null,
+          mcBoardData.avg_w2 || null,
+          mcBoardData.avg_mc || null
+        ]
+      );
+    }
+
+    // Simpan Swelling 2h
+    for (const pos of positions) {
+      const t1 = swellingData[`t1_${pos}`];
+      const t2 = swellingData[`t2_${pos}`];
+      const ts = t1 && t2 ? ((parseFloat(t2) - parseFloat(t1)) / parseFloat(t1) * 100) : null;
+
+      await client.query(
+        `INSERT INTO lab_pb_swelling (
+          document_id, position, t1, t2, ts_value, avg_t1, avg_t2, avg_ts
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          id,
+          pos,
+          t1 || null,
+          t2 || null,
+          ts || null,
+          swellingData.avg_t1 || null,
+          swellingData.avg_t2 || null,
+          swellingData.avg_ts || null
+        ]
+      );
+    }
+
+    // Simpan Surface Soundness
+    for (const pos of ['le', 'ri']) {
+      await client.query(
+        `INSERT INTO lab_pb_surface_soundness (
+          document_id, position, t1_value, avg_surface
+        ) VALUES ($1, $2, $3, $4)`,
+        [
+          id,
+          pos,
+          surfaceSoundnessData[`t1_${pos}_surface`] || null,
+          surfaceSoundnessData.avg_surface || null
+        ]
+      );
+    }
+
+    // Simpan Additional Tests
+    await client.query(
+      `INSERT INTO lab_pb_additional_tests (
+        document_id, avg_tebal_flakes, avg_cons_hardener, geltime_sl, geltime_cl
+      ) VALUES ($1, $2, $3, $4, $5)`,
+      [
+        id,
+        tebalFlakesData.avg_tebal || null,
+        consHardenerData.avg_cons || null,
+        geltimeData.sl || null,
+        geltimeData.cl || null
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    res.json({
+      message: "Laporan Lab PB berhasil diperbarui",
+      documentId: id,
+      boardNo: board_no
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error("❌ ERROR UPDATE LAB PB:", err);
+    res.status(500).json({ 
+      error: "Gagal memperbarui laporan Lab PB",
+      detail: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  } finally {
+    client.release();
+  }
+});
+
+/* =========================
+HAPUS DOKUMEN
+========================= */
+app.delete('/api/lab-pb-documents/:id', async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Hapus dokumen (CASCADE akan otomatis hapus semua child tables)
+    const result = await client.query(
+      `DELETE FROM lab_pb_documents WHERE id = $1 RETURNING id, board_no`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      message: `Dokumen Lab PB #${result.rows[0].board_no} berhasil dihapus`,
+      documentId: result.rows[0].id
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error("❌ ERROR HAPUS DOKUMEN:", err);
+    res.status(500).json({ error: "Gagal menghapus dokumen" });
+  } finally {
+    client.release();
+  }
+});
+
+/* =========================
+HEALTH CHECK
+========================= */
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Lab PB API is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+/* =========================
+ERROR HANDLING MIDDLEWARE
+========================= */
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Endpoint tidak ditemukan',
+    path: req.originalUrl
+  });
+});
+
+app.use((err, req, res, next) => {
+  console.error('❌ UNHANDLED ERROR:', err);
+  res.status(500).json({ 
+    error: 'Terjadi kesalahan internal server',
+    detail: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
 
 
 app.listen(3001, () =>

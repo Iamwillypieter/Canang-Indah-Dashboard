@@ -9,6 +9,7 @@ import LabPBAdmin1 from "./pages/sub_menu/LabPBAdmin1.jsx";
 import QCAnalisaForm from "./forms/QCAnalisaForm.jsx";
 import ResinInspectionForm from "./forms/ResinInspectionForm.jsx";
 import FlakesForm from "./forms/FlakesForm.jsx";
+import LabPBForm from "./forms/LabPBForm.jsx";
 
 // Views
 import QCAnalisaView from "./forms/QCAnalisaView.jsx";
@@ -41,6 +42,8 @@ export default function App() {
           <Route path="flakes/:id" element={<FlakesForm />} />
           <Route path="flakes/:id/edit" element={<FlakesForm isEditMode={true} />} />
 
+          {/* LabPBForm */}
+          <Route path="moisture" element={<LabPBForm />} />
 
           {/* DOKUMEN */}
           <Route path="dokumen" element={<DokumenList />} />

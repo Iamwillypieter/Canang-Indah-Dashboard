@@ -23,6 +23,12 @@ const FORM_TYPES = {
     icon: "🪵",
     route: "/lab/pb/admin1/flakes",
     endpoint: `${API_BASE}/flakes-documents`
+  },
+  labPBForm: {
+    label: "Lab PB Form",
+    icon: "🏭",
+    route: "/lab/pb/admin1/lab-pb-form",
+    endpoint: `${API_BASE}/lab-pb-form-documents`
   }
 };
 
