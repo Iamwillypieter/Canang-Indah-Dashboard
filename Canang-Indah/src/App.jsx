@@ -15,6 +15,7 @@ import LabPBForm from "./forms/LabPBForm.jsx";
 import QCAnalisaView from "./forms/QCAnalisaView.jsx";
 import ResinInspectionView from "./forms/ResinInspectionView.jsx";
 import FlakesFormView from "./forms/FlakesFormView.jsx";
+import LabPBFormView from "./forms/LabPBFormView.jsx";
 
 // Shared
 import DokumenList from "./forms/DokumenList.jsx";
@@ -44,6 +45,8 @@ export default function App() {
 
           {/* LabPBForm */}
           <Route path="moisture" element={<LabPBForm />} />
+          <Route path="/lab/pb/admin1/lab-pb-form/:id" element={<LabPBFormView mode="view" />} />
+          <Route path="/lab/pb/admin1/lab-pb-form/:id/edit" element={<LabPBFormView mode="edit" />} />
 
           {/* DOKUMEN */}
           <Route path="dokumen" element={<DokumenList />} />

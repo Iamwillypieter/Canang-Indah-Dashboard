@@ -1,137 +1,77 @@
-// src/components/services/Api.js
 const API_BASE_URL = 'http://localhost:3001/api';
 
 /**
- * Submit Lab Report
- * @param {string} reportType - 'lab_pb' atau tipe lain
- * @param {object} data - Data form yang akan dikirim
+ * Helper internal untuk memproses response fetch
+ * Agar tidak perlu menulis if(!res.ok) berulang kali
+ */
+const handleResponse = async (response) => {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Server Error: ${response.status}`);
+  }
+  return await response.json();
+};
+
+/**
+ * POST: Simpan Laporan Lab PB Baru
  */
 export const submitLabReport = async (reportType, data) => {
-  try {
-    // Pastikan reportType adalah 'lab_pb'
-    if (reportType !== 'lab_pb') {
-      throw new Error('Tipe laporan tidak didukung');
-    }
-
-    const response = await fetch(`${API_BASE_URL}/lab-pb`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Gagal mengirim laporan');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('❌ Error submitting lab report:', error);
-    throw error;
-  }
+  // Sementara kita kunci ke endpoint lab-pb bray
+  const endpoint = reportType === 'lab_pb' ? '/lab-pb' : `/${reportType}`;
+  
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
 };
 
 /**
- * Get List of Lab PB Documents
+ * GET: Ambil daftar dokumen untuk DokumenList.jsx
  */
 export const getLabPbDocuments = async (params = {}) => {
-  try {
-    const queryParams = new URLSearchParams(params).toString();
-    const url = queryParams 
-      ? `${API_BASE_URL}/lab-pb-documents?${queryParams}` 
-      : `${API_BASE_URL}/lab-pb-documents`;
-
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error('Gagal mengambil daftar dokumen');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('❌ Error fetching documents:', error);
-    throw error;
-  }
+  const queryParams = new URLSearchParams(params).toString();
+  const url = `${API_BASE_URL}/lab-pb-documents${queryParams ? `?${queryParams}` : ''}`;
+  
+  const response = await fetch(url);
+  return handleResponse(response);
 };
 
 /**
- * Get Lab PB Document Detail
+ * GET: Ambil detail 1 dokumen berdasarkan ID (Untuk View & Edit)
  */
-export const getLabPbDetail = async (id) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/lab-pb/${id}`);
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('Dokumen tidak ditemukan');
-      }
-      throw new Error('Gagal mengambil detail dokumen');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('❌ Error fetching document detail:', error);
-    throw error;
-  }
+export const getLabReportById = async (id) => {
+  const response = await fetch(`${API_BASE_URL}/lab-pb/${id}`);
+  return handleResponse(response);
 };
 
 /**
- * Update Lab PB Document
+ * PUT: Update data lama di database (Proses Simpan saat Edit)
  */
-export const updateLabPb = async (id, data) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/lab-pb/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Gagal memperbarui laporan');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('❌ Error updating lab report:', error);
-    throw error;
-  }
+export const updateLabReport = async (id, data) => {
+  const response = await fetch(`${API_BASE_URL}/lab-pb/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
 };
 
 /**
- * Delete Lab PB Document
+ * DELETE: Hapus dokumen dari database
  */
 export const deleteLabPb = async (id) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/lab-pb-documents/${id}`, {
-      method: 'DELETE',
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Gagal menghapus dokumen');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('❌ Error deleting document:', error);
-    throw error;
-  }
+  const response = await fetch(`${API_BASE_URL}/lab-pb-documents/${id}`, {
+    method: 'DELETE',
+  });
+  return handleResponse(response);
 };
 
 /**
- * Health Check
+ * Health Check: Cek apakah backend nyala atau mati
  */
 export const healthCheck = async () => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/health`);
-    return await response.json();
-  } catch (error) {
-    console.error('❌ Health check failed:', error);
-    throw error;
-  }
+  const response = await fetch(`${API_BASE_URL}/health`);
+  return handleResponse(response);
 };
