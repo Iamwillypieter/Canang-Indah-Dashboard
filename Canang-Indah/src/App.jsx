@@ -4,6 +4,7 @@ import DashboardLayout from "./dashboard/DashboardLayout.jsx";
 
 // Pages
 import LabPBAdmin1 from "./pages/sub_menu/LabPBAdmin1.jsx";
+import SupervisorPage from "./pages/SupervisorPage.jsx";
 
 // Forms
 import QCAnalisaForm from "./forms/QCAnalisaForm.jsx";
@@ -52,6 +53,16 @@ export default function App() {
           <Route path="dokumen" element={<DokumenList />} />
         </Route>
 
+        {/* ================= SUPERVISOR ================= */}
+        <Route path="supervisor">
+          <Route index element={<SupervisorPage />} />
+
+          {/* OPTIONAL FUTURE */}
+          {/* 
+          <Route path=":type/:id" element={<SupervisorDetailPage />} />
+          */}
+        </Route>
+        
       </Route>
     </Routes>
   );

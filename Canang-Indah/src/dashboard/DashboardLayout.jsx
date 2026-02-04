@@ -24,7 +24,7 @@ export default function DashboardLayout() {
           <span>PT CANANG INDAH</span>
         </div>
 
-        <div className="title">Laboratory Dashboard</div>
+        <div className="title-dashboard">Laboratory Dashboard</div>
         <div className="user-info">
           <span>👤 Willy Situmorang</span>
           <span className="role">Super Lab User</span>

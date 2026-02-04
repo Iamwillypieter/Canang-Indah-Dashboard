@@ -124,7 +124,7 @@ export default function DocumentList() {
       <div className="doc-toolbar">
         <input
           type="text"
-          placeholder="Cari dokumen..."
+          placeholder="Search Document..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -132,7 +132,7 @@ export default function DocumentList() {
       </div>
 
       <div className="doc-list">
-        {loading && <div className="empty">Memuat data...</div>}
+        {loading && <div className="empty">Loading data...</div>}
 
         {!loading && filteredDocs.map(doc => {
           const config = FORM_TYPES[doc.type];
@@ -183,7 +183,7 @@ export default function DocumentList() {
         })}
 
         {!loading && filteredDocs.length === 0 && (
-          <div className="empty">📭 Tidak ada dokumen</div>
+          <div className="empty">📭 No Document</div>
         )}
       </div>
     </div>
