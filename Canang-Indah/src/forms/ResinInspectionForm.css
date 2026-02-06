@@ -244,7 +244,7 @@ table thead tr:first-child th:first-child {
 }
 
 /* ========== SUBMIT BUTTON ========== */
-.submit-btn {
+.submit {
   width: 100%;
   max-width: 400px;
   padding: 18px 40px;
@@ -265,7 +265,7 @@ table thead tr:first-child th:first-child {
   overflow: hidden;
 }
 
-.submit-btn::before {
+.submit::before {
   content: '';
   position: absolute;
   top: 0;
@@ -276,28 +276,28 @@ table thead tr:first-child th:first-child {
   transition: left 0.6s;
 }
 
-.submit-btn:hover::before {
+.submit:hover::before {
   left: 100%;
 }
 
-.submit-btn:hover {
+.submit:hover {
   transform: translateY(-4px) scale(1.03);
   box-shadow: var(--shadow-xl);
   background: linear-gradient(135deg, var(--primary-dark-teal) 0%, #0a5f56 100%);
 }
 
-.submit-btn:active {
+.submit:active {
   transform: translateY(0) scale(1);
 }
 
-.submit-btn::after {
+.submit::after {
   content: '→';
   margin-left: 10px;
   display: inline-block;
   transition: transform 0.3s;
 }
 
-.submit-btn:hover::after {
+.submit:hover::after {
   transform: translateX(5px);
 }
 
