@@ -155,35 +155,46 @@
 /* User Info */
 .user-info {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  padding: 8px 16px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: var(--border-radius-md);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.user-info span {
-  font-weight: 600;
-  font-size: 15px;
-  letter-spacing: 0.3px;
+/* Avatar */
+.user-avatar {
+  font-size: 22px;
 }
 
-.user-info .username {
+/* 🔑 INI KUNCINYA */
+.user-details {
+  display: flex;
+  flex-direction: column;   /* atas → bawah */
+  align-items: flex-start;  /* rata kiri */
+}
+
+/* Username (atas) */
+.user-details .username {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;       /* jarak ke role */
   background: linear-gradient(135deg, var(--white) 0%, #e0e0ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
-.user-info .role {
-  font-size: 13px;
+/* Role (bawah) */
+.user-details .role {
+  font-size: 12px;
   color: var(--accent-cyan);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
+  opacity: 0.85;
 }
+
 
 /* ========== DASHBOARD BODY ========== */
 .dashboard-body {
@@ -452,15 +463,6 @@
   font-size: 1.4rem;
   min-width: 24px;
   animation: rotate 2s linear infinite;
-}
-
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .logout-text-sidebar {

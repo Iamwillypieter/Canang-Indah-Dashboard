@@ -179,7 +179,7 @@ export default function DashboardLayout() {
                 className="logout-button-sidebar"
                 title="Logout"
               >
-                <span className="logout-icon-sidebar">🚪</span>
+                <span className="logout-icon-sidebar">🔚</span>
                 <span className="logout-text-sidebar">Logout</span>
               </button>
             </div>
