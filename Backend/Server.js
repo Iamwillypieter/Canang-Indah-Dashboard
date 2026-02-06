@@ -1,19 +1,262 @@
 import express from "express";
 import cors from "cors";
 import { Pool } from "pg";
+import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import helmet from 'helmet'; // ✅ Import helmet
+import rateLimit from 'express-rate-limit'; // ✅ Import rateLimit
+
+dotenv.config();
+
+// Validasi environment variables
+if (!process.env.JWT_SECRET) {
+  console.error('❌ JWT_SECRET is not defined in .env file');
+  process.exit(1);
+}
 
 const app = express();
-app.use(cors());
-// app.use(express.json());
+
+// Security middleware - SEKARANG SUDAH BISA DIGUNAKAN
+app.use(helmet());
+app.use(cors({
+  origin: 'http://localhost:5173',  // ✅ Ganti jadi 5173
+  credentials: true
+}));
+
+// Body parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Database connection dengan error handling
 const pool = new Pool({
-  host: "localhost",
-  user: "postgres",
-  password: "12345",
-  database: "canang_indah",
-  port: 5432,
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD || "12345",
+  database: process.env.DB_NAME || "canang_indah",
+  port: process.env.DB_PORT || 5432,
 });
+
+pool.on('error', (err) => {
+  console.error('❌ Unexpected database error:', err);
+  process.exit(-1);
+});
+
+pool.on('connect', () => {
+  console.log('✅ Database connected successfully');
+});
+
+// Rate limiting untuk auth endpoints - SEKARANG SUDAH BISA DIGUNAKAN
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: 'Terlalu banyak permintaan dari IP ini, silakan coba lagi nanti.'
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  message: 'Terlalu banyak percobaan login. Akun Anda terkunci sementara.'
+});
+
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
+
+// Middleware untuk verifikasi token
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Token tidak ditemukan' });
+  }
+  
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ 
+        error: err.name === 'TokenExpiredError' 
+          ? 'Token telah kadaluarsa' 
+          : 'Token tidak valid' 
+      });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Helper function untuk validasi password strength
+// Helper function untuk validasi password strength
+const validatePassword = (password) => {
+  const errors = [];
+  
+  // ✅ RELAXED VALIDATION (untuk development)
+  if (password.length < 6) {
+    errors.push('Password minimal 6 karakter');
+  }
+  
+  // ❌ COMMENT OUT validasi ketat (untuk development)
+
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password harus mengandung minimal 1 huruf kapital');
+  }
+  
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password harus mengandung minimal 1 huruf kecil');
+  }
+  
+  if (!/[0-9]/.test(password)) {
+    errors.push('Password harus mengandung minimal 1 angka');
+  }
+  
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    errors.push('Password harus mengandung minimal 1 karakter spesial');
+  }
+  
+  return errors;
+};
+
+// Route Register
+app.post('/api/register', authLimiter, async (req, res) => {
+  try {
+    const { username, password, confirmPassword, role } = req.body;
+    
+    // Validasi input
+    if (!username || !password || !confirmPassword || !role) {
+      return res.status(400).json({ error: 'Semua field harus diisi' });
+    }
+    
+    // Validasi username length
+    if (username.length < 3 || username.length > 50) {
+      return res.status(400).json({ error: 'Username harus 3-50 karakter' });
+    }
+    
+    // Validasi username format (hanya alphanumeric dan underscore)
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      return res.status(400).json({ error: 'Username hanya boleh mengandung huruf, angka, dan underscore' });
+    }
+    
+    // Validasi password match
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Password tidak cocok' });
+    }
+    
+    // Validasi password strength
+    const passwordErrors = validatePassword(password);
+    if (passwordErrors.length > 0) {
+      return res.status(400).json({ 
+        error: 'Password tidak memenuhi persyaratan',
+        details: passwordErrors
+      });
+    }
+    
+    // Validasi role
+    if (!['admin', 'supervisor'].includes(role)) {
+      return res.status(400).json({ error: 'Role tidak valid' });
+    }
+    
+    // Cek username sudah ada
+    const existingUser = await pool.query(
+      'SELECT * FROM users WHERE username = $1',
+      [username]
+    );
+    
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'Username sudah digunakan' });
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+    
+    // Insert user baru
+    const result = await pool.query(
+      'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
+      [username, hashedPassword, role]
+    );
+    
+    console.log(`✅ New user registered: ${username} (${role})`);
+    
+    res.status(201).json({
+      message: 'Registrasi berhasil',
+      user: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('❌ Registration error:', error);
+    res.status(500).json({ error: 'Server error saat registrasi' });
+  }
+});
+
+// Route Login
+app.post('/api/login', loginLimiter, async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    // Validasi input
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username dan password diperlukan' });
+    }
+    
+    // Cari user
+    const result = await pool.query(
+      'SELECT * FROM users WHERE username = $1',
+      [username]
+    );
+    
+    if (result.rows.length === 0) {
+      // Delay untuk timing attack prevention
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return res.status(401).json({ error: 'Username atau password salah' });
+    }
+    
+    const user = result.rows[0];
+    
+    // Verifikasi password
+    const validPassword = await bcrypt.compare(password, user.password);
+    
+    if (!validPassword) {
+      // Delay untuk timing attack prevention
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return res.status(401).json({ error: 'Username atau password salah' });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    console.log(`✅ User logged in: ${username} (${user.role})`);
+    
+    res.json({
+      message: 'Login berhasil',
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({ error: 'Server error saat login' });
+  }
+});
+
+// Route dashboard (proteksi dengan token)
+app.get('/api/dashboard', authenticateToken, (req, res) => {
+  res.json({
+    message: `Welcome ${req.user.username} (${req.user.role})`,
+    user: req.user
+  });
+});
+
+
+
 
 /* =========================
    SIMPAN QC ANALISA
@@ -1583,25 +1826,42 @@ app.get('/api/lab-pb-form-documents', async (req, res) => {
 });
 
 
-/* =========================
-ERROR HANDLING MIDDLEWARE
-========================= */
+// /* =========================
+// ERROR HANDLING MIDDLEWARE
+// ========================= */
+// app.use((req, res) => {
+//   res.status(404).json({ 
+//     error: 'Endpoint tidak ditemukan',
+//     path: req.originalUrl
+//   });
+// });
+
+// app.use((err, req, res, next) => {
+//   console.error('❌ UNHANDLED ERROR:', err);
+//   res.status(500).json({ 
+//     error: 'Terjadi kesalahan internal server',
+//     detail: process.env.NODE_ENV === 'development' ? err.message : undefined
+//   });
+// });
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// 404 handler
 app.use((req, res) => {
-  res.status(404).json({ 
-    error: 'Endpoint tidak ditemukan',
-    path: req.originalUrl
-  });
+  res.status(404).json({ error: 'Endpoint tidak ditemukan' });
 });
 
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error('❌ UNHANDLED ERROR:', err);
-  res.status(500).json({ 
-    error: 'Terjadi kesalahan internal server',
-    detail: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
+  console.error('❌ Global error:', err);
+  res.status(500).json({ error: 'Terjadi kesalahan server' });
 });
 
-
-app.listen(3001, () =>
-  console.log("✅ Backend running on port 3001")
-);
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`✅ Backend running on port ${PORT}`);
+  console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
+});

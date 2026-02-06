@@ -1,0 +1,549 @@
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
+
+/* Luxury Color Palette */
+:root {
+  --gold-primary: #D4AF37;
+  --gold-secondary: #B8860B;
+  --gold-light: #F5DEB3;
+  --gold-gradient-start: #F0E68C;
+  --gold-gradient-end: #DAA520;
+  --black-luxury: #0A0A0A;
+  --charcoal: #1A1A1A;
+  --dark-gray: #2A2A2A;
+  --white-cream: #F8F4E9;
+  --off-white: #FAF9F6;
+  --shadow-gold: 0 0 20px rgba(212, 175, 55, 0.3);
+  --shadow-deep: 0 10px 50px rgba(0, 0, 0, 0.8);
+  --emerald-accent: #2ECC71;
+  --emerald-light: rgba(46, 204, 113, 0.15);
+}
+
+/* Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  background: linear-gradient(135deg, var(--black-luxury) 0%, var(--charcoal) 100%);
+  color: var(--white-cream);
+  overflow-x: hidden;
+}
+
+/* Luxury Background Animation */
+.luxury-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 30% 20%, rgba(212, 175, 55, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 70% 80%, rgba(212, 175, 55, 0.09) 0%, transparent 45%),
+    radial-gradient(circle at 50% 60%, rgba(46, 204, 113, 0.04) 0%, transparent 50%);
+  z-index: -1;
+}
+
+/* Floating Particles */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(180deg); }
+}
+
+.gold-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--gold-primary);
+  border-radius: 50%;
+  animation: float 6s ease-in-out infinite;
+  opacity: 0.6;
+  box-shadow: 0 0 10px var(--gold-primary);
+}
+
+.emerald-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: var(--emerald-accent);
+  border-radius: 50%;
+  animation: float 8s ease-in-out infinite;
+  opacity: 0.5;
+  box-shadow: 0 0 8px var(--emerald-accent);
+}
+
+/* Register Container */
+.register-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Luxury Card */
+.luxury-card {
+  background: linear-gradient(145deg, var(--charcoal) 0%, var(--black-luxury) 100%);
+  border: 1px solid var(--gold-primary);
+  border-radius: 24px;
+  padding: 3rem;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow-deep), var(--shadow-gold);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.luxury-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(212, 175, 55, 0.1) 0%,
+    transparent 70%
+  );
+  z-index: -1;
+}
+
+.luxury-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 
+    0 15px 60px rgba(0, 0, 0, 0.9),
+    0 0 30px rgba(212, 175, 55, 0.4);
+}
+
+/* Header */
+.register-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  position: relative;
+}
+
+.register-header::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+}
+
+.register-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--gold-gradient-start), var(--gold-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+  letter-spacing: 1px;
+}
+
+.register-subtitle {
+  font-size: 1rem;
+  color: var(--white-cream);
+  opacity: 0.8;
+  font-weight: 300;
+}
+
+/* Error & Success Messages */
+.error-container {
+  background: rgba(189, 34, 34, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  color: #ff6b6b;
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error-container::before {
+  content: '⚠️';
+  font-size: 1.2rem;
+}
+
+.success-container {
+  background: var(--emerald-light);
+  border: 1px solid rgba(46, 204, 113, 0.4);
+  color: #27ae60;
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.success-container::before {
+  content: '✓';
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+/* Form Group */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  font-family: 'Playfair Display', serif;
+  font-size: 0.9rem;
+  color: var(--gold-light);
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  color: var(--white-cream);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.form-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Role Selection */
+.role-selection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.role-button {
+  padding: 1rem;
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--white-cream);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.role-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--gold-gradient-start), var(--gold-gradient-end));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.role-button.active {
+  background: linear-gradient(135deg, var(--gold-gradient-start), var(--gold-gradient-end));
+  color: var(--black-luxury);
+  border-color: var(--gold-primary);
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+.role-button.admin-role.active {
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  border-color: #9b59b6;
+  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
+}
+
+.role-button.supervisor-role.active {
+  background: linear-gradient(135deg, #e84393, #c23616);
+  border-color: #e84393;
+  box-shadow: 0 4px 15px rgba(232, 67, 147, 0.3);
+}
+
+.role-button:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--gold-primary);
+  transform: translateY(-2px);
+}
+
+.role-button:hover::before {
+  opacity: 0.1;
+}
+
+/* Submit Button */
+.submit-button {
+  width: 100%;
+  padding: 1.125rem;
+  background: linear-gradient(135deg, var(--gold-gradient-start) 0%, var(--gold-gradient-end) 100%);
+  border: none;
+  border-radius: 12px;
+  color: var(--black-luxury);
+  font-family: 'Playfair Display', serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+.submit-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.submit-button:hover::before {
+  left: 100%;
+}
+
+.submit-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+}
+
+.submit-button:active {
+  transform: translateY(1px);
+}
+
+.submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.submit-button:disabled:hover {
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+/* Login Link */
+.login-section {
+  margin-top: 2rem;
+  text-align: center;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+.login-text {
+  font-size: 0.95rem;
+  color: var(--white-cream);
+  opacity: 0.7;
+}
+
+.login-link {
+  color: var(--gold-primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-family: 'Playfair Display', serif;
+  transition: all 0.3s ease;
+  position: relative;
+  padding-bottom: 2px;
+}
+
+.login-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--gold-primary);
+  transition: width 0.3s ease;
+}
+
+.login-link:hover {
+  color: var(--gold-gradient-end);
+}
+
+.login-link:hover::after {
+  width: 100%;
+}
+
+/* Role Info Section */
+.role-info-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(212, 175, 55, 0.1);
+  text-align: center;
+}
+
+.role-info-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.9rem;
+  color: var(--gold-light);
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.role-info-description {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.6;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.role-info-description span {
+  color: var(--gold-primary);
+  font-weight: 500;
+}
+
+/* Loading Animation */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.loading-text {
+  display: inline-block;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .luxury-card {
+    padding: 2rem;
+    border-radius: 18px;
+  }
+
+  .register-title {
+    font-size: 2rem;
+  }
+
+  .register-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .submit-button {
+    font-size: 1rem;
+    padding: 1rem;
+  }
+
+  .role-selection {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Animation for Card Entrance */
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.luxury-card {
+  animation: cardEntrance 0.6s ease-out forwards;
+}
+
+/* Gold Accent Border Animation */
+@keyframes goldBorder {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+.luxury-card::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  border: 1px solid var(--gold-primary);
+  border-radius: 22px;
+  opacity: 0.2;
+  animation: goldBorder 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Password Strength Indicator */
+.password-strength {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.password-strength.weak {
+  color: #ff6b6b;
+}
+
+.password-strength.medium {
+  color: #f39c12;
+}
+
+.password-strength.strong {
+  color: var(--emerald-accent);
+}
+
+.password-strength-bar {
+  display: inline-block;
+  width: 60px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.password-strength-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.password-strength-fill.weak {
+  width: 33%;
+  background: #ff6b6b;
+}
+
+.password-strength-fill.medium {
+  width: 66%;
+  background: #f39c12;
+}
+
+.password-strength-fill.strong {
+  width: 100%;
+  background: var(--emerald-accent);
+}
