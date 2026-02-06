@@ -1,3 +1,4 @@
+
 // App.jsx
 import { Routes, Route } from "react-router-dom";
 import DashboardLayout from "./dashboard/DashboardLayout.jsx";
@@ -32,11 +33,13 @@ export default function App() {
 
           {/* QC ANALISA */}
           <Route path="analisa" element={<QCAnalisaForm />} />
-          <Route path="analisa/:id" element={<QCAnalisaView />} />
+          <Route path="analisa/:id" element={<QCAnalisaView mode="view" />} />
+          <Route path="analisa/:id/edit" element={<QCAnalisaView mode="edit" />} />
 
           {/* RESIN */}
           <Route path="resin" element={<ResinInspectionForm />} />
           <Route path="resin/:id" element={<ResinInspectionView />} />
+          <Route path="resin/:id/edit" element={<ResinInspectionView isEditing={true} />} />
 
           {/* FLAKES */}
           {/* Flakes Routes */}

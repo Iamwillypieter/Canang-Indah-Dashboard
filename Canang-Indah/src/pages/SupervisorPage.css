@@ -98,7 +98,6 @@
 .doc-toolbar {
   display: flex;
   gap: 16px;
-  margin: 32px 0 40px;
   max-width: 1200px;
   margin: 32px auto 40px;
   padding: 0 20px;

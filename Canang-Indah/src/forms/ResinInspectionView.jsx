@@ -9,12 +9,14 @@ export default function ResinInspectionView() {
   const [documentData, setDocumentData] = useState(null);
   const [formData, setFormData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDocument();
   }, [id]);
 
   const fetchDocument = async () => {
+    setLoading(true);
     try {
       const res = await fetch(`http://localhost:3001/api/resin-inspection/${id}`);
       const data = await res.json();
@@ -27,6 +29,7 @@ export default function ResinInspectionView() {
         comment_by: data.document.comment_by || "",
         createdBy: data.document.created_by || "",
         inspection: data.inspection.map(row => ({
+          id: row.id, // simpan ID untuk keperluan update di backend jika perlu
           certTestNo: row.cert_test_no || "",
           resinTank: row.resin_tank || "",
           quantity: row.quantity || "",
@@ -42,7 +45,9 @@ export default function ResinInspectionView() {
       });
     } catch (err) {
       console.error(err);
-      alert("Gagal memuat dokumen");
+      alert("❌ Gagal memuat dokumen");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,6 +56,7 @@ export default function ResinInspectionView() {
     rows.forEach(r => {
       if (!grouped[r.sample_time]) grouped[r.sample_time] = [];
       grouped[r.sample_time].push({
+        id: r.id,
         alumFoilNo: r.alum_foil_no || "",
         wtAlumFoil: r.wt_alum_foil || "",
         wtGlue: r.wt_glue || "",
@@ -68,7 +74,7 @@ export default function ResinInspectionView() {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus dokumen ini?")) return;
+    if (!window.confirm("⚠️ Apakah Anda yakin ingin menghapus dokumen ini?")) return;
 
     try {
       const res = await fetch(
@@ -111,49 +117,65 @@ export default function ResinInspectionView() {
     setFormData({ ...formData, solidContent: updated });
   };
 
-  if (!documentData || !formData) return <div className="resin-view">Loading...</div>;
+  if (loading || !documentData || !formData) {
+    return (
+      <div className="resin-view-loading">
+        <h3>Memuat Data...</h3>
+      </div>
+    );
+  }
+
+  // Helper untuk render cell (Text vs Input)
+  const renderCell = (value, onChangeFn, type = "text") => {
+    if (isEditing) {
+      return <input type={type} value={value} onChange={(e) => onChangeFn(e.target.value)} className="edit-input" />;
+    }
+    return <span className="view-text">{value || "-"}</span>;
+  };
 
   return (
-    <div className="resin-view">
-
-      {/* HEADER */}
+    <div className="resin-view-container">
+      {/* HEADER SECTION */}
       <div className="resin-header">
-        <div>
-          <h2>🧴 Resin Inspection - {documentData.document.title}</h2>
-          <p>
-            Dibuat: {new Date(documentData.document.created_at).toLocaleString()}
-          </p>
+        <div className="header-info">
+          <h2>{isEditing ? "📝 Edit Resin Inspection" : "🧴 Resin Inspection"}</h2>
+          <div className="doc-meta">
+            <span><strong>Title:</strong> {documentData.document.title}</span>
+            <span><strong>Created:</strong> {new Date(documentData.document.created_at).toLocaleString('id-ID')}</span>
+          </div>
         </div>
 
         <div className="resin-actions">
           {isEditing ? (
             <>
-              <button className="btn-save" onClick={handleUpdate}>💾 Simpan</button>
+              <button className="btn-save" onClick={handleUpdate}>💾 Simpan Perubahan</button>
               <button
                 className="btn-cancel"
                 onClick={() => {
                   setIsEditing(false);
-                  fetchDocument();
+                  fetchDocument(); // Reset data
                 }}
               >
-                ❌ Batal
+                ✖️ Batal
               </button>
             </>
           ) : (
             <>
-              <button className="btn-edit" onClick={() => setIsEditing(true)}>✏️ Edit</button>
-              <button className="btn-delete" onClick={handleDelete}>🗑 Hapus</button>
+              <button className="btn-edit" onClick={() => setIsEditing(true)}>✏️ Edit Data</button>
+              <button className="btn-delete" onClick={handleDelete}>🗑️ Hapus</button>
               <button className="btn-back" onClick={() => navigate("/lab/pb/admin1/dokumen")}>
-                ← Kembali
+                ⬅️ Kembali
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* INSPECTION */}
+      {/* SECTION 1: INSPECTION RESULT */}
       <div className="resin-section">
-        <h3>🔍 Inspection Result</h3>
+        <div className="section-title">
+          <h3>🔍 Inspection Result</h3>
+        </div>
         <div className="resin-table-wrapper">
           <table className="resin-table">
             <thead>
@@ -168,27 +190,23 @@ export default function ResinInspectionView() {
                 <th>Gel Time</th>
                 <th>Water Tol.</th>
                 <th>Appearance</th>
-                <th>Solids</th>
+                <th>Solids (%)</th>
               </tr>
             </thead>
             <tbody>
               {formData.inspection.map((row, i) => (
                 <tr key={i}>
-                  <td>{i + 1}</td>
-                  {Object.keys(row).map(field => (
-                    <td key={field}>
-                      {isEditing ? (
-                        <input
-                          value={row[field]}
-                          onChange={e =>
-                            handleInspectionChange(i, field, e.target.value)
-                          }
-                        />
-                      ) : (
-                        row[field] || "-"
-                      )}
-                    </td>
-                  ))}
+                  <td className="col-no">{i + 1}</td>
+                  <td>{renderCell(row.certTestNo, (val) => handleInspectionChange(i, "certTestNo", val))}</td>
+                  <td>{renderCell(row.resinTank, (val) => handleInspectionChange(i, "resinTank", val))}</td>
+                  <td>{renderCell(row.quantity, (val) => handleInspectionChange(i, "quantity", val))}</td>
+                  <td>{renderCell(row.specificGravity, (val) => handleInspectionChange(i, "specificGravity", val))}</td>
+                  <td>{renderCell(row.viscosity, (val) => handleInspectionChange(i, "viscosity", val))}</td>
+                  <td>{renderCell(row.ph, (val) => handleInspectionChange(i, "ph", val))}</td>
+                  <td>{renderCell(row.gelTime, (val) => handleInspectionChange(i, "gelTime", val))}</td>
+                  <td>{renderCell(row.waterTolerance, (val) => handleInspectionChange(i, "waterTolerance", val))}</td>
+                  <td>{renderCell(row.appearance, (val) => handleInspectionChange(i, "appearance", val))}</td>
+                  <td>{renderCell(row.solids, (val) => handleInspectionChange(i, "solids", val))}</td>
                 </tr>
               ))}
             </tbody>
@@ -196,14 +214,16 @@ export default function ResinInspectionView() {
         </div>
       </div>
 
-      {/* SOLID CONTENT */}
+      {/* SECTION 2: SOLID CONTENT */}
       <div className="resin-section">
-        <h3>🧪 Solid Content</h3>
+        <div className="section-title">
+          <h3>🧪 Solid Content Analysis</h3>
+        </div>
 
         {formData.solidContent.map((sample, sIdx) => (
-          <div key={sIdx} style={{ marginBottom: 20 }}>
-            <div className="sample-time">
-              Sample Time: {sample.sampleTime}
+          <div key={sIdx} className="sample-block">
+            <div className="sample-time-badge">
+              ⏰ Sample Time: <strong>{sample.sampleTime}</strong>
             </div>
 
             <div className="resin-table-wrapper">
@@ -212,32 +232,25 @@ export default function ResinInspectionView() {
                   <tr>
                     <th>No</th>
                     <th>Alum Foil No</th>
-                    <th>Wt Alum Foil</th>
-                    <th>Wt Glue</th>
-                    <th>Wt Alum Foil + Dry Glue</th>
-                    <th>Wt Dry Glue</th>
-                    <th>Solids Content</th>
+                    <th>Wt Alum Foil (g)</th>
+                    <th>Wt Glue (g)</th>
+                    <th>Wt Alum + Dry Glue (g)</th>
+                    <th>Wt Dry Glue (g)</th>
+                    <th>Solids Content (%)</th>
                     <th>Remark</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sample.rows.map((row, rIdx) => (
                     <tr key={rIdx}>
-                      <td>{rIdx + 1}</td>
-                      {Object.keys(row).map(field => (
-                        <td key={field}>
-                          {isEditing ? (
-                            <input
-                              value={row[field]}
-                              onChange={e =>
-                                handleSolidChange(sIdx, rIdx, field, e.target.value)
-                              }
-                            />
-                          ) : (
-                            row[field] || "-"
-                          )}
-                        </td>
-                      ))}
+                      <td className="col-no">{rIdx + 1}</td>
+                      <td>{renderCell(row.alumFoilNo, (val) => handleSolidChange(sIdx, rIdx, "alumFoilNo", val))}</td>
+                      <td>{renderCell(row.wtAlumFoil, (val) => handleSolidChange(sIdx, rIdx, "wtAlumFoil", val))}</td>
+                      <td>{renderCell(row.wtGlue, (val) => handleSolidChange(sIdx, rIdx, "wtGlue", val))}</td>
+                      <td>{renderCell(row.wtAlumFoilDryGlue, (val) => handleSolidChange(sIdx, rIdx, "wtAlumFoilDryGlue", val))}</td>
+                      <td>{renderCell(row.wtDryGlue, (val) => handleSolidChange(sIdx, rIdx, "wtDryGlue", val))}</td>
+                      <td>{renderCell(row.solidsContent, (val) => handleSolidChange(sIdx, rIdx, "solidsContent", val))}</td>
+                      <td>{renderCell(row.remark, (val) => handleSolidChange(sIdx, rIdx, "remark", val))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -246,7 +259,6 @@ export default function ResinInspectionView() {
           </div>
         ))}
       </div>
-
     </div>
   );
 }
