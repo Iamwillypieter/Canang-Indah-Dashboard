@@ -1,7 +1,7 @@
 // src/components/forms/LabPBForm.jsx
 import { useState, useEffect } from 'react';
 import './LabPBForm.css';
-import SampleTable from '../helper/SampleTable.jsx';
+import SampleTable from '../components/SampleTable.jsx';
 import { useFormPersistence } from '../helper/useFormPersistence.js';
 import { submitLabReport } from '../services/Api.js';
 import {
@@ -461,12 +461,12 @@ export default function LabPBForm() {
   return (
     <div className="lab-form-container">
       <h2 className="lab-form-title">📝 Input Laporan Lab PB</h2>
-      <div className="info-bar">
-        <span>💾 Data otomatis tersimpan. Refresh halaman tidak akan menghapus data yang sudah diisi.</span>
+      {/* <div className="info-bar"> */}
+        {/* <span>💾 Data otomatis tersimpan. Refresh halaman tidak akan menghapus data yang sudah diisi.</span>
         <button type="button" onClick={clearAllFormData} className="clear-button">
           🗑️ Clear All Data
-        </button>
-      </div>
+        </button> */}
+      {/* </div> */}
       <form onSubmit={handleSubmit}>
         {/* === Bagian 1: Form Lab PB === */}
         <div className="section">
@@ -1064,9 +1064,9 @@ export default function LabPBForm() {
         <button type="submit" className="submit-button">
           Kirim Laporan
         </button>
-        <button type="button" onClick={clearAllFormData} className="clear-button-secondary">
+        {/* <button type="button" onClick={clearAllFormData} className="clear-button-secondary">
             🗑️ Clear Form
-        </button>
+        </button> */}
       </form>
     </div>
   );

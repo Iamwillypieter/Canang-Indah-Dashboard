@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './LabPBForm.css';
-import SampleTable from '../helper/SampleTable.jsx';
+import SampleTable from '../components/SampleTable.jsx';
 import { getLabReportById, updateLabReport } from '../services/Api.js';
 import {
   calculateIbAverage,

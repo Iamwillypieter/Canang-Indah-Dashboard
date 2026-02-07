@@ -226,12 +226,12 @@ export default function SupervisorPage() {
                         </div>
                       </div>
 
-                      <div className="detail-row">
+                      {/* <div className="detail-row">
                         <label>📊 Status</label>
                         <span className={`status-badge ${selectedDoc.status}`}>
                           {selectedDoc.status}
                         </span>
-                      </div>
+                      </div> */}
 
                       <div className="detail-row">
                         <label>📅 Created at</label>
