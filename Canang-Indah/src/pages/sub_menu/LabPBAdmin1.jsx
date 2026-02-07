@@ -75,7 +75,7 @@ export default function LabPBAdmin1() {
 
       <div className="card-grid">
         <div className="card" onClick={() => handleNavigate("analisa")}>
-          <h3>🧪 QC Particleboard</h3>
+          <h3>📋 QC Particleboard</h3>
           <p>Form Analisa Screen</p>
         </div>
 

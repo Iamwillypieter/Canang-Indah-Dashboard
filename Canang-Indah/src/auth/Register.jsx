@@ -168,7 +168,7 @@ const Register = () => {
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                className="form-input"
+                className="form-input-register"
                 placeholder="Choose a unique username"
                 required
                 autoComplete="username"
@@ -182,7 +182,7 @@ const Register = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="form-input"
+                className="form-input-register"
                 placeholder="Create a secure password"
                 required
                 minLength="8"
@@ -199,7 +199,7 @@ const Register = () => {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="form-input"
+                className="form-input-register"
                 placeholder="Confirm your password"
                 required
               />

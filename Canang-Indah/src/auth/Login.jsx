@@ -86,7 +86,7 @@ const Login = () => {
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                className="form-input"
+                className="form-input-login"
                 required
               />
             </div>
@@ -98,7 +98,7 @@ const Login = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="form-input"
+                className="form-input-login"
                 required
               />
             </div>

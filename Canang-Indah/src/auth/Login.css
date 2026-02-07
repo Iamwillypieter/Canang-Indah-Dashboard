@@ -1,397 +1,217 @@
-/* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
+/* Login.css */
 
-/* Luxury Color Palette */
-:root {
-  --gold-primary: #D4AF37;
-  --gold-secondary: #B8860B;
-  --gold-light: #F5DEB3;
-  --gold-gradient-start: #F0E68C;
-  --gold-gradient-end: #DAA520;
-  --black-luxury: #0A0A0A;
-  --charcoal: #1A1A1A;
-  --dark-gray: #2A2A2A;
-  --white-cream: #F8F4E9;
-  --off-white: #FAF9F6;
-  --shadow-gold: 0 0 20px rgba(212, 175, 55, 0.3);
-  --shadow-deep: 0 10px 50px rgba(0, 0, 0, 0.8);
-}
-
-/* Base Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Montserrat', sans-serif;
-  background: linear-gradient(135deg, var(--black-luxury) 0%, var(--charcoal) 100%);
-  color: var(--white-cream);
-  overflow-x: hidden;
-}
-
-/* Luxury Background Animation */
+/* 1. Background Utama - Deep & Dark */
 .luxury-background {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: 
-    radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(212, 175, 55, 0.08) 0%, transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.03) 0%, transparent 50%);
-  z-index: -1;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  /* Menambah tekstur vignette agar fokus ke tengah */
+  background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%);
+  z-index: -2;
 }
 
-/* Floating Gold Particles */
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(180deg); }
-}
-
-.gold-particle {
+/* Overlay halus untuk efek kedalaman */
+.luxury-background::before {
+  content: "";
   position: absolute;
-  width: 4px;
-  height: 4px;
-  background: var(--gold-primary);
-  border-radius: 50%;
-  animation: float 6s ease-in-out infinite;
-  opacity: 0.6;
-  box-shadow: 0 0 10px var(--gold-primary);
+  width: 100%; height: 100%;
+  background: url('https://www.transparenttextures.com/patterns/carbon-fibre.pattern');
+  opacity: 0.1; /* Tekstur karbon tipis */
 }
 
-/* Login Container */
 .login-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
-  position: relative;
-  z-index: 1;
-}
-
-/* Luxury Card */
-.luxury-card {
-  background: linear-gradient(145deg, var(--charcoal) 0%, var(--black-luxury) 100%);
-  border: 1px solid var(--gold-primary);
-  border-radius: 24px;
-  padding: 3rem;
-  width: 100%;
-  max-width: 450px;
-  box-shadow: var(--shadow-deep), var(--shadow-gold);
+  padding: 20px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  font-family: 'Inter', -apple-system, sans-serif;
 }
 
-.luxury-card::before {
-  content: '';
+/* 2. Gold Particles - Dibuat lebih berpendar */
+.gold-particle {
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(
-    circle,
-    rgba(212, 175, 55, 0.1) 0%,
-    transparent 70%
-  );
-  z-index: -1;
+  width: 2px;
+  height: 2px;
+  background: #d4af37;
+  border-radius: 50%;
+  opacity: 0.3;
+  pointer-events: none;
+  animation: float linear infinite;
+  box-shadow: 0 0 10px #d4af37; /* Efek berpendar */
+}
+
+@keyframes float {
+  0% { transform: translateY(100vh) scale(0); opacity: 0; }
+  50% { opacity: 0.8; }
+  100% { transform: translateY(-100vh) scale(1.5); opacity: 0; }
+}
+
+/* 3. Luxury Card - Enhanced Glassmorphism */
+.luxury-card {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(15, 15, 15, 0.9); /* Lebih gelap & solid */
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  padding: 55px 45px;
+  border-radius: 28px;
+  box-shadow: 
+    0 25px 80px rgba(0, 0, 0, 0.8),
+    inset 0 0 15px rgba(212, 175, 55, 0.05); /* Inner glow */
+  position: relative;
+  z-index: 1;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .luxury-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 
-    0 15px 60px rgba(0, 0, 0, 0.9),
-    0 0 30px rgba(212, 175, 55, 0.4);
+  transform: translateY(-5px); /* Sedikit melayang saat hover */
 }
 
-/* Header */
+/* Animasi garis berjalan di border */
+.luxury-card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 28px;
+  padding: 1px;
+  background: linear-gradient(135deg, transparent, rgba(212,175,55,0.5), transparent);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: shimmer 4s infinite linear;
+  
+  /* TAMBAHKAN BARIS INI SUPAYA BISA DIKLIK */
+  pointer-events: none; 
+}
+
+@keyframes shimmer {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+/* 4. Typography */
 .login-header {
   text-align: center;
-  margin-bottom: 2.5rem;
-  position: relative;
-}
-
-.login-header::after {
-  content: '';
-  position: absolute;
-  bottom: -15px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+  margin-bottom: 45px;
 }
 
 .login-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 2.5rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--gold-gradient-start), var(--gold-gradient-end));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 0.5rem;
-  letter-spacing: 1px;
+  color: #ffffff;
+  font-size: 2.2rem;
+  font-weight: 200; /* Lebih tipis = Lebih elegan */
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  text-shadow: 0 0 20px rgba(255,255,255,0.1);
 }
 
 .login-subtitle {
-  font-size: 1rem;
-  color: var(--white-cream);
-  opacity: 0.8;
-  font-weight: 300;
+  color: #666;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
-/* Error Message */
-.error-container {
-  background: rgba(189, 34, 34, 0.1);
-  border: 1px solid rgba(220, 53, 69, 0.3);
-  color: #ff6b6b;
-  padding: 1rem;
-  border-radius: 12px;
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.error-container::before {
-  content: '⚠️';
-  font-size: 1.2rem;
-}
-
-/* Form Group */
+/* 5. Dark Form Inputs - Deep Obsidian Style */
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 28px;
 }
 
 .form-label {
   display: block;
-  font-family: 'Playfair Display', serif;
-  font-size: 0.9rem;
-  color: var(--gold-light);
-  margin-bottom: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.5px;
+  color: rgba(212, 175, 55, 0.8);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  margin-left: 2px;
 }
 
-.form-input {
+.form-input-login {
   width: 100%;
-  padding: 1rem 1.25rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  border-radius: 12px;
-  color: var(--white-cream);
-  font-family: 'Montserrat', sans-serif;
+  padding: 16px 22px;
+  background: #080808 !important; /* Benar-benar gelap */
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  color: #fff;
   font-size: 1rem;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
+  transition: all 0.4s ease;
+  box-sizing: border-box;
+  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5);
 }
 
-.form-input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.form-input:focus {
+.form-input-login:focus {
   outline: none;
-  border-color: var(--gold-primary);
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: #d4af37;
+  background: #000 !important;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.15), inset 2px 2px 5px rgba(0,0,0,0.8);
+  transform: scale(1.01);
 }
 
-/* Submit Button */
+/* 6. Premium Button - The Gold Bar */
 .submit-button {
   width: 100%;
-  padding: 1.125rem;
-  background: linear-gradient(135deg, var(--gold-gradient-start) 0%, var(--gold-gradient-end) 100%);
+  padding: 18px;
+  background: linear-gradient(135deg, #d4af37 0%, #8a6d19 100%);
   border: none;
-  border-radius: 12px;
-  color: var(--black-luxury);
-  font-family: 'Playfair Display', serif;
-  font-size: 1.125rem;
-  font-weight: 600;
+  border-radius: 14px;
+  color: #000;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 3px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  margin-top: 20px;
   position: relative;
   overflow: hidden;
-  letter-spacing: 0.5px;
-  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
 }
 
+/* Efek cahaya lewat pada tombol saat hover */
 .submit-button::before {
-  content: '';
+  content: "";
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.5s ease;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: 0.5s;
 }
 
-.submit-button:hover::before {
+.submit-button:hover:not(:disabled)::before {
   left: 100%;
 }
 
-.submit-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+.submit-button:hover:not(:disabled) {
+  box-shadow: 0 15px 30px rgba(212, 175, 55, 0.4);
+  filter: brightness(1.1);
 }
 
-.submit-button:active {
-  transform: translateY(1px);
-}
-
-.submit-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.submit-button:disabled:hover {
-  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
-}
-
-/* Register Link */
+/* 7. Footer */
 .register-section {
-  margin-top: 2rem;
   text-align: center;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(212, 175, 55, 0.1);
+  margin-top: 35px;
 }
 
 .register-text {
-  font-size: 0.95rem;
-  color: var(--white-cream);
-  opacity: 0.7;
+  color: #444;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
 }
 
 .register-link {
-  color: var(--gold-primary);
+  color: #d4af37;
   text-decoration: none;
   font-weight: 600;
-  font-family: 'Playfair Display', serif;
+  margin-left: 8px;
   transition: all 0.3s ease;
-  position: relative;
-  padding-bottom: 2px;
-}
-
-.register-link::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background: var(--gold-primary);
-  transition: width 0.3s ease;
+  border-bottom: 1px solid transparent;
 }
 
 .register-link:hover {
-  color: var(--gold-gradient-end);
-}
-
-.register-link:hover::after {
-  width: 100%;
-}
-
-/* Demo Accounts */
-.demo-section {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(212, 175, 55, 0.1);
-  text-align: center;
-}
-
-.demo-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 0.9rem;
-  color: var(--gold-light);
-  margin-bottom: 0.75rem;
-  font-weight: 500;
-}
-
-.demo-accounts {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
-  line-height: 1.6;
-  font-family: 'Montserrat', sans-serif;
-}
-
-.demo-accounts span {
-  color: var(--gold-primary);
-  font-weight: 500;
-}
-
-/* Loading Animation */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.loading-text {
-  display: inline-block;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-/* Responsive Design */
-@media (max-width: 480px) {
-  .luxury-card {
-    padding: 2rem;
-    border-radius: 18px;
-  }
-
-  .login-title {
-    font-size: 2rem;
-  }
-
-  .login-subtitle {
-    font-size: 0.9rem;
-  }
-
-  .submit-button {
-    font-size: 1rem;
-    padding: 1rem;
-  }
-}
-
-/* Animation for Card Entrance */
-@keyframes cardEntrance {
-  from {
-    opacity: 0;
-    transform: translateY(30px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.luxury-card {
-  animation: cardEntrance 0.6s ease-out forwards;
-}
-
-/* Gold Accent Border Animation */
-@keyframes goldBorder {
-  0%, 100% { opacity: 0.2; }
-  50% { opacity: 1; }
-}
-
-.luxury-card::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  right: 2px;
-  bottom: 2px;
-  border: 1px solid var(--gold-primary);
-  border-radius: 22px;
-  opacity: 0.2;
-  animation: goldBorder 3s ease-in-out infinite;
-  pointer-events: none;
+  color: #fff;
+  border-bottom: 1px solid #d4af37;
 }

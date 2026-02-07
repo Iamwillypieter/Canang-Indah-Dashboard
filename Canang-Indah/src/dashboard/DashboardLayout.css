@@ -113,10 +113,16 @@
 }
 
 .logo-icon {
-  font-size: 32px;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
-  animation: pulse 2s infinite;
+  animation: rotateLuxury 2s linear infinite;
 }
+
+
+.dashboard-header:hover .logo-icon {
+  animation:
+    rotateLuxury 2.5s linear infinite,
+    pulse 2s infinite;
+}
+
 
 @keyframes pulse {
   0%, 100% {
@@ -833,5 +839,14 @@
   .main-content {
     padding: 0;
     margin: 0;
+  }
+}
+
+@keyframes rotateLuxury {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }

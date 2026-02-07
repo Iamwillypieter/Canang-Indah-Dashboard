@@ -134,7 +134,7 @@ export default function DashboardLayout() {
                     setShowLabPBSubmenu(!showLabPBSubmenu);
                   }}
                 >
-                  <span className="menu-icon">🧪</span>
+                  <span className="menu-icon">🅿️🅱️</span>
                   <span className="menu-text">Lab PB</span>
                   <span className="arrow">{showLabPBSubmenu ? '▲' : '▼'}</span>
                 </Link>
@@ -160,13 +160,13 @@ export default function DashboardLayout() {
               {/* Tambahkan menu lain jika perlu */}
               <li className={location.pathname.startsWith('/lab/mdf') ? 'active' : ''}>
                 <Link to="/lab/mdf">
-                  <span className="menu-icon">🧱</span>
+                  <span className="menu-icon">Ⓜ️🇩🇫</span>
                   <span className="menu-text">Lab MDF</span>
                 </Link>
               </li>
               <li className={location.pathname.startsWith('/supervisor') ? 'active' : ''}>
                 <Link to="/supervisor">
-                  <span className="menu-icon">👨‍💼</span>
+                  <span className="menu-icon">🧑‍💼</span>
                   <span className="menu-text">Supervisor</span>
                 </Link>
               </li>
