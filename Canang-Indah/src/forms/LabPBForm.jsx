@@ -1,9 +1,7 @@
-// src/components/forms/LabPBForm.jsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import './LabPBForm.css';
-import SampleTable from '../components/SampleTable.jsx';
-import { useFormPersistence } from '../helper/useFormPersistence.js';
-import { submitLabReport } from '../services/Api.js';
+import { useLabPBFormData } from '../hooks/useLabPBFormData';
+import { submitLabReport } from '../services/Api';
 import {
   calculateIbAverage,
   calculateDensityAverageIb,
@@ -22,230 +20,54 @@ import {
   calculateT2Average,
   calculateSurfaceAverage,
   formatNumber
-} from '../utils/calculations';
+} from '../utils/calculations.js';
+
+// Import Sections
+import DataUtamaSection from '../sections/DataUtamaSection.jsx';
+import InternalBondingSection from '../sections/InternalBondingSection.jsx';
+import BendingStrangeSection from '../sections/BendingStrangeSection';
+import ScrewTestSection from '../sections/ScrewTestSection';
+import DensityProfileSection from '../sections/DensityProfileSection';
+import McBoardSection from '../sections/McBoardSection';
+import SwellingSection from '../sections/SwellingSection';
+import SurfaceSoundnessSection from '../sections/SurfaceSoundnessSection';
+import TebalFlakesSection from '../sections/TebalFlakesSection';
+import ConsHardenerSection from '../sections/ConsHardenerSection';
+import GeltimeSection from '../sections/GeltimeSection';
 
 export default function LabPBForm() {
   console.log('✅ LabPBForm dirender!');
-  
-  // State untuk Lab PB
-  const [formData, setFormData, clearFormData] = useFormPersistence('formData', {
-    timestamp: new Date().toISOString().slice(0, 16),
-    board_no: '',
-    set_weight: '',
-    shift_group: 'Shift A',
-    tested_by: '',
-    density_min: '',
-    density_max: '',
-    board_type: '',
-    glue_sl: '',
-    glue_cl: '',
-    thick_min: '',
-    thick_max: ''
-  });
 
-  // State untuk Internal Bonding
-  const [ibData, setIbData, clearIbData] = useFormPersistence('ibData', {
-    ib_le: '',
-    ib_ml: '',
-    ib_md: '',
-    ib_mr: '',
-    ib_ri: '',
-    density_le: '',
-    density_ml: '',
-    density_md: '',
-    density_mr: '',
-    density_ri: ''
-  });
+  // State Management dari Custom Hook
+  const {
+    formData,
+    setFormData,
+    ibData,
+    setIbData,
+    bsData,
+    setBsData,
+    screwData,
+    setScrewData,
+    densityProfileData,
+    setDensityProfileData,
+    mcBoardData,
+    setMcBoardData,
+    swellingData,
+    setSwellingData,
+    surfaceSoundnessData,
+    setSurfaceSoundnessData,
+    tebalFlakesData,
+    setTebalFlakesData,
+    consHardenerData,
+    setConsHardenerData,
+    geltimeData,
+    setGeltimeData,
+    samples,
+    setSamples,
+    clearAllFormData
+  } = useLabPBFormData();
 
-  // State untuk Bending Strange
-  const [bsData, setBsData, clearBsData] = useFormPersistence('bsData', {
-    mor_le: '',
-    mor_ml: '',
-    mor_md: '',
-    mor_mr: '',
-    mor_ri: '',
-    density_le: '',
-    density_ml: '',
-    density_md: '',
-    density_mr: '',
-    density_ri: ''
-  });
-
-  const [screwData, setScrewData, clearScrewData] = useFormPersistence('screwData', {
-    face_le: '',
-    face_ml: '',
-    face_md: '',
-    face_mr: '',
-    face_ri: '',
-    edge_le: '',
-    edge_ml: '',
-    edge_md: '',
-    edge_mr: '',
-    edge_ri: ''
-  });
-
-  // State untuk Density Profile
-  const [densityProfileData, setDensityProfileData, clearDensityProfileData] = useFormPersistence('densityProfileData', {
-    max_top_le: '',
-    max_top_ml: '',
-    max_top_md: '',
-    max_top_mr: '',
-    max_top_ri: '',
-    max_bot_le: '',
-    max_bot_ml: '',
-    max_bot_md: '',
-    max_bot_mr: '',
-    max_bot_ri: '',
-    min_le: '',
-    min_ml: '',
-    min_md: '',
-    min_mr: '',
-    min_ri: '',
-    mean_le: '',
-    mean_ml: '',
-    mean_md: '',
-    mean_mr: '',
-    mean_ri: ''
-  });
-
-  // State untuk MC Board
-  const [mcBoardData, setMcBoardData, clearMcBoardData] = useFormPersistence('mcBoardData', {
-    w1_le: '',
-    w1_ml: '',
-    w1_md: '',
-    w1_mr: '',
-    w1_ri: '',
-    w2_le: '',
-    w2_ml: '',
-    w2_md: '',
-    w2_mr: '',
-    w2_ri: '',
-  });
-
-  // State untuk Swelling 2h
-  const [swellingData, setSwellingData, clearSwellingData] = useFormPersistence('swellingData', {
-    t1_le: '',
-    t1_ml: '',
-    t1_md: '',
-    t1_mr: '',
-    t1_ri: '',
-    t2_le: '',
-    t2_ml: '',
-    t2_md: '',
-    t2_mr: '',
-    t2_ri: ''
-  });
-
-  // State untuk Surface Soundness
-  const [surfaceSoundnessData, setSurfaceSoundnessData, clearSurfaceSoundnessData] = useFormPersistence('surfaceSoundnessData', {
-    t1_le_surface: '',
-    t1_ri_surface: ''
-  });
-
-  // State untuk Tebal Flakes
-  const [tebalFlakesData, setTebalFlakesData, clearTebalFlakesData] = useFormPersistence('tebalFlakesData', {
-    avg_tebal: ''
-  });
-
-  // State untuk Cons Harderner
-  const [consHardenerData, setConsHardenerData, clearConsHardenerData] = useFormPersistence('consHardenerData', {
-    avg_cons: ''
-  });
-
-  // State untuk Gel Time
-  const [geltimeData, setGeltimeData, clearGeltimeData] = useFormPersistence('geltimeData', {
-    sl: '',
-    cl: ''
-  });
-
-  const createInitialSamples = () =>
-    Array.from({ length: 24 }, (_, i) => ({
-      no: i + 1,
-      weight_gr: '',
-      thickness_mm: '',
-      length_mm: '',
-      width_mm: ''
-    }));
-
-  const [samples, setSamples, clearSamplesData] =
-    useFormPersistence('samples', createInitialSamples());
-
-
-  const clearAllFormData = () => {
-    if (window.confirm('⚠️ Apakah Anda yakin ingin menghapus semua data form yang sudah diisi?')) {
-      clearFormData();
-      clearSamplesData();
-      clearIbData();
-      clearBsData();
-      clearScrewData();
-      clearDensityProfileData();
-      clearMcBoardData();
-      clearSwellingData();
-      clearSurfaceSoundnessData();
-      clearTebalFlakesData();
-      clearConsHardenerData();
-      clearGeltimeData();
-      alert('✅ Semua data form berhasil dihapus!');
-    }
-  };
-
-  useEffect(() => {
-    // Hanya set timestamp jika form masih kosong (belum pernah diisi)
-    if (!formData.board_no && !formData.tested_by) {
-      setFormData(prev => ({
-        ...prev,
-        timestamp: new Date().toISOString().slice(0, 16)
-      }));
-    }
-  }, []);
-  
-  useEffect(() => {
-    if (!Array.isArray(samples) || samples.length !== 24) {
-      setSamples(createInitialSamples());
-    }
-  }, []);
-
-
-  // Hitung semua nilai rata-rata menggunakan fungsi terpisah
-  const ibAvg = calculateIbAverage(ibData);
-  const densityAvgIb = calculateDensityAverageIb(ibData);
-  const morAvg = calculateMorAverage(bsData);
-  const densityAvgBs = calculateDensityAverageBs(bsData);
-  const faceAvg = calculateFaceAverage(screwData);
-  const edgeAvg = calculateEdgeAverage(screwData);
-
-  // Hitung MIN/MEAN [%]
-  const minMeanLe = calculateMinMean(densityProfileData.min_le, densityProfileData.mean_le);
-  const minMeanMl = calculateMinMean(densityProfileData.min_ml, densityProfileData.mean_ml);
-  const minMeanMd = calculateMinMean(densityProfileData.min_md, densityProfileData.mean_md);
-  const minMeanMr = calculateMinMean(densityProfileData.min_mr, densityProfileData.mean_mr);
-  const minMeanRi = calculateMinMean(densityProfileData.min_ri, densityProfileData.mean_ri);
-
-  // Hitung MC [%]
-  const mcLe = calculateMC(mcBoardData.w1_le, mcBoardData.w2_le);
-  const mcMl = calculateMC(mcBoardData.w1_ml, mcBoardData.w2_ml);
-  const mcMd = calculateMC(mcBoardData.w1_md, mcBoardData.w2_md);
-  const mcMr = calculateMC(mcBoardData.w1_mr, mcBoardData.w2_mr);
-  const mcRi = calculateMC(mcBoardData.w1_ri, mcBoardData.w2_ri);
-
-  const avgW1 = calculateW1Average(mcBoardData);
-  const avgW2 = calculateW2Average(mcBoardData);
-  const avgMC = calculateMcAverage(mcBoardData);
-
-  // Hitung TS [%]
-  const tsLe = calculateTS(swellingData.t1_le, swellingData.t2_le);
-  const tsMl = calculateTS(swellingData.t1_ml, swellingData.t2_ml);
-  const tsMd = calculateTS(swellingData.t1_md, swellingData.t2_md);
-  const tsMr = calculateTS(swellingData.t1_mr, swellingData.t2_mr);
-  const tsRi = calculateTS(swellingData.t1_ri, swellingData.t2_ri);
-
-  const avgT1 = calculateT1Average(swellingData);
-  const avgT2 = calculateT2Average(swellingData);
-  const avgTs = calculateTsAverage(swellingData);
-
-  // Hitung AVG Surface Soundness
-  const avgSurface = calculateSurfaceAverage(surfaceSoundnessData);
-
+  // Handlers
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -266,7 +88,6 @@ export default function LabPBForm() {
     setDensityProfileData({ ...densityProfileData, [e.target.name]: e.target.value });
   };
 
-  // Handler untuk MC Board
   const handleMcBoardChange = (e) => {
     setMcBoardData({ ...mcBoardData, [e.target.name]: e.target.value });
   };
@@ -291,6 +112,43 @@ export default function LabPBForm() {
     setGeltimeData({ ...geltimeData, [e.target.name]: e.target.value });
   };
 
+  // Calculations
+  const ibAvg = calculateIbAverage(ibData);
+  const densityAvgIb = calculateDensityAverageIb(ibData);
+  const morAvg = calculateMorAverage(bsData);
+  const densityAvgBs = calculateDensityAverageBs(bsData);
+  const faceAvg = calculateFaceAverage(screwData);
+  const edgeAvg = calculateEdgeAverage(screwData);
+  const minMeanValues = {
+    le: calculateMinMean(densityProfileData.min_le, densityProfileData.mean_le),
+    ml: calculateMinMean(densityProfileData.min_ml, densityProfileData.mean_ml),
+    md: calculateMinMean(densityProfileData.min_md, densityProfileData.mean_md),
+    mr: calculateMinMean(densityProfileData.min_mr, densityProfileData.mean_mr),
+    ri: calculateMinMean(densityProfileData.min_ri, densityProfileData.mean_ri)
+  };
+  const mcValues = {
+    le: calculateMC(mcBoardData.w1_le, mcBoardData.w2_le),
+    ml: calculateMC(mcBoardData.w1_ml, mcBoardData.w2_ml),
+    md: calculateMC(mcBoardData.w1_md, mcBoardData.w2_md),
+    mr: calculateMC(mcBoardData.w1_mr, mcBoardData.w2_mr),
+    ri: calculateMC(mcBoardData.w1_ri, mcBoardData.w2_ri)
+  };
+  const avgW1 = calculateW1Average(mcBoardData);
+  const avgW2 = calculateW2Average(mcBoardData);
+  const avgMC = calculateMcAverage(mcBoardData);
+  const tsValues = {
+    le: calculateTS(swellingData.t1_le, swellingData.t2_le),
+    ml: calculateTS(swellingData.t1_ml, swellingData.t2_ml),
+    md: calculateTS(swellingData.t1_md, swellingData.t2_md),
+    mr: calculateTS(swellingData.t1_mr, swellingData.t2_mr),
+    ri: calculateTS(swellingData.t1_ri, swellingData.t2_ri)
+  };
+  const avgT1 = calculateT1Average(swellingData);
+  const avgT2 = calculateT2Average(swellingData);
+  const avgTs = calculateTsAverage(swellingData);
+  const avgSurface = calculateSurfaceAverage(surfaceSoundnessData);
+
+  // Submit Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -302,7 +160,6 @@ export default function LabPBForm() {
       return;
     }
     try {
-      // ✅ Format data sesuai struktur backend
       const payload = {
         timestamp: new Date(formData.timestamp).toISOString(),
         board_no: formData.board_no,
@@ -317,7 +174,6 @@ export default function LabPBForm() {
         thick_min: formData.thick_min,
         thick_max: formData.thick_max,
         
-        // ✅ NESTED OBJECTS
         samples: samples.map(s => ({
           no: s.no,
           weight_gr: parseFloat(s.weight_gr) || 0,
@@ -446,7 +302,6 @@ export default function LabPBForm() {
         }
       };
 
-      // ✅ Kirim payload yang sudah terstruktur
       await submitLabReport('lab_pb', payload);
       
       alert('✅ Laporan berhasil dikirim!');
@@ -461,612 +316,90 @@ export default function LabPBForm() {
   return (
     <div className="lab-form-container">
       <h2 className="lab-form-title">📝 Input Laporan Lab PB</h2>
-      {/* <div className="info-bar"> */}
-        {/* <span>💾 Data otomatis tersimpan. Refresh halaman tidak akan menghapus data yang sudah diisi.</span>
-        <button type="button" onClick={clearAllFormData} className="clear-button">
-          🗑️ Clear All Data
-        </button> */}
-      {/* </div> */}
+      
       <form onSubmit={handleSubmit}>
-        {/* === Bagian 1: Form Lab PB === */}
-        <div className="section">
-          <h3 className="section-title">⚙️ Data Utama</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label className="form-label">Timestamp:</label>
-              <input 
-                type="datetime-local" 
-                name="timestamp" 
-                value={formData.timestamp} 
-                onChange={handleChange} 
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Board No:</label>
-              <input 
-                name="board_no" 
-                value={formData.board_no} 
-                onChange={handleChange} 
-                required 
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Set Weight:</label>
-              <input 
-                type="number" 
-                step="0.1" 
-                name="set_weight" 
-                value={formData.set_weight} 
-                onChange={handleChange} 
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Shift/Group:</label>
-              <select 
-                name="shift_group" 
-                value={formData.shift_group} 
-                onChange={handleChange} 
-                className="form-select"
-              >
-                <option>Shift A</option>
-                <option>Shift B</option>
-                <option>Shift C</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Tested By:</label>
-              <input 
-                name="tested_by" 
-                value={formData.tested_by} 
-                onChange={handleChange} 
-                required 
-                className="form-input"
-              />
-            </div>
-          </div>
+        {/* Sections */}
+        <DataUtamaSection 
+          formData={formData} 
+          samples={samples} 
+          onChange={handleChange} 
+          onSamplesChange={setSamples} 
+        />
+        
+        <InternalBondingSection 
+          ibData={ibData} 
+          onChange={handleIbChange} 
+          ibAvg={ibAvg} 
+          densityAvg={densityAvgIb} 
+        />
+        
+        <BendingStrangeSection 
+          bsData={bsData} 
+          onChange={handleBsChange} 
+          morAvg={morAvg} 
+          densityAvg={densityAvgBs} 
+        />
+        
+        <ScrewTestSection 
+          screwData={screwData} 
+          onChange={handleScrewChange} 
+          faceAvg={faceAvg} 
+          edgeAvg={edgeAvg} 
+        />
+        
+        <DensityProfileSection 
+          densityProfileData={densityProfileData} 
+          onChange={handleDensityProfileChange} 
+          minMeanValues={minMeanValues} 
+        />
+        
+        <McBoardSection 
+          mcBoardData={mcBoardData} 
+          onChange={handleMcBoardChange} 
+          mcValues={mcValues} 
+          avgW1={avgW1} 
+          avgW2={avgW2} 
+          avgMC={avgMC} 
+        />
+        
+        <SwellingSection 
+          swellingData={swellingData} 
+          onChange={handleSwellingChange} 
+          tsValues={tsValues} 
+          avgT1={avgT1} 
+          avgT2={avgT2} 
+          avgTs={avgTs} 
+        />
+        
+        <SurfaceSoundnessSection 
+          surfaceSoundnessData={surfaceSoundnessData} 
+          onChange={handleSurfaceChange} 
+          avgSurface={avgSurface} 
+        />
+        
+        <TebalFlakesSection 
+          tebalFlakesData={tebalFlakesData} 
+          onChange={handleTebalFlakesChange} 
+        />
+        
+        <ConsHardenerSection 
+          consHardenerData={consHardenerData} 
+          onChange={handleConsHardenerChange} 
+        />
+        
+        <GeltimeSection 
+          geltimeData={geltimeData} 
+          onChange={handleGeltimeChange} 
+        />
 
-          <h4 className="sub-section-title">🔧 Spesifikasi Teknis</h4>
-          <div className="form-grid-small">
-            <div className="form-group">
-              <label className="form-label">Density Min:</label>
-              <input 
-                type="number" 
-                step="0.01" 
-                name="density_min" 
-                value={formData.density_min} 
-                onChange={handleChange} 
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Density Max:</label>
-              <input 
-                type="number" 
-                step="0.01" 
-                name="density_max" 
-                value={formData.density_max} 
-                onChange={handleChange} 
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Board Type:</label>
-              <input 
-                name="board_type" 
-                value={formData.board_type} 
-                onChange={handleChange} 
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Glue SL:</label>
-              <input 
-                type="text" 
-                name="glue_sl" 
-                value={formData.glue_sl} 
-                onChange={handleChange} 
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Glue CL:</label>
-              <input 
-                type="text" 
-                name="glue_cl" 
-                value={formData.glue_cl} 
-                onChange={handleChange} 
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Thick Min:</label>
-              <input 
-                type="number" 
-                step="0.1" 
-                name="thick_min" 
-                value={formData.thick_min} 
-                onChange={handleChange} 
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Thick Max:</label>
-              <input 
-                type="number" 
-                step="0.1" 
-                name="thick_max" 
-                value={formData.thick_max} 
-                onChange={handleChange} 
-                className="form-input"
-              />
-            </div>
-          </div>
-
-          <h4 className="sub-section-title">📊 Data Sample (24 pcs)</h4>
-          <SampleTable
-            samples={samples}
-            onSamplesChange={setSamples}
-          />
-
-        </div>
-
-        {/* === Bagian 2: Internal Bonding === */}
-        <div className="section">
-          <h3 className="section-title">🧪 Internal Bonding Test</h3>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>IB [n/mm²]</th>
-                  <th>Density [kg/m³]</th>
-                </tr>
-              </thead>
-              <tbody>
-                {['le', 'ml', 'md', 'mr', 'ri'].map(pos => (
-                  <tr key={pos}>
-                    <td>{pos.toUpperCase()}</td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        name={`ib_${pos}`} 
-                        value={ibData[`ib_${pos}`]} 
-                        onChange={handleIbChange} 
-                        className="input-table"
-                      />
-                    </td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.1" 
-                        name={`density_${pos}`} 
-                        value={ibData[`density_${pos}`]} 
-                        onChange={handleIbChange} 
-                        className="input-table"
-                      />
-                    </td>
-                  </tr>
-                ))}
-                <tr className="table-row-bold">
-                  <td>AVG</td>
-                  <td>{formatNumber(ibAvg)}</td>
-                  <td>{formatNumber(densityAvgIb)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* === Bagian 3: Bending Strange === */}
-        <div className="section">
-          <h3 className="section-title">🧱 Bending Strange Test</h3>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>MOR [n/mm²]</th>
-                  <th>Density [kg/m³]</th>
-                </tr>
-              </thead>
-              <tbody>
-                {['le', 'ml', 'md', 'mr', 'ri'].map(pos => (
-                  <tr key={pos}>
-                    <td>{pos.toUpperCase()}</td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        name={`mor_${pos}`} 
-                        value={bsData[`mor_${pos}`]} 
-                        onChange={handleBsChange} 
-                        className="input-table"
-                      />
-                    </td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.1" 
-                        name={`density_${pos}`} 
-                        value={bsData[`density_${pos}`]} 
-                        onChange={handleBsChange} 
-                        className="input-table"
-                      />
-                    </td>
-                  </tr>
-                ))}
-                <tr className="table-row-bold">
-                  <td>AVG</td>
-                  <td>{formatNumber(morAvg)}</td>
-                  <td>{formatNumber(densityAvgBs)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* === Bagian 4: Screw Test === */}
-        <div className="section">
-          <h3 className="section-title">🔩 Screw Test</h3>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>FACE [n/mm²]</th>
-                  <th>EDGE [n/mm²]</th>
-                </tr>
-              </thead>
-              <tbody>
-                {['le', 'ml', 'md', 'mr', 'ri'].map(pos => (
-                  <tr key={pos}>
-                    <td>{pos.toUpperCase()}</td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        name={`face_${pos}`} 
-                        value={screwData[`face_${pos}`]} 
-                        onChange={handleScrewChange} 
-                        className="input-table"
-                      />
-                    </td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        name={`edge_${pos}`} 
-                        value={screwData[`edge_${pos}`]} 
-                        onChange={handleScrewChange} 
-                        className="input-table"
-                      />
-                    </td>
-                  </tr>
-                ))}
-                <tr className="table-row-bold">
-                  <td>AVG</td>
-                  <td>{formatNumber(faceAvg)}</td>
-                  <td>{formatNumber(edgeAvg)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* === Bagian 5: Density Profile === */}
-        <div className="section">
-          <h3 className="section-title">📊 Density Profile</h3>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>LE</th>
-                  <th>ML</th>
-                  <th>MD</th>
-                  <th>MR</th>
-                  <th>RI</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>MAX TOP [kg/m³]</td>
-                  <td><input type="number" step="0.1" name="max_top_le" value={densityProfileData.max_top_le} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="max_top_ml" value={densityProfileData.max_top_ml} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="max_top_md" value={densityProfileData.max_top_md} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="max_top_mr" value={densityProfileData.max_top_mr} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="max_top_ri" value={densityProfileData.max_top_ri} onChange={handleDensityProfileChange} className="input-table" /></td>
-                </tr>
-                <tr>
-                  <td>MAX BOT [kg/m³]</td>
-                  <td><input type="number" step="0.1" name="max_bot_le" value={densityProfileData.max_bot_le} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="max_bot_ml" value={densityProfileData.max_bot_ml} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="max_bot_md" value={densityProfileData.max_bot_md} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="max_bot_mr" value={densityProfileData.max_bot_mr} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="max_bot_ri" value={densityProfileData.max_bot_ri} onChange={handleDensityProfileChange} className="input-table" /></td>
-                </tr>
-                <tr>
-                  <td>MIN [kg/m³]</td>
-                  <td><input type="number" step="0.1" name="min_le" value={densityProfileData.min_le} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="min_ml" value={densityProfileData.min_ml} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="min_md" value={densityProfileData.min_md} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="min_mr" value={densityProfileData.min_mr} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="min_ri" value={densityProfileData.min_ri} onChange={handleDensityProfileChange} className="input-table" /></td>
-                </tr>
-                <tr>
-                  <td>MEAN [kg/m³]</td>
-                  <td><input type="number" step="0.1" name="mean_le" value={densityProfileData.mean_le} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="mean_ml" value={densityProfileData.mean_ml} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="mean_md" value={densityProfileData.mean_md} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="mean_mr" value={densityProfileData.mean_mr} onChange={handleDensityProfileChange} className="input-table" /></td>
-                  <td><input type="number" step="0.1" name="mean_ri" value={densityProfileData.mean_ri} onChange={handleDensityProfileChange} className="input-table" /></td>
-                </tr>
-                <tr className="table-row-bold">
-                  <td>MIN/MEAN [%]</td>
-                  <td>{formatNumber(minMeanLe)}</td>
-                  <td>{formatNumber(minMeanMl)}</td>
-                  <td>{formatNumber(minMeanMd)}</td>
-                  <td>{formatNumber(minMeanMr)}</td>
-                  <td>{formatNumber(minMeanRi)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* === Bagian 6: MC Board === */}
-        <div className="section">
-          <h3 className="section-title">💧 MC Board</h3>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>W1 [gr]</th>
-                  <th>W2 [gr]</th>
-                  <th>MC [%]</th>
-                </tr>
-              </thead>
-              <tbody>
-                {['le', 'ml', 'md', 'mr', 'ri'].map(pos => (
-                  <tr key={pos}>
-                    <td>{pos.toUpperCase()}</td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        name={`w1_${pos}`} 
-                        value={mcBoardData[`w1_${pos}`]} 
-                        onChange={handleMcBoardChange} 
-                        className="input-table"
-                      />
-                    </td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        name={`w2_${pos}`} 
-                        value={mcBoardData[`w2_${pos}`]} 
-                        onChange={handleMcBoardChange} 
-                        className="input-table"
-                      />
-                    </td>
-                    <td>
-                      {formatNumber(calculateMC(
-                        mcBoardData[`w1_${pos}`], 
-                        mcBoardData[`w2_${pos}`]
-                      ))}
-                    </td>
-                  </tr>
-                ))}
-                <tr className="table-row-bold">
-                  <td>AVG</td>
-                  <td>{formatNumber(avgW1)}</td>
-                  <td>{formatNumber(avgW2)}</td>
-                  <td>{formatNumber(avgMC)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* === Bagian 7: Swelling 2h === */}
-        <div className="section">
-          <h3 className="section-title">💧 Swelling 2h</h3>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>T1 [mm]</th>
-                  <th>T2 [mm]</th>
-                  <th>TS [%]</th>
-                </tr>
-              </thead>
-              <tbody>
-                {['le', 'ml', 'md', 'mr', 'ri'].map(pos => (
-                  <tr key={pos}>
-                    <td>{pos.toUpperCase()}</td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        name={`t1_${pos}`} 
-                        value={swellingData[`t1_${pos}`]} 
-                        onChange={handleSwellingChange} 
-                        className="input-table"
-                      />
-                    </td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        name={`t2_${pos}`} 
-                        value={swellingData[`t2_${pos}`]} 
-                        onChange={handleSwellingChange} 
-                        className="input-table"
-                      />
-                    </td>
-                    <td>
-                      {formatNumber(calculateTS(
-                        swellingData[`t1_${pos}`], 
-                        swellingData[`t2_${pos}`]
-                      ))}
-                    </td>
-                  </tr>
-                ))}
-                <tr className="table-row-bold">
-                  <td>AVG</td>
-                  <td>{formatNumber(avgT1)}</td>
-                  <td>{formatNumber(avgT2)}</td>
-                  <td>{formatNumber(avgTs)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* === Bagian 8: Surface Soundness === */}
-        <div className="section">
-          <h3 className="section-title">🔊 Surface Soundness</h3>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>T1 [n/mm²]</th>
-                </tr>
-              </thead>
-              <tbody>
-                {['le', 'ri'].map(pos => (
-                  <tr key={pos}>
-                    <td>{pos.toUpperCase()}</td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        name={`t1_${pos}_surface`} 
-                        value={surfaceSoundnessData[`t1_${pos}_surface`]} 
-                        onChange={handleSurfaceChange} 
-                        className="input-table"
-                      />
-                    </td>
-                  </tr>
-                ))}
-                <tr className="table-row-bold">
-                  <td>AVG</td>
-                  <td>{formatNumber(avgSurface)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* === Bagian 9: Tebal Flakes === */}
-        <div className="section">
-          <h3 className="section-title">📏 Tebal Flakes</h3>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>AVG TEBAL [mm]</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      name="avg_tebal" 
-                      value={tebalFlakesData.avg_tebal} 
-                      onChange={handleTebalFlakesChange} 
-                      className="input-table"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* === Bagian 10: Cons Hardener === */}
-        <div className="section">
-          <h3 className="section-title">🧪 Cons Hardener</h3>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>AVG [%]</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      name="avg_cons" 
-                      value={consHardenerData.avg_cons} 
-                      onChange={handleConsHardenerChange} 
-                      className="input-table"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* === Bagian 11: Geltime Glue Mix === */}
-        <div className="section">
-          <h3 className="section-title">⏱️ Geltime Glue Mix</h3>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>SL [s]</th>
-                  <th>CL [s]</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <input 
-                      type="number" 
-                      step="1" 
-                      name="sl" 
-                      value={geltimeData.sl} 
-                      onChange={handleGeltimeChange} 
-                      className="input-table"
-                    />
-                  </td>
-                  <td>
-                    <input 
-                      type="number" 
-                      step="1" 
-                      name="cl" 
-                      value={geltimeData.cl} 
-                      onChange={handleGeltimeChange} 
-                      className="input-table"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <button type="submit" className="submit-button">
-          Kirim Laporan
-        </button>
-        {/* <button type="button" onClick={clearAllFormData} className="clear-button-secondary">
+        <div className="button-group">
+          <button type="submit" className="submit-button">
+            Kirim Laporan
+          </button>
+          {/* <button type="button" onClick={clearAllFormData} className="clear-button-secondary">
             🗑️ Clear Form
-        </button> */}
+          </button> */}
+        </div>
       </form>
     </div>
   );
