@@ -1,5 +1,6 @@
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import logo from "../assets/logo.png";
 import './DashboardLayout.css';
 
 export default function DashboardLayout() {
@@ -90,9 +91,9 @@ export default function DashboardLayout() {
       {/* Header */}
       <header className="dashboard-header">
         <div className="logo">
-          <span className="logo-icon">⚙️</span>
-          <span>PT CANANG INDAH</span>
+          <img src={logo} alt="PT Canang Indah Logo" className="logo-image" />
         </div>
+
 
         <div className="title-dashboard">Laboratory Dashboard</div>
         
@@ -119,7 +120,6 @@ export default function DashboardLayout() {
                   <span className="menu-text">Home</span>
                 </Link>
               </li>
-
               {/* Lab PB with Submenu */}
               <li className={`menu-parent ${isLabPBPage ? 'active' : ''}`}>
                 <Link 

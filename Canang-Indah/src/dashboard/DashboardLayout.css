@@ -84,7 +84,7 @@
 }
 
 /* Logo */
-.logo {
+/* .logo {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -114,7 +114,24 @@
 
 .logo-icon {
   animation: rotateLuxury 2s linear infinite;
+} */
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
+
+.logo-image {
+  height: 50px;
+  width: auto;
+}
+
+.logo-text {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
 
 
 .dashboard-header:hover .logo-icon {

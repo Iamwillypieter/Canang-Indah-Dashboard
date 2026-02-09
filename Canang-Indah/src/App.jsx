@@ -7,6 +7,7 @@ import Login from "./auth/Login.jsx";
 import Register from "./auth/Register.jsx";
 
 // Pages
+import HomePage from "./pages/HomePage.jsx";
 import LabPBAdmin1 from "./pages/sub_menu/LabPBAdmin1.jsx";
 import SupervisorPage from "./pages/SupervisorPage.jsx";
 
@@ -29,16 +30,18 @@ export default function App() {
   return (
     <Routes>
 
-      {/* PUBLIC */}
-      <Route element={<RequireAuth />}>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-      </Route>
+      {/* ===== AUTH ===== */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
       {/* ===== PROTECTED ===== */}
       <Route element={<RequireAuth />}>
         <Route path="/" element={<DashboardLayout />}>
 
+          {/* 🏠 HOME PAGE */}
+          <Route index element={<HomePage />} />
+
+          {/* LAB PB */}
           <Route path="lab/pb/admin1">
             <Route index element={<LabPBAdmin1 />} />
 
@@ -61,13 +64,14 @@ export default function App() {
             <Route path="dokumen" element={<DokumenList />} />
           </Route>
 
+          {/* SUPERVISOR */}
           <Route path="supervisor" element={<SupervisorPage />} />
 
         </Route>
       </Route>
 
       {/* ===== FALLBACK ===== */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
 
     </Routes>
   );
