@@ -4,8 +4,8 @@ import { Pool } from "pg";
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import helmet from 'helmet'; // ✅ Import helmet
-import rateLimit from 'express-rate-limit'; // ✅ Import rateLimit
+import helmet from 'helmet'; 
+import rateLimit from 'express-rate-limit'; 
 
 dotenv.config();
 
@@ -17,10 +17,9 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 
-// Security middleware - SEKARANG SUDAH BISA DIGUNAKAN
 app.use(helmet());
 app.use(cors({
-  origin: 'http://localhost:5173',  // ✅ Ganti jadi 5173
+  origin: 'http://localhost:5173', 
   credentials: true
 }));
 
@@ -46,15 +45,14 @@ pool.on('connect', () => {
   console.log('✅ Database connected successfully');
 });
 
-// Rate limiting untuk auth endpoints - SEKARANG SUDAH BISA DIGUNAKAN
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,   
   max: 100,
   message: 'Terlalu banyak permintaan dari IP ini, silakan coba lagi nanti.'
 });
 
 const loginLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 60 * 60 * 1000, 
   max: 10,
   message: 'Terlalu banyak percobaan login. Akun Anda terkunci sementara.'
 });
@@ -87,17 +85,14 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Helper function untuk validasi password strength
-// Helper function untuk validasi password strength
+// Helper function untuk validasi password 
 const validatePassword = (password) => {
   const errors = [];
   
-  // ✅ RELAXED VALIDATION (untuk development)
   if (password.length < 6) {
     errors.push('Password minimal 6 karakter');
   }
   
-  // ❌ COMMENT OUT validasi ketat (untuk development)
 
   if (!/[A-Z]/.test(password)) {
     errors.push('Password harus mengandung minimal 1 huruf kapital');
@@ -152,12 +147,12 @@ app.post('/api/register', authLimiter, async (req, res) => {
       });
     }
     
-    // Validasi role
+    //  pilih role
     if (!['admin', 'supervisor'].includes(role)) {
       return res.status(400).json({ error: 'Role tidak valid' });
     }
     
-    // Cek username sudah ada
+    // Cek username jika sudah ada
     const existingUser = await pool.query(
       'SELECT * FROM users WHERE username = $1',
       [username]
@@ -206,7 +201,6 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     );
     
     if (result.rows.length === 0) {
-      // Delay untuk timing attack prevention
       await new Promise(resolve => setTimeout(resolve, 100));
       return res.status(401).json({ error: 'Username atau password salah' });
     }
@@ -217,7 +211,6 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
     
     if (!validPassword) {
-      // Delay untuk timing attack prevention
       await new Promise(resolve => setTimeout(resolve, 100));
       return res.status(401).json({ error: 'Username atau password salah' });
     }

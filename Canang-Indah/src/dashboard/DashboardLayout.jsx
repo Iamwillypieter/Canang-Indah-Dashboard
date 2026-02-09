@@ -8,7 +8,7 @@ export default function DashboardLayout() {
   const [showLabPBSubmenu, setShowLabPBSubmenu] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Tutup submenu saat ganti halaman
+  // Tutup submenu klo ganti halaman
   useEffect(() => {
     if (!location.pathname.startsWith('/lab/pb')) {
       setShowLabPBSubmenu(false);
@@ -17,16 +17,14 @@ export default function DashboardLayout() {
 
   const isLabPBPage = location.pathname.startsWith('/lab/pb');
 
-  // ✅ Fungsi Logout
+  //   Logout
   const handleLogout = () => {
     // Konfirmasi logout
     const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar?');
     
     if (confirmLogout) {
-      // Aktifkan loading bar
       setIsLoggingOut(true);
       
-      // Simulasi delay untuk efek loading (opsional)
       setTimeout(() => {
         // Hapus data auth dari localStorage
         localStorage.removeItem('token');
@@ -39,7 +37,7 @@ export default function DashboardLayout() {
         setIsLoggingOut(false);
         
         console.log('✅ Logout berhasil');
-      }, 500); // Delay 0.5 detik untuk efek loading
+      }, 500); 
     }
   };
 
@@ -57,19 +55,17 @@ export default function DashboardLayout() {
     }
   }, []);
 
-  // Tambahkan useEffect untuk cek token validity
+  // useEffect untuk cek token validity
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem('token');
       const user = localStorage.getItem('user');
       
       if (!token || !user) {
-        // Redirect ke login jika tidak ada auth
         navigate('/login', { replace: true });
         return;
       }
       
-      // Optional: Cek token expired (decode JWT)
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         if (payload.exp * 1000 < Date.now()) {
@@ -79,7 +75,7 @@ export default function DashboardLayout() {
           navigate('/login', { replace: true });
         }
       } catch (error) {
-        // Token invalid
+        // cek klo Token invalid
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         navigate('/login', { replace: true });
