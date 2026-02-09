@@ -147,18 +147,31 @@ export default function DashboardLayout() {
                         <span className="menu-text">Admin 1</span>
                       </Link>
                     </li>
-                    <li className={location.pathname === '/lab/pb/admin2' ? 'active' : ''}>
+                    {/* <li className={location.pathname === '/lab/pb/admin2' ? 'disabled' : ''}>
+                      <Link to="/lab/pb/admin2">
+                        <span className="menu-icon">👥</span>
+                        <span className="menu-text">Admin 2</span>
+                      </Link>
+                    </li> */}
+                    <li className="disabled">
                       <Link to="/lab/pb/admin2">
                         <span className="menu-icon">👥</span>
                         <span className="menu-text">Admin 2</span>
                       </Link>
                     </li>
+
                   </ul>
                 )}
               </li>
 
               {/* Tambahkan menu lain jika perlu */}
-              <li className={location.pathname.startsWith('/lab/mdf') ? 'active' : ''}>
+              {/* <li className={location.pathname.startsWith('/lab/mdf') ? 'active' : ''}>
+                <Link to="/lab/mdf">
+                  <span className="menu-icon">Ⓜ️🇩🇫</span>
+                  <span className="menu-text">Lab MDF</span>
+                </Link>
+              </li> */}
+              <li className="disabled">
                 <Link to="/lab/mdf">
                   <span className="menu-icon">Ⓜ️🇩🇫</span>
                   <span className="menu-text">Lab MDF</span>

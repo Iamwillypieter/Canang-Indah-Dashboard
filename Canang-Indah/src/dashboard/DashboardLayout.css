@@ -850,3 +850,14 @@
     transform: rotate(360deg);
   }
 }
+
+
+li.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+li.disabled a {
+  pointer-events: none; /* ⛔ BLOK TOTAL KLIK */
+  cursor: not-allowed;
+}

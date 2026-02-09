@@ -5,6 +5,30 @@ import QCAnalisaHeader from "../components/QCAnalisaHeader.jsx";
 
 const STORAGE_KEY = "qcAnalisaScreenDraft";
 
+// ✅ Pindahkan function ini ke atas sebelum useState
+const getInitialData = () => ({
+  tanggalDefault: new Date().toISOString().split("T")[0],
+  shiftDefault: "Shift A",
+  rows: Array(32).fill().map((_, i) => ({
+    id: i + 1,
+    jam: "",
+    tanggal: new Date().toISOString().split("T")[0],
+    shift_group: "Shift A",
+    material: "",
+    fraction_gt_8: "",
+    fraction_gt_4: "",
+    fraction_gt_3_15: "",
+    fraction_gt_2: "",
+    fraction_gt_1: "",
+    fraction_0_5: "",
+    fraction_0_25: "",
+    fraction_lt_0_25: "",
+    jumlah_gr: "",
+    keterangan: "",
+    diperiksa_oleh: ""
+  }))
+});
+
 export default function QCAnalisaForm() {
   const navigate = useNavigate();
   
@@ -16,29 +40,6 @@ export default function QCAnalisaForm() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
   }, [formData]);
-
-  const getInitialData = () => ({
-    tanggalDefault: new Date().toISOString().split("T")[0],
-    shiftDefault: "Shift A",
-    rows: Array(32).fill().map((_, i) => ({
-      id: i + 1,
-      jam: "",
-      tanggal: new Date().toISOString().split("T")[0],
-      shift_group: "Shift A",
-      material: "",
-      fraction_gt_8: "",
-      fraction_gt_4: "",
-      fraction_gt_3_15: "",
-      fraction_gt_2: "",
-      fraction_gt_1: "",
-      fraction_0_5: "",
-      fraction_0_25: "",
-      fraction_lt_0_25: "",
-      jumlah_gr: "",
-      keterangan: "",
-      diperiksa_oleh: ""
-    }))
-  });
 
   const handleChange = (e, rowIndex) => {
     const { name, value } = e.target;

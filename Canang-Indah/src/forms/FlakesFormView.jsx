@@ -47,6 +47,13 @@ export default function FlakesFormView() {
     navigate('/lab/pb/admin1/documents');
   };
 
+  // Helper function untuk format number dengan aman
+  const formatNumber = (value, decimals = 2) => {
+    if (value === null || value === undefined) return '0';
+    const num = parseFloat(value);
+    return isNaN(num) ? '0' : num.toFixed(decimals);
+  };
+
   if (loading) {
     return (
       <div className="flakes-view-container">
@@ -129,11 +136,11 @@ export default function FlakesFormView() {
               </div>
               <div className="stat-card">
                 <div className="stat-label">Grand Total Ketebalan</div>
-                <div className="stat-value">{doc.summary.grand_total_ketebalan?.toFixed(2) || 0} mm</div>
+                <div className="stat-value">{formatNumber(doc.summary.grand_total_ketebalan)} mm</div>
               </div>
               <div className="stat-card">
                 <div className="stat-label">Rata-rata Ketebalan</div>
-                <div className="stat-value">{doc.summary.rata_rata?.toFixed(2) || 0} mm</div>
+                <div className="stat-value">{formatNumber(doc.summary.rata_rata)} mm</div>
               </div>
             </div>
           )}
@@ -166,4 +173,4 @@ export default function FlakesFormView() {
       </div>
     </div>
   );
-}   
+}
