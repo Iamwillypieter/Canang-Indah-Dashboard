@@ -52,9 +52,10 @@ const authLimiter = rateLimit({
 });
 
 const loginLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, 
-  max: 10,
-  message: 'Terlalu banyak percobaan login. Akun Anda terkunci sementara.'
+  windowMs: 60 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 10 : 10000,
+  skip: (req) => req.ip === '::1' || req.ip === '127.0.0.1',
+  message: 'Terlalu banyak percobaan login.'
 });
 
 // Logging middleware
@@ -1855,6 +1856,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`✅ Backend running on port ${PORT}`);
+  console.log(`🚀 Canang Indah Dashboard API running on port ${PORT}`);
   console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
 });
