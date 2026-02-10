@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { getAuthUser } from '../utils/auth';
 import './Login.css';
 
 const Login = () => {
@@ -12,17 +11,6 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-  const user = getAuthUser();
-  if (user) {
-    if (user.role === 'admin') {
-      navigate('/lab-pb', { replace: true });
-    } else if (user.role === 'supervisor') {
-      navigate('/supervisor', { replace: true });
-    }
-  }
-}, [navigate]);
 
   useEffect(() => {
     const container = document.querySelector('.login-container');
@@ -49,9 +37,6 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (loading) return; // 🔥 CEGAH MULTI REQUEST
-
     setError('');
     setLoading(true);
 
@@ -63,30 +48,20 @@ const Login = () => {
 
       const { token, user } = res.data;
 
-      console.log('LOGIN SUCCESS:', user);
-
+      // ===== AUTH STORAGE =====
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('isAuth', 'true');
+      localStorage.setItem('isAuth', 'true'); // 🔥 penting
 
-      if (user.role === 'admin') {
-        navigate('/lab-pb', { replace: true });
-      } else if (user.role === 'supervisor') {
-        navigate('/supervisor', { replace: true });
-      }
+      // ===== REDIRECT KE ROOT =====
+      navigate('/', { replace: true });
 
     } catch (err) {
-      if (err.response?.status === 429) {
-        setError('Terlalu banyak percobaan login. Tunggu sebentar.');
-      } else {
-        setError(err.response?.data?.error || 'Login gagal.');
-      }
+      setError(err.response?.data?.error || 'Login gagal. Coba lagi.');
     } finally {
       setLoading(false);
     }
   };
-
-
 
   return (
     <>
@@ -96,9 +71,9 @@ const Login = () => {
         <div className="luxury-card">
 
           <div className="login-header">
-            <h1 className="login-title">Welcome To Canang Indah Dashboard</h1>
+            <h1 className="login-title">Welcome Back</h1>
             <p className="login-subtitle">
-              Sign in to your account
+              Sign in to your exclusive account
             </p>
           </div>
 

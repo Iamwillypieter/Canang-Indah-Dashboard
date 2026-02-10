@@ -15,13 +15,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const isAuth = localStorage.getItem('isAuth');
-    if (isAuth === 'true') {
-      navigate('/', { replace: true });
-    }
-  }, [navigate]);
-
+  // Create floating particles
   useEffect(() => {
     const createParticles = () => {
       const container = document.querySelector('.register-container');
@@ -105,11 +99,7 @@ const Register = () => {
 
     try {
       const response = await axios.post('http://localhost:3001/api/register', formData);
-      console.log('REGISTER SUCCESS:', response.data);
-      console.log('Registered user:', {
-        username: formData.username,
-        role: formData.role,
-      });
+      
       setSuccess('Registrasi berhasil! Redirecting to login...');
       
       // Tunggu 2 detik lalu redirect ke login
@@ -178,7 +168,7 @@ const Register = () => {
                 value={formData.username}
                 onChange={handleChange}
                 className="form-input-register"
-                placeholder="Username"
+                placeholder="Choose a unique username"
                 required
                 autoComplete="username"
               />
@@ -192,7 +182,7 @@ const Register = () => {
                 value={formData.password}
                 onChange={handleChange}
                 className="form-input-register"
-                placeholder="Password"
+                placeholder="Create a secure password"
                 required
                 minLength="8"
               />
@@ -260,7 +250,7 @@ const Register = () => {
           <div className="role-info-section">
             <p className="role-info-title">Role Permissions:</p>
             <p className="role-info-description">
-              <span>Admin:</span> Full access to all features except Supervisor page<br />
+              <span>Admin:</span> Full access to all features<br />
               <span>Supervisor:</span> Limited access to specific modules
             </p>
           </div>
