@@ -10,25 +10,25 @@ const FORM_TYPES = {
   qc: {
     label: "QC Analisa",
     icon: "🧪",
-    route: "/lab/pb/admin1/analisa",
+    route: "/view/qc",  // ✅ CHANGE TO /view/qc
     endpoint: `${API_BASE}/qc-analisa-documents`
   },
   resin: {
     label: "Resin Inspection",
     icon: "🧴",
-    route: "/lab/pb/admin1/resin",
+    route: "/view/resin",  // ✅ CHANGE TO /view/resin
     endpoint: `${API_BASE}/resin-inspection-documents`
   },
   flakes: {
     label: "Flakes Inspection",
     icon: "🪵",
-    route: "/lab/pb/admin1/flakes",
+    route: "/view/flakes",  // ✅ CHANGE TO /view/flakes
     endpoint: `${API_BASE}/flakes-documents`
   },
   labPBForm: {
     label: "Lab PB Form",
     icon: "🏭",
-    route: "/lab/pb/admin1/lab-pb-form",
+    route: "/view/lab-pb",  // ✅ CHANGE TO /view/lab-pb
     endpoint: `${API_BASE}/lab-pb-documents`
   }
 };
@@ -46,7 +46,7 @@ export default function SupervisorPage() {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      // Fetch dari semua endpoints seperti DocumentList
+      // Fetch dari semua endpoints
       const requests = Object.entries(FORM_TYPES).map(
         async ([key, config]) => {
           const res = await fetch(config.endpoint);
@@ -58,7 +58,7 @@ export default function SupervisorPage() {
 
           const data = await res.json();
 
-          // Normalisasi data seperti DocumentList
+          // Normalisasi data
           const docsArray = Array.isArray(data)
             ? data
             : data.documents || [];
@@ -72,7 +72,7 @@ export default function SupervisorPage() {
 
       const results = await Promise.all(requests);
 
-      // Gabungkan dan sort seperti DocumentList
+      // Gabungkan dan sort
       const mergedDocs = results
         .flat()
         .sort(
@@ -89,7 +89,7 @@ export default function SupervisorPage() {
     }
   };
 
-  // Filter search seperti DocumentList
+  // Filter search
   const filteredDocs = documents.filter(doc => {
     const term = search.toLowerCase();
     const config = FORM_TYPES[doc.type] || {};
@@ -104,18 +104,24 @@ export default function SupervisorPage() {
   return (
     <div className="supervisor-container">
       <header className="supervisor-header">
-        <h1>Supervisor Document Review</h1>
+        <h1>📋 Supervisor Document Review</h1>
+        <p className="supervisor-subtitle">View semua dokumen laboratory</p>
       </header>
 
       {/* Toolbar Search & Refresh */}
       <div className="doc-toolbar">
-        <input
-          type="text"
-          placeholder="🔍 Cari dokumen..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="search-input"
-        />
+        <div className="search-wrapper">
+          <input
+            type="text"
+            placeholder="🔍 Cari dokumen..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="search-input"
+          />
+          <span className="search-count">
+            {filteredDocs.length} dokumen
+          </span>
+        </div>
         <button 
           onClick={fetchDocuments} 
           className="refresh-btn"
@@ -126,10 +132,19 @@ export default function SupervisorPage() {
       </div>
 
       {loading ? (
-        <div className="loading">⏳ Loading data...</div>
+        <div className="loading">
+          <div className="spinner"></div>
+          <p>⏳ Loading data dokumen...</p>
+        </div>
       ) : filteredDocs.length === 0 ? (
         <div className="empty">
-          {search ? "📭 Tidak ada dokumen yang sesuai pencarian" : "📭 Tidak ada dokumen tersedia"}
+          <div className="empty-icon">📭</div>
+          <p>{search ? "Tidak ada dokumen yang sesuai pencarian" : "Belum ada dokumen tersedia"}</p>
+          {!search && (
+            <button onClick={fetchDocuments} className="refresh-btn-small">
+              🔄 Refresh
+            </button>
+          )}
         </div>
       ) : (
         <div className="doc-grid">
@@ -149,23 +164,31 @@ export default function SupervisorPage() {
                       {config.label}
                     </span>
                   </div>
-                  <span className={`status ${doc.status}`}>
-                    {doc.status}
+                  <span className={`status-badge status-${doc.status?.toLowerCase() || 'completed'}`}>
+                    {doc.status || 'Completed'}
                   </span>
                 </div>
 
-                <h3 className="doc-title">{doc.title || config.label}</h3>
+                <h3 className="doc-title">{doc.title || `Dokumen ${config.label}`}</h3>
 
-                <p className="doc-date">
-                  <span className="date-label">📅</span>
-                  {new Date(doc.created_at).toLocaleDateString("id-ID", {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit"
-                  })}
-                </p>
+                <div className="doc-meta">
+                  <p className="doc-date">
+                    <span className="date-label">📅</span>
+                    {new Date(doc.created_at).toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}
+                  </p>
+                  {doc.operator && (
+                    <p className="doc-operator">
+                      <span className="operator-label">👤</span>
+                      {doc.operator}
+                    </p>
+                  )}
+                </div>
 
                 {/* ========== BUTTON VIEW - MASUK KE HALAMAN FULL ========= */}
                 <Link
@@ -173,12 +196,12 @@ export default function SupervisorPage() {
                   className="btn-view-full"
                   onClick={(e) => e.stopPropagation()} // Prevent card click
                 >
-                  👁 View Full Document
+                  👁️ View Full Document
                 </Link>
 
                 {/* Hint untuk klik card */}
                 <div className="view-hint">
-                  ℹ️ Click card for preview detail
+                  ℹ️ Click card untuk preview
                 </div>
               </div>
             );
@@ -214,27 +237,27 @@ export default function SupervisorPage() {
                   <>
                     <div className="modal-detail">
                       <div className="detail-row">
-                        <label>📌 Title</label>
+                        <label>📌 Judul Dokumen</label>
                         <span>{selectedDoc.title || config.label}</span>
                       </div>
 
                       <div className="detail-row">
-                        <label>🏭 Document Type</label>
+                        <label>🏭 Tipe Dokumen</label>
                         <div className="doc-type-display">
                           <span className="doc-icon-large">{config.icon}</span>
                           <span>{config.label}</span>
                         </div>
                       </div>
 
-                      {/* <div className="detail-row">
+                      <div className="detail-row">
                         <label>📊 Status</label>
-                        <span className={`status-badge ${selectedDoc.status}`}>
-                          {selectedDoc.status}
+                        <span className={`status-badge status-${selectedDoc.status?.toLowerCase() || 'completed'}`}>
+                          {selectedDoc.status || 'Completed'}
                         </span>
-                      </div> */}
+                      </div>
 
                       <div className="detail-row">
-                        <label>📅 Created at</label>
+                        <label>📅 Dibuat pada</label>
                         <span>
                           {new Date(selectedDoc.created_at).toLocaleString("id-ID", {
                             weekday: "long",
@@ -248,25 +271,58 @@ export default function SupervisorPage() {
                         </span>
                       </div>
 
-                      {/* Tampilkan field-field lainnya jika ada */}
                       {selectedDoc.updated_at && (
                         <div className="detail-row">
-                          <label>✏️ Last update</label>
+                          <label>✏️ Terakhir diupdate</label>
                           <span>
-                            {new Date(selectedDoc.updated_at).toLocaleString("id-ID")}
+                            {new Date(selectedDoc.updated_at).toLocaleString("id-ID", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
                           </span>
                         </div>
                       )}
 
-                      {/* Tampilkan semua field lainnya */}
+                      {selectedDoc.operator && (
+                        <div className="detail-row">
+                          <label>👤 Operator</label>
+                          <span>{selectedDoc.operator}</span>
+                        </div>
+                      )}
+
+                      {selectedDoc.shift && (
+                        <div className="detail-row">
+                          <label>🔄 Shift</label>
+                          <span>{selectedDoc.shift}</span>
+                        </div>
+                      )}
+
+                      {/* Tampilkan field-field lainnya */}
                       {Object.entries(selectedDoc).map(([key, value]) => {
                         // Skip field yang sudah ditampilkan atau internal
-                        if (['id', 'title', 'type', 'status', 'created_at', 'updated_at', 'documents'].includes(key)) {
+                        const skipFields = [
+                          'id', 'title', 'type', 'status', 
+                          'created_at', 'updated_at', 'documents',
+                          'operator', 'shift', '_id', '__v'
+                        ];
+                        
+                        if (skipFields.includes(key)) {
                           return null;
                         }
                         
-                        // Skip jika value null/undefined
+                        // Skip jika value null/undefined atau empty array/object
                         if (value === null || value === undefined) {
+                          return null;
+                        }
+                        
+                        if (Array.isArray(value) && value.length === 0) {
+                          return null;
+                        }
+                        
+                        if (typeof value === 'object' && Object.keys(value).length === 0) {
                           return null;
                         }
 
@@ -274,13 +330,14 @@ export default function SupervisorPage() {
                         const formatKey = (k) => {
                           return k
                             .replace(/_/g, ' ')
+                            .replace(/-/g, ' ')
                             .replace(/\b\w/g, l => l.toUpperCase());
                         };
 
                         return (
                           <div className="detail-row" key={key}>
                             <label>{formatKey(key)}</label>
-                            <span>
+                            <span className="detail-value">
                               {typeof value === 'object' 
                                 ? JSON.stringify(value, null, 2) 
                                 : String(value)}

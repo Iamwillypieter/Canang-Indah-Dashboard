@@ -1,6 +1,7 @@
+// App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import DashboardLayout from "./dashboard/DashboardLayout.jsx";
-import RequireAuth from "./utils/RequireAuth.jsx";
+import RequireAuth, { RequireRole } from "./utils/RequireAuth.jsx";
 
 // Auth
 import Login from "./auth/Login.jsx";
@@ -38,34 +39,48 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route path="/" element={<DashboardLayout />}>
 
-          {/* 🏠 HOME PAGE */}
+          {/* 🏠 HOME PAGE - ALL ROLES */}
           <Route index element={<HomePage />} />
 
-          {/* LAB PB */}
-          <Route path="lab/pb/admin1">
-            <Route index element={<LabPBAdmin1 />} />
+          {/* 🔒 LAB PB - ADMIN ONLY */}
+          <Route element={<RequireRole allowedRoles={['admin']} />}>
+            <Route path="lab/pb/admin1">
+              <Route index element={<LabPBAdmin1 />} />
 
-            <Route path="analisa" element={<QCAnalisaForm />} />
-            <Route path="analisa/:id" element={<QCAnalisaView mode="view" />} />
-            <Route path="analisa/:id/edit" element={<QCAnalisaView mode="edit" />} />
+              <Route path="analisa" element={<QCAnalisaForm />} />
+              <Route path="analisa/:id" element={<QCAnalisaView mode="view" />} />
+              <Route path="analisa/:id/edit" element={<QCAnalisaView mode="edit" />} />
 
-            <Route path="resin" element={<ResinInspectionForm />} />
-            <Route path="resin/:id" element={<ResinInspectionView />} />
-            <Route path="resin/:id/edit" element={<ResinInspectionView isEditing />} />
+              <Route path="resin" element={<ResinInspectionForm />} />
+              <Route path="resin/:id" element={<ResinInspectionView />} />
+              <Route path="resin/:id/edit" element={<ResinInspectionView isEditing />} />
 
-            <Route path="flakes" element={<FlakesForm />} />
-            <Route path="flakes/:id" element={<FlakesFormView mode="view" />} />
-            <Route path="flakes/:id/edit" element={<FlakesFormView mode="edit" />} />
+              <Route path="flakes" element={<FlakesForm />} />
+              <Route path="flakes/:id" element={<FlakesFormView mode="view" />} />
+              <Route path="flakes/:id/edit" element={<FlakesFormView mode="edit" />} />
 
-            <Route path="moisture" element={<LabPBForm />} />
-            <Route path="lab-pb-form/:id" element={<LabPBFormView mode="view" />} />
-            <Route path="lab-pb-form/:id/edit" element={<LabPBFormView mode="edit" />} />
+              <Route path="moisture" element={<LabPBForm />} />
+              <Route path="lab-pb-form/:id" element={<LabPBFormView mode="view" />} />
+              <Route path="lab-pb-form/:id/edit" element={<LabPBFormView mode="edit" />} />
 
-            <Route path="dokumen" element={<DokumenList />} />
+              <Route path="dokumen" element={<DokumenList />} />
+            </Route>
           </Route>
 
-          {/* SUPERVISOR */}
-          <Route path="supervisor" element={<SupervisorPage />} />
+          {/* 👁️ VIEW DOKUMEN - ADMIN & SUPERVISOR */}
+          <Route element={<RequireRole allowedRoles={['admin', 'supervisor']} />}>
+            <Route path="view">
+              <Route path="qc/:id" element={<QCAnalisaView mode="view" />} />
+              <Route path="resin/:id" element={<ResinInspectionView mode="view" />} />
+              <Route path="flakes/:id" element={<FlakesFormView mode="view" />} />
+              <Route path="lab-pb/:id" element={<LabPBFormView mode="view" />} />
+            </Route>
+          </Route>
+
+          {/* 👨‍💼 SUPERVISOR PAGE - SUPERVISOR ONLY */}
+          <Route element={<RequireRole allowedRoles={['supervisor']} />}>
+            <Route path="supervisor" element={<SupervisorPage />} />
+          </Route>
 
         </Route>
       </Route>

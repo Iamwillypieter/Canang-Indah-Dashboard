@@ -145,7 +145,6 @@ const Register = () => {
         <div className="luxury-card">
           <div className="register-header">
             <h1 className="register-title">Create Account</h1>
-            <p className="register-subtitle">Join our exclusive platform</p>
           </div>
 
           {error && (
