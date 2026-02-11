@@ -98,7 +98,10 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:3001/api/register', formData);
+      // ✅ Pakai environment variable
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      
+      const response = await axios.post(`${API_URL}/register`, formData);
       
       setSuccess('Registrasi berhasil! Redirecting to login...');
       
@@ -123,8 +126,6 @@ const Register = () => {
       setLoading(false);
     }
   };
-
-  
 
   // Password strength checker
   const getPasswordStrength = (password) => {

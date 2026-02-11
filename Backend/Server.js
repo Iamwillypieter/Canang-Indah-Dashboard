@@ -17,11 +17,19 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 
-app.use(helmet());
+// Update CORS untuk akses jaringan lokal
 app.use(cors({
-  origin: 'http://localhost:5173', 
+  origin: function(origin, callback) {
+    // Izinkan akses tanpa origin (direct browser access) dan dari jaringan lokal
+    if (!origin || origin.startsWith('http://192.168.') || origin.startsWith('http://localhost')) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
+
+app.use(helmet());
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
@@ -1854,8 +1862,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Terjadi kesalahan server' });
 });
 
+// Update binding ke 0.0.0.0 agar bisa diakses dari jaringan lokal
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`🚀 Canang Indah Dashboard API running on port ${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Canang Indah Dashboard API running on ${HOST}:${PORT}`);
+  console.log(`🌐 Network accessible at: http://192.168.88.33:${PORT}`);
   console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
 });

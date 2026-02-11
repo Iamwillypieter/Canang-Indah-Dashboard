@@ -41,8 +41,11 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // ✅ Pakai environment variable
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      
       const res = await axios.post(
-        'http://localhost:3001/api/login',
+        `${API_URL}/login`,
         formData
       );
 
