@@ -1868,6 +1868,6 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Canang Indah Dashboard API running on ${HOST}:${PORT}`);
-  console.log(`🌐 Network accessible at: http://192.168.88.33:${PORT}`);
+  console.log(`🌐 Network accessible at: http://192.168.3.248:${PORT}`);
   console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
 });
