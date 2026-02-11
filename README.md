@@ -226,10 +226,15 @@ Lab PB Page
 <img width="2530" height="1098" alt="Screenshot 2026-02-11 093115" src="https://github.com/user-attachments/assets/90081430-3489-4de5-a0af-8268cc9f4677" />
 
 Supervisor Page
-<img width="2528" height="1103" alt="Screenshot 2026-02-11 093551" src="https://github.com/user-attachments/assets/157e409f-b718-40a4-864c-bdb99819b6a2" />
-<img width="2527" height="1101" alt="Screenshot 2026-02-11 094054" src="https://github.com/user-attachments/assets/23ed9410-8a9b-488c-95d8-c9cc38178b9d" />
-<img width="2530" height="1098" alt="Screenshot 2026-02-11 093115" src="https://github.com/user-attachments/assets/6b862c8f-b000-4020-9746-049e0bc6b09e" />
-<img width="2526" height="1101" alt="Screenshot 2026-02-11 094307" src="https://github.com/user-attachments/assets/22b3d267-d97d-49c5-abfe-ce14e877e1f8" />
+
+<img width="2528" height="1103" alt="Screenshot 2026-02-11 093551" src="https://github.com/user-attachments/assets/685f5722-8399-4862-892c-cbdc3720e426" />
+
+<img width="2527" height="1101" alt="Screenshot 2026-02-11 094054" src="https://github.com/user-attachments/assets/40d09aac-830e-435c-afdb-2d003cf88bd9" />
+
+<img width="2528" height="1100" alt="Screenshot 2026-02-11 094252" src="https://github.com/user-attachments/assets/f2fa9063-4ed7-47a9-b445-1fe7711d2458" />
+
+<img width="2526" height="1101" alt="Screenshot 2026-02-11 094307" src="https://github.com/user-attachments/assets/bed1723c-33db-4e8e-8973-6db60b258f77" />
+
 
 
 
