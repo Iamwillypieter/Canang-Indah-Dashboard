@@ -5,7 +5,6 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Header Section */
 .flakes-view-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -41,7 +40,6 @@
   font-weight: 500;
 }
 
-/* Meta Info */
 .doc-meta-info {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -69,7 +67,6 @@
   font-weight: 600;
 }
 
-/* Summary Stats */
 .summary-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -101,7 +98,6 @@
   font-weight: 700;
 }
 
-/* Header Actions */
 .header-actions {
   display: flex;
   gap: 12px;
@@ -151,7 +147,6 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-/* Form Section */
 .flakes-view-form {
   background: white;
   padding: 30px;
@@ -159,7 +154,6 @@
   box-shadow: 0 2px 12px rgba(0,0,0,0.1);
 }
 
-/* Loading State */
 .flakes-view-loading {
   text-align: center;
   padding: 80px 20px;

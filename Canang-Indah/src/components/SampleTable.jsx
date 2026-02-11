@@ -1,4 +1,3 @@
-// src/components/ui/SampleTable.jsx
 import { useState } from 'react';
 
 export default function SampleTable({ samples = [], onSamplesChange }) {

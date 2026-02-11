@@ -41,7 +41,6 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // ✅ Pakai environment variable
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
       
       const res = await axios.post(
@@ -54,7 +53,7 @@ const Login = () => {
       // ===== AUTH STORAGE =====
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('isAuth', 'true'); // 🔥 penting
+      localStorage.setItem('isAuth', 'true');
 
       // ===== REDIRECT KE ROOT =====
       navigate('/', { replace: true });

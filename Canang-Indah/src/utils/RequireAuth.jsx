@@ -1,11 +1,10 @@
-// utils/RequireAuth.jsx
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 export default function RequireAuth() {
   const isAuth = localStorage.getItem("isAuth") === "true";
   const location = useLocation();
 
-  // ✅ BIARKAN PUBLIC ROUTE LEWAT
+  // PUBLIC ROUTE LEWAT
   if (
     location.pathname === "/login" ||
     location.pathname === "/register"
@@ -13,7 +12,7 @@ export default function RequireAuth() {
     return <Outlet />;
   }
 
-  // 🔐 PROTECTED ROUTE - CHECK AUTH FIRST
+  // PROTECTED ROUTE - CHECK AUTH FIRST
   if (!isAuth) {
     return <Navigate to="/login" replace />;
   }

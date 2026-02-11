@@ -54,7 +54,6 @@ export default function DocumentList() {
 
           const data = await res.json();
 
-          // 🔥 NORMALISASI DI SINI
           const docsArray = Array.isArray(data)
             ? data
             : data.documents || [];

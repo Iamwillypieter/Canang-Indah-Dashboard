@@ -8,7 +8,6 @@ export default function LabPBAdmin1() {
   const [error, setError] = useState("");
 
   const handleNavigate = (path) => {
-    // 🚫 Cek koneksi internet
     if (!navigator.onLine) {
       setError("❌ Tidak ada koneksi internet. Periksa jaringan kamu.");
       return;
@@ -17,25 +16,23 @@ export default function LabPBAdmin1() {
     setError("");
     setLoading(true);
 
-    // ⏳ Transisi halus (UX)
     setTimeout(() => {
       navigate(path);
     }, 300);
   };
 
-  // 🛑 Timeout pengaman (anti loading selamanya)
+  // Timeout pengaman 
   useEffect(() => {
     if (!loading) return;
 
     const timeout = setTimeout(() => {
       setLoading(false);
       setError("⏱️ Koneksi lambat atau halaman gagal dimuat. Coba lagi.");
-    }, 8000); // maksimal 8 detik loading
+    }, 8000);
 
     return () => clearTimeout(timeout);
   }, [loading]);
 
-  // 🌐 Listener online/offline
   useEffect(() => {
     const handleOffline = () => {
       setLoading(false);
@@ -57,7 +54,7 @@ export default function LabPBAdmin1() {
 
   return (
     <div className="card-container">
-      {/* 🔄 Loading Overlay */}
+      {/* Loading Overlay */}
       {loading && (
         <div className="page-loading">
           Memuat halaman
@@ -66,7 +63,7 @@ export default function LabPBAdmin1() {
 
       <h2>📊 Lab PB - Admin 1</h2>
 
-      {/* ❗ Error Message */}
+      {/*Error Message */}
       {error && (
         <div className="error-banner">
           {error}

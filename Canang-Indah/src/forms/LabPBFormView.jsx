@@ -957,7 +957,6 @@ export default function LabPBFormView({ mode = 'view' }) {
           </div>
         </div>
 
-        {/* TOMBOL AKSI */}
         <div className="form-actions">
           {!isReadOnly ? (
             <>

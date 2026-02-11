@@ -146,7 +146,6 @@ export function useLabPBFormData() {
 
   const [samples, setSamples, clearSamplesData] = useFormPersistence('samples', createInitialSamples());
 
-  // Clear All
   const clearAllFormData = () => {
     if (window.confirm('⚠️ Apakah Anda yakin ingin menghapus semua data form yang sudah diisi?')) {
       clearFormData();
@@ -165,7 +164,6 @@ export function useLabPBFormData() {
     }
   };
 
-  // Auto set timestamp
   useEffect(() => {
     if (!formData.board_no && !formData.tested_by) {
       setFormData(prev => ({

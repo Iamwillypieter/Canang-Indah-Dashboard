@@ -963,6 +963,7 @@
     background: transparent;
     box-shadow: none;
     -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .title::after,
@@ -975,7 +976,6 @@
   }
 }
 
-/* ========== VALIDATION STYLES ========== */
 .input-group input:required:invalid:not(:focus):not(:placeholder-shown) {
   border-color: var(--accent-orange);
 }
@@ -988,7 +988,6 @@
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
-/* ========== ACCESSIBILITY ========== */
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
@@ -1004,7 +1003,6 @@
   outline-offset: 2px;
 }
 
-/* ========== PROGRESS INDICATOR ========== */
 .flakes-container::after {
   content: '';
   position: fixed;
@@ -1027,7 +1025,6 @@
   }
 }
 
-/* ========== BADGE FOR REQUIRED FIELDS ========== */
 .input-group.required::before {
   content: '*';
   color: var(--accent-orange);
@@ -1035,7 +1032,6 @@
   margin-right: 4px;
 }
 
-/* ========== TOOLTIP FOR REQUIRED ========== */
 .input-group input[required]:hover:not(:focus)::after {
   content: 'Wajib diisi';
   position: absolute;
@@ -1047,13 +1043,12 @@
   margin-top: 4px;
 }
 
-/* ========== FOCUS VISIBLE FOR ACCESSIBILITY ========== */
+/* ========== FOCUS VIIBLE FOR ACCESSIBILITY ========== */
 .flakes-form *:focus-visible {
   outline: 2px solid var(--primary-forest);
   outline-offset: 2px;
 }
 
-/* ========== DISABLED OVERLAY ========== */
 .flakes-form:has(.btn-submit:disabled) {
   position: relative;
 }
@@ -1070,19 +1065,16 @@
   cursor: not-allowed;
 }
 
-/* ========== SUCCESS STATE ========== */
 .flakes-form.success {
   border-color: var(--success-green);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
-/* ========== ERROR STATE ========== */
 .flakes-form.error {
   border-color: var(--accent-orange);
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
 }
 
-/* ========== HOVER EFFECTS ENHANCEMENT ========== */
 .btn-back:hover,
 .btn-submit:hover {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
@@ -1093,7 +1085,6 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
-/* ========== INPUT PLACEHOLDER ========== */
 .input-group input::placeholder,
 .input-group textarea::placeholder {
   color: var(--text-muted);
@@ -1101,12 +1092,10 @@
   font-style: italic;
 }
 
-/* ========== TABLE HEADER HOVER ========== */
 .flakes-table thead th:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* ========== FOOTER HOVER ========== */
 .footer-pemeriksa input:hover:not(:focus):not(:disabled) {
   border-color: var(--border-medium);
   background: rgba(248, 250, 252, 0.8);

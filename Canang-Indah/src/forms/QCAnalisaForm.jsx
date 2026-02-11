@@ -5,7 +5,6 @@ import QCAnalisaHeader from "../components/QCAnalisaHeader.jsx";
 
 const STORAGE_KEY = "qcAnalisaScreenDraft";
 
-// ✅ Pindahkan function ini ke atas sebelum useState
 const getInitialData = () => ({
   tanggalDefault: new Date().toISOString().split("T")[0],
   shiftDefault: "Shift A",

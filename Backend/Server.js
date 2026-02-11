@@ -137,7 +137,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Username harus 3-50 karakter' });
     }
     
-    // Validasi username format (hanya alphanumeric dan underscore)
+    // Validasi username format
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       return res.status(400).json({ error: 'Username hanya boleh mengandung huruf, angka, dan underscore' });
     }
@@ -249,7 +249,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   }
 });
 
-// Route dashboard (proteksi dengan token)
+// Route dashboard
 app.get('/api/dashboard', authenticateToken, (req, res) => {
   res.json({
     message: `Welcome ${req.user.username} (${req.user.role})`,
@@ -284,7 +284,7 @@ app.post("/api/qc-analisa", async (req, res) => {
 
     await client.query("BEGIN");
 
-    // 1️⃣ insert dokumen
+    // insert dokumen
     const docResult = await client.query(
       `INSERT INTO qc_analisa_documents (title, tanggal, shift_group)
        VALUES ($1,$2,$3)
@@ -298,7 +298,7 @@ app.post("/api/qc-analisa", async (req, res) => {
 
     const documentId = docResult.rows[0].id;
 
-    // 2️⃣ insert detail rows
+    // insert detail rows
     for (const row of validRows) {
       await client.query(
         `INSERT INTO qc_analisa_screen (
@@ -398,7 +398,7 @@ app.delete("/api/qc-analisa-documents/:id", async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // Hapus detail rows terlebih dahulu
+    // Hapus detail rows
     await client.query(
       "DELETE FROM qc_analisa_screen WHERE document_id = $1",
       [id]
@@ -684,7 +684,7 @@ app.delete("/api/resin-inspection-documents/:id", async (req, res) => {
    FLAKES DOCUMENTS API
 ========================= */
 
-// CREATE - Simpan Flakes Document Baru
+// CREATE Flakes Document Baru
 app.post("/api/flakes-documents", async (req, res) => {
   const client = await pool.connect();
   try {
@@ -702,7 +702,7 @@ app.post("/api/flakes-documents", async (req, res) => {
     await client.query("BEGIN");
 
     try {
-      // 1️⃣ Insert dokumen utama
+      // Insert dokumen utama
       const docResult = await client.query(
         `INSERT INTO flakes_documents (title, created_at, updated_at)
          VALUES ($1, NOW(), NOW())
@@ -712,7 +712,7 @@ app.post("/api/flakes-documents", async (req, res) => {
 
       const documentId = docResult.rows[0].id;
 
-      // 2️⃣ Insert header
+      //  Insert header
       await client.query(
         `INSERT INTO flakes_header (
           document_id, tanggal, jam, shift, ukuran_papan, 
@@ -731,7 +731,7 @@ app.post("/api/flakes-documents", async (req, res) => {
         ]
       );
 
-      // 3️⃣ Insert detail rows
+      //  Insert detail rows
       for (const row of detail) {
         await client.query(
           `INSERT INTO flakes_detail (document_id, tebal, jumlah, total_ketebalan, created_at)
@@ -745,7 +745,7 @@ app.post("/api/flakes-documents", async (req, res) => {
         );
       }
 
-      // 4️⃣ Insert summary
+      //  Insert summary
       await client.query(
         `INSERT INTO flakes_summary (
           document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at
@@ -782,7 +782,7 @@ app.post("/api/flakes-documents", async (req, res) => {
   }
 });
 
-// READ - List semua Flakes documents
+// READ Flakes documents
 app.get("/api/flakes-documents", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -815,7 +815,7 @@ app.get("/api/flakes-documents", async (req, res) => {
   }
 });
 
-// READ - Detail Flakes document
+// READ Flakes document
 app.get("/api/flakes-documents/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -886,7 +886,7 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
   }
 });
 
-// UPDATE - Update Flakes document
+// UPDATE Flakes document
 app.put("/api/flakes-documents/:id", async (req, res) => {
   const { id } = req.params;
   const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
@@ -1007,7 +1007,7 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
   }
 });
 
-// DELETE - Hapus Flakes document
+// DELETE Flakes document
 app.delete("/api/flakes-documents/:id", async (req, res) => {
   const { id } = req.params;
   const client = await pool.connect();
@@ -1015,7 +1015,6 @@ app.delete("/api/flakes-documents/:id", async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // Delete dari tabel yang punya foreign key terlebih dahulu
     await client.query(`DELETE FROM flakes_summary WHERE document_id = $1`, [id]);
     await client.query(`DELETE FROM flakes_detail WHERE document_id = $1`, [id]);
     await client.query(`DELETE FROM flakes_header WHERE document_id = $1`, [id]);
@@ -1070,7 +1069,7 @@ app.post('/api/lab-pb', async (req, res) => {
 
     await client.query('BEGIN');
 
-    // 1️⃣ Simpan dokumen utama
+    // Simpan dokumen utama
     const docResult = await client.query(
       `INSERT INTO lab_pb_documents (
         timestamp, board_no, set_weight, shift_group, tested_by,
@@ -1086,7 +1085,7 @@ app.post('/api/lab-pb', async (req, res) => {
     );
     const documentId = docResult.rows[0].id;
 
-    // 2️⃣ Simpan samples (24 pcs)
+    //  Simpan samples (24 pcs)
     for (const sample of samples) {
       await client.query(
         `INSERT INTO lab_pb_samples (
@@ -1103,7 +1102,7 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    // 3️⃣ Simpan Internal Bonding
+    //  Simpan Internal Bonding
     const positions = ['le', 'ml', 'md', 'mr', 'ri'];
     for (const pos of positions) {
       await client.query(
@@ -1121,7 +1120,7 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    // 4️⃣ Simpan Bending Strength
+    // Simpan Bending Strength
     for (const pos of positions) {
       await client.query(
         `INSERT INTO lab_pb_bending_strength (
@@ -1138,7 +1137,7 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    // 5️⃣ Simpan Screw Test
+    // Simpan Screw Test
     for (const pos of positions) {
       await client.query(
         `INSERT INTO lab_pb_screw_test (
@@ -1155,7 +1154,7 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    // 6️⃣ Simpan Density Profile
+    //  Simpan Density Profile
     for (const pos of positions) {
       const min = densityProfileData[`min_${pos}`];
       const mean = densityProfileData[`mean_${pos}`];
@@ -1177,7 +1176,7 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    // 7️⃣ Simpan MC Board
+    // Simpan MC Board
     for (const pos of positions) {
       const w1 = mcBoardData[`w1_${pos}`];
       const w2 = mcBoardData[`w2_${pos}`];
@@ -1200,7 +1199,7 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    // 8️⃣ Simpan Swelling 2h
+    // Simpan Swelling 2h
     for (const pos of positions) {
       const t1 = swellingData[`t1_${pos}`];
       const t2 = swellingData[`t2_${pos}`];
@@ -1223,7 +1222,7 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    // 9️⃣ Simpan Surface Soundness
+    // Simpan Surface Soundness
     for (const pos of ['le', 'ri']) {
       await client.query(
         `INSERT INTO lab_pb_surface_soundness (
@@ -1238,7 +1237,7 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    // 🔟 Simpan Additional Tests (single row)
+    // Simpan Additional Tests
     await client.query(
       `INSERT INTO lab_pb_additional_tests (
         document_id, avg_tebal_flakes, avg_cons_hardener, geltime_sl, geltime_cl
@@ -1307,7 +1306,7 @@ app.get('/api/lab-pb-documents', async (req, res) => {
 
     const result = await pool.query(query, params);
 
-    // Hitung total untuk pagination
+    // Hitung total  
     let countQuery = `
       SELECT COUNT(*) as total 
       FROM lab_pb_documents 
@@ -1361,7 +1360,7 @@ app.get('/api/lab-pb/:id', async (req, res) => {
 
     const doc = docResult.rows[0];
 
-    // Ambil semua data terkait
+    // Ambil semua data
     const [
       samples,
       ibTests,
@@ -1384,7 +1383,7 @@ app.get('/api/lab-pb/:id', async (req, res) => {
       pool.query('SELECT * FROM lab_pb_additional_tests WHERE document_id = $1', [id])
     ]);
 
-    // Format data sesuai struktur frontend
+    // Format data sesuai struktur
     const formattedData = {
       document: {
         id: doc.id,
@@ -1551,7 +1550,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
 
     await client.query('BEGIN');
 
-    // 1️⃣ Update dokumen utama
+    // Update dokumen utama
     await client.query(
       `UPDATE lab_pb_documents SET
         timestamp = $1, board_no = $2, set_weight = $3, shift_group = $4,
@@ -1567,7 +1566,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       ]
     );
 
-    // 2️⃣ Hapus data lama terkait
+    // Hapus data lama 
     await Promise.all([
       client.query('DELETE FROM lab_pb_samples WHERE document_id = $1', [id]),
       client.query('DELETE FROM lab_pb_internal_bonding WHERE document_id = $1', [id]),
@@ -1580,7 +1579,6 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       client.query('DELETE FROM lab_pb_additional_tests WHERE document_id = $1', [id])
     ]);
 
-    // 3️⃣ Insert ulang semua data (sama seperti POST)
     // Simpan samples
     for (const sample of samples) {
       await client.query(
@@ -1776,7 +1774,7 @@ app.delete('/api/lab-pb-documents/:id', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Hapus dokumen (CASCADE akan otomatis hapus semua child tables)
+
     const result = await client.query(
       `DELETE FROM lab_pb_documents WHERE id = $1 RETURNING id, board_no`,
       [id]
@@ -1828,24 +1826,6 @@ app.get('/api/lab-pb-form-documents', async (req, res) => {
 });
 
 
-// /* =========================
-// ERROR HANDLING MIDDLEWARE
-// ========================= */
-// app.use((req, res) => {
-//   res.status(404).json({ 
-//     error: 'Endpoint tidak ditemukan',
-//     path: req.originalUrl
-//   });
-// });
-
-// app.use((err, req, res, next) => {
-//   console.error('❌ UNHANDLED ERROR:', err);
-//   res.status(500).json({ 
-//     error: 'Terjadi kesalahan internal server',
-//     detail: process.env.NODE_ENV === 'development' ? err.message : undefined
-//   });
-// });
-
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -1862,12 +1842,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Terjadi kesalahan server' });
 });
 
-// Update binding ke 0.0.0.0 agar bisa diakses dari jaringan lokal
+//akses jaringan lokal
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 
 app.listen(PORT, HOST, () => {
-  console.log(`🚀 Canang Indah Dashboard API running on ${HOST}:${PORT}`);
-  console.log(`🌐 Network accessible at: http://192.168.3.248:${PORT}`);
-  console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Canang Indah Dashboard API running on ${HOST}:${PORT}`);
+  console.log(`Network accessible at: http://192.168.3.248:${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

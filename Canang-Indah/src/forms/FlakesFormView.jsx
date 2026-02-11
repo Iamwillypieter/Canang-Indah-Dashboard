@@ -47,7 +47,6 @@ export default function FlakesFormView() {
     navigate('/lab/pb/admin1/documents');
   };
 
-  // Helper function untuk format number dengan aman
   const formatNumber = (value, decimals = 2) => {
     if (value === null || value === undefined) return '0';
     const num = parseFloat(value);
@@ -81,7 +80,6 @@ export default function FlakesFormView() {
 
   return (
     <div className="flakes-view-container">
-      {/* Header Section */}
       <div className="flakes-view-header">
         <div className="header-content">
           <div className="header-title-section">
@@ -167,7 +165,6 @@ export default function FlakesFormView() {
         </div>
       </div>
 
-      {/* Form Section */}
       <div className="flakes-view-form">
         <FlakesForm isEditMode={isEditMode} />
       </div>

@@ -39,10 +39,10 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route path="/" element={<DashboardLayout />}>
 
-          {/* 🏠 HOME PAGE - ALL ROLES */}
+          {/*  HOME PAGE - ALL ROLES */}
           <Route index element={<HomePage />} />
 
-          {/* 🔒 LAB PB - ADMIN ONLY */}
+          {/* LAB PB - ADMIN ONLY */}
           <Route element={<RequireRole allowedRoles={['admin']} />}>
             <Route path="lab/pb/admin1">
               <Route index element={<LabPBAdmin1 />} />
@@ -67,7 +67,7 @@ export default function App() {
             </Route>
           </Route>
 
-          {/* 👁️ VIEW DOKUMEN - ADMIN & SUPERVISOR */}
+          {/* VIEW DOKUMEN - ADMIN & SUPERVISOR */}
           <Route element={<RequireRole allowedRoles={['admin', 'supervisor']} />}>
             <Route path="view">
               <Route path="qc/:id" element={<QCAnalisaView mode="view" />} />
@@ -77,7 +77,7 @@ export default function App() {
             </Route>
           </Route>
 
-          {/* 👨‍💼 SUPERVISOR PAGE - SUPERVISOR ONLY */}
+          {/* SUPERVISOR PAGE - SUPERVISOR ONLY */}
           <Route element={<RequireRole allowedRoles={['supervisor']} />}>
             <Route path="supervisor" element={<SupervisorPage />} />
           </Route>

@@ -1,6 +1,3 @@
-/* =======================
-   GLOBAL
-======================= */
 .resin-view {
   padding: 24px;
   background: #f8fafc;
@@ -8,9 +5,6 @@
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* =======================
-   HEADER
-======================= */
 .resin-header {
   display: flex;
   justify-content: space-between;
@@ -34,9 +28,6 @@
   color: #64748b;
 }
 
-/* =======================
-   ACTION BUTTONS
-======================= */
 .resin-actions {
   display: flex;
   gap: 10px;
@@ -63,9 +54,6 @@
 .btn-delete { background: #dc2626; color: #fff; }
 .btn-back { background: #0f172a; color: #fff; }
 
-/* =======================
-   SECTION
-======================= */
 .resin-section {
   background: #ffffff;
   padding: 20px;
@@ -80,9 +68,6 @@
   font-weight: 600;
 }
 
-/* =======================
-   TABLE
-======================= */
 .resin-table-wrapper {
   overflow-x: auto;
 }
@@ -113,9 +98,6 @@
   background: #f9fafb;
 }
 
-/* =======================
-   INPUT
-======================= */
 .resin-table input {
   width: 100%;
   padding: 6px 8px;
@@ -130,9 +112,6 @@
   box-shadow: 0 0 0 1px rgba(37,99,235,0.3);
 }
 
-/* =======================
-   SAMPLE TIME
-======================= */
 .sample-time {
   font-size: 14px;
   font-weight: 600;

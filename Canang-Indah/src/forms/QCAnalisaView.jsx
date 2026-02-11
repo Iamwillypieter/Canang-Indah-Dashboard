@@ -63,7 +63,6 @@ export default function QCAnalisaView() {
         diperiksa_oleh: row.diperiksa_oleh || ""
       }));
 
-      // === TAMBAH ROW KOSONG SAMPAI 32 ===
       const filledRows = [...serverRows];
       for (let i = serverRows.length; i < TOTAL_ROWS; i++) {
         filledRows.push(createEmptyRow(i));
@@ -92,7 +91,6 @@ export default function QCAnalisaView() {
   const handleUpdate = async (e) => {
     e.preventDefault();
 
-    // 🔥 FILTER: jangan simpan row kosong
     const filteredRows = formData.rows.filter(
       (r) =>
         r.material ||

@@ -2,8 +2,7 @@
 import { Outlet } from 'react-router-dom';
 
 export default function LabPBPage() {
-  console.log('✅ LabPBPage dirender!'); // ← TAMBAHKAN INI
-
+  console.log('✅ LabPBPage dirender!');
   return (
     <div style={{ display: 'flex', gap: '20px' }}>
       {/* Submenu */}

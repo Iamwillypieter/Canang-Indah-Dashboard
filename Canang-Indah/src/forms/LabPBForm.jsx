@@ -22,7 +22,6 @@ import {
   formatNumber
 } from '../utils/calculations.js';
 
-// Import Sections
 import DataUtamaSection from '../sections/DataUtamaSection.jsx';
 import InternalBondingSection from '../sections/InternalBondingSection.jsx';
 import BendingStrangeSection from '../sections/BendingStrangeSection';
@@ -38,7 +37,6 @@ import GeltimeSection from '../sections/GeltimeSection';
 export default function LabPBForm() {
   console.log('✅ LabPBForm dirender!');
 
-  // State Management dari Custom Hook
   const {
     formData,
     setFormData,
@@ -318,7 +316,6 @@ export default function LabPBForm() {
       <h2 className="lab-form-title">📝 Input Laporan Lab PB</h2>
       
       <form onSubmit={handleSubmit}>
-        {/* Sections */}
         <DataUtamaSection 
           formData={formData} 
           samples={samples} 
@@ -396,9 +393,7 @@ export default function LabPBForm() {
           <button type="submit" className="submit-button">
             Kirim Laporan
           </button>
-          {/* <button type="button" onClick={clearAllFormData} className="clear-button-secondary">
-            🗑️ Clear Form
-          </button> */}
+          
         </div>
       </form>
     </div>

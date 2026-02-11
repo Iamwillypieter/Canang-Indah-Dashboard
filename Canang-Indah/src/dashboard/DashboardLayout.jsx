@@ -43,7 +43,7 @@ export default function DashboardLayout() {
     }
   };
 
-  // ✅ Ambil data user dari localStorage
+  //  Ambil data user dari localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -88,7 +88,6 @@ export default function DashboardLayout() {
 
   return (
     <div className="dashboard-layout">
-      {/* Header */}
       <header className="dashboard-header">
         <div className="logo">
           <img src={logo} alt="PT Canang Indah Logo" className="logo-image" />
@@ -96,7 +95,6 @@ export default function DashboardLayout() {
 
         <div className="title-dashboard">Laboratory Dashboard</div>
         
-        {/* User Info */}
         <div className="user-info">
           <div className="user-avatar">
             👤
@@ -112,11 +110,9 @@ export default function DashboardLayout() {
       </header>
 
       <div className="dashboard-body">
-        {/* Sidebar */}
         <aside className="sidebar">
           <nav>
             <ul>
-              {/* 🏠 HOME - ALL ROLES */}
               <li className={location.pathname === '/' ? 'active' : ''}>
                 <Link to="/">
                   <span className="menu-icon">🏠</span>
@@ -124,7 +120,6 @@ export default function DashboardLayout() {
                 </Link>
               </li>
 
-              {/* 🔒 LAB PB - ADMIN ONLY */}
               {userRole === 'admin' && (
                 <li className={`menu-parent ${isLabPBPage ? 'active' : ''}`}>
                   <Link 
@@ -159,7 +154,6 @@ export default function DashboardLayout() {
                 </li>
               )}
 
-              {/* 🔒 LAB MDF - ADMIN ONLY (DISABLED) */}
               {userRole === 'admin' && (
                 <li className="disabled">
                   <Link to="/lab/mdf">
@@ -169,7 +163,6 @@ export default function DashboardLayout() {
                 </li>
               )}
 
-              {/* 👨‍💼 SUPERVISOR - SUPERVISOR ONLY */}
               {userRole === 'supervisor' && (
                 <li className={location.pathname.startsWith('/supervisor') ? 'active' : ''}>
                   <Link to="/supervisor">
@@ -181,7 +174,6 @@ export default function DashboardLayout() {
 
             </ul>
 
-            {/* Logout Button */}
             <div className="sidebar-footer">
               <button 
                 onClick={handleLogout} 
@@ -195,13 +187,11 @@ export default function DashboardLayout() {
           </nav>
         </aside>
 
-        {/* Main Content */}
         <main className="main-content">
           <Outlet />
         </main>
       </div>
 
-      {/* Loading Overlay */}
       {isLoggingOut && (
         <div className="loading-overlay">
           <div className="loading-container">

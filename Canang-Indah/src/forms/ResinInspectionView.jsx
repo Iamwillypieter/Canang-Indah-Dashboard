@@ -29,7 +29,7 @@ export default function ResinInspectionView() {
         comment_by: data.document.comment_by || "",
         createdBy: data.document.created_by || "",
         inspection: data.inspection.map(row => ({
-          id: row.id, // simpan ID untuk keperluan update di backend jika perlu
+          id: row.id,
           certTestNo: row.cert_test_no || "",
           resinTank: row.resin_tank || "",
           quantity: row.quantity || "",
@@ -125,7 +125,7 @@ export default function ResinInspectionView() {
     );
   }
 
-  // Helper untuk render cell (Text vs Input)
+  // Helper untuk render cell 
   const renderCell = (value, onChangeFn, type = "text") => {
     if (isEditing) {
       return <input type={type} value={value} onChange={(e) => onChangeFn(e.target.value)} className="edit-input" />;
@@ -153,7 +153,7 @@ export default function ResinInspectionView() {
                 className="btn-cancel"
                 onClick={() => {
                   setIsEditing(false);
-                  fetchDocument(); // Reset data
+                  fetchDocument();
                 }}
               >
                 ✖️ Batal

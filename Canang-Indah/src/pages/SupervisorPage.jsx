@@ -1,4 +1,3 @@
-// src/pages/SupervisorPage.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./SupervisorPage.css";
@@ -10,25 +9,25 @@ const FORM_TYPES = {
   qc: {
     label: "QC Analisa",
     icon: "🧪",
-    route: "/view/qc",  // ✅ CHANGE TO /view/qc
+    route: "/view/qc",
     endpoint: `${API_BASE}/qc-analisa-documents`
   },
   resin: {
     label: "Resin Inspection",
     icon: "🧴",
-    route: "/view/resin",  // ✅ CHANGE TO /view/resin
+    route: "/view/resin",  
     endpoint: `${API_BASE}/resin-inspection-documents`
   },
   flakes: {
     label: "Flakes Inspection",
     icon: "🪵",
-    route: "/view/flakes",  // ✅ CHANGE TO /view/flakes
+    route: "/view/flakes", 
     endpoint: `${API_BASE}/flakes-documents`
   },
   labPBForm: {
     label: "Lab PB Form",
     icon: "🏭",
-    route: "/view/lab-pb",  // ✅ CHANGE TO /view/lab-pb
+    route: "/view/lab-pb", 
     endpoint: `${API_BASE}/lab-pb-documents`
   }
 };
@@ -194,7 +193,7 @@ export default function SupervisorPage() {
                 <Link
                   to={`${config.route}/${doc.id}`}
                   className="btn-view-full"
-                  onClick={(e) => e.stopPropagation()} // Prevent card click
+                  onClick={(e) => e.stopPropagation()} 
                 >
                   👁️ View Full Document
                 </Link>
@@ -302,7 +301,6 @@ export default function SupervisorPage() {
 
                       {/* Tampilkan field-field lainnya */}
                       {Object.entries(selectedDoc).map(([key, value]) => {
-                        // Skip field yang sudah ditampilkan atau internal
                         const skipFields = [
                           'id', 'title', 'type', 'status', 
                           'created_at', 'updated_at', 'documents',
@@ -313,7 +311,6 @@ export default function SupervisorPage() {
                           return null;
                         }
                         
-                        // Skip jika value null/undefined atau empty array/object
                         if (value === null || value === undefined) {
                           return null;
                         }

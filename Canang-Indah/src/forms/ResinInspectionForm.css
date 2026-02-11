@@ -1,6 +1,3 @@
-/* src/pages/ResinInspectionForm.css */
-
-/* ========== GLOBAL STYLES ========== */
 :root {
   --primary-teal: #0d9488;
   --primary-dark-teal: #0f766e;
@@ -30,7 +27,6 @@
   box-sizing: border-box;
 }
 
-/* ========== FORM WRAPPER ========== */
 .form-wrapper {
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
@@ -52,7 +48,6 @@
   z-index: -1;
 }
 
-/* ========== FORM TITLE ========== */
 .form-title {
   font-size: 42px;
   font-weight: 800;
@@ -89,7 +84,6 @@
   background: var(--border-medium);
 }
 
-/* ========== FORM ========== */
 form {
   max-width: 1400px;
   margin: 0 auto;
@@ -100,7 +94,6 @@ form {
   border: 1px solid var(--border-light);
 }
 
-/* ========== TABLES ========== */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -111,7 +104,6 @@ table {
   box-shadow: var(--shadow-md);
 }
 
-/* Table Header */
 table thead {
   background: linear-gradient(135deg, var(--primary-teal) 0%, var(--primary-dark-teal) 100%);
   color: var(--white);
@@ -137,7 +129,6 @@ table thead th:not(:last-child)::after {
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* Table Body */
 table tbody tr {
   border-bottom: 1px solid var(--border-light);
   transition: var(--transition);
@@ -158,7 +149,6 @@ table tbody td {
   border: none;
 }
 
-/* Label Cells */
 table .label {
   font-weight: 700;
   color: var(--secondary-blue);
@@ -178,7 +168,6 @@ table .label::before {
   background: var(--primary-teal);
 }
 
-/* Input Cells */
 table input {
   width: 100%;
   padding: 10px 14px;
@@ -203,7 +192,6 @@ table input::placeholder {
   opacity: 1;
 }
 
-/* Input with Unit */
 .cell {
   display: flex;
   align-items: center;
@@ -219,13 +207,11 @@ table input::placeholder {
   text-align: right;
 }
 
-/* Inspection Table Specific */
 table thead tr:first-child th:first-child {
   text-align: left;
   padding-left: 20px;
 }
 
-/* ========== FOOTER TABLE ========== */
 .footer-table {
   margin-top: 40px;
   margin-bottom: 50px;
@@ -243,7 +229,6 @@ table thead tr:first-child th:first-child {
   color: var(--primary-dark-teal);
 }
 
-/* ========== SUBMIT BUTTON ========== */
 .submit {
   width: 100%;
   max-width: 400px;
@@ -301,7 +286,6 @@ table thead tr:first-child th:first-child {
   transform: translateX(5px);
 }
 
-/* ========== SECTION TITLES ========== */
 h3 {
   font-size: 24px;
   font-weight: 700;
@@ -312,12 +296,10 @@ h3 {
   display: inline-block;
 }
 
-/* ========== SOLIDS CONTENT TABLE ========== */
 table.solids-table {
   margin-top: 20px;
 }
 
-/* Sample/Time Column */
 table td[rowSpan] {
   background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(13, 148, 136, 0.03) 100%);
   font-weight: 700;
@@ -326,7 +308,6 @@ table td[rowSpan] {
   vertical-align: middle;
 }
 
-/* ========== RESPONSIVE DESIGN ========== */
 @media (max-width: 1200px) {
   form {
     padding: 32px 24px;
@@ -484,7 +465,6 @@ table td[rowSpan] {
   }
 }
 
-/* ========== ANIMATIONS ========== */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -500,13 +480,11 @@ form {
   animation: fadeIn 0.6s ease-out;
 }
 
-/* ========== FOCUS VISIBLE (Accessibility) ========== */
 table input:focus-visible {
   outline: 2px solid var(--primary-teal);
   outline-offset: 2px;
 }
 
-/* ========== VALIDATION STYLES ========== */
 table input:valid:not(:placeholder-shown) {
   border-color: var(--success-green);
 }
@@ -515,7 +493,6 @@ table input:valid:not(:placeholder-shown):focus {
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
-/* ========== DISABLED STATE ========== */
 table input:disabled {
   background: var(--light-bg);
   color: var(--text-muted);
@@ -523,7 +500,6 @@ table input:disabled {
   opacity: 0.7;
 }
 
-/* ========== PRINT STYLES ========== */
 @media print {
   .form-wrapper {
     background: white;
@@ -557,7 +533,6 @@ table input:disabled {
   }
 }
 
-/* ========== HOVER EFFECTS ========== */
 table tbody tr:hover td {
   color: var(--primary-dark-teal);
 }
@@ -567,7 +542,6 @@ table input:hover:not(:focus) {
   background: rgba(248, 250, 252, 0.8);
 }
 
-/* ========== PROGRESS INDICATOR ========== */
 .form-wrapper::after {
   content: '';
   position: fixed;
@@ -590,7 +564,6 @@ table input:hover:not(:focus) {
   }
 }
 
-/* ========== FORM SECTION DIVIDERS ========== */
 form > table:not(:first-child) {
   margin-top: 24px;
 }
@@ -604,7 +577,6 @@ form > table:not(:first-child)::before {
   margin-bottom: 24px;
 }
 
-/* ========== INPUT GROUPING ========== */
 table input[type="date"] {
   cursor: pointer;
 }
@@ -613,7 +585,6 @@ table input[type="date"]:hover {
   background: rgba(248, 250, 252, 0.9);
 }
 
-/* ========== TABLE STRIPING ========== */
 table tbody tr:nth-child(even) {
   background: rgba(248, 250, 252, 0.5);
 }
@@ -622,7 +593,6 @@ table tbody tr:nth-child(even):hover {
   background: rgba(13, 148, 136, 0.05);
 }
 
-/* ========== ACCESSIBILITY ========== */
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

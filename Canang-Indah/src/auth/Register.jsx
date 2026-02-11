@@ -15,17 +15,14 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Create floating particles
   useEffect(() => {
     const createParticles = () => {
       const container = document.querySelector('.register-container');
       if (!container) return;
 
-      // Clear existing particles
       const existingParticles = container.querySelectorAll('.gold-particle, .emerald-particle');
       existingParticles.forEach(p => p.remove());
 
-      // Create gold particles
       for (let i = 0; i < 10; i++) {
         const particle = document.createElement('div');
         particle.className = 'gold-particle';
@@ -43,7 +40,6 @@ const Register = () => {
         container.appendChild(particle);
       }
 
-      // Create emerald particles
       for (let i = 0; i < 8; i++) {
         const particle = document.createElement('div');
         particle.className = 'emerald-particle';
@@ -64,7 +60,6 @@ const Register = () => {
 
     createParticles();
     
-    // Cleanup on unmount
     return () => {
       const particles = document.querySelectorAll('.gold-particle, .emerald-particle');
       particles.forEach(p => p.remove());
@@ -98,14 +93,12 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // ✅ Pakai environment variable
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
       
       const response = await axios.post(`${API_URL}/register`, formData);
       
       setSuccess('Registrasi berhasil! Redirecting to login...');
       
-      // Tunggu 2 detik lalu redirect ke login
       setTimeout(() => {
         navigate('/login');
       }, 2000);
@@ -113,13 +106,10 @@ const Register = () => {
     } catch (err) {
       console.error('Register error:', err.response?.data);
       
-      // Tampilkan detail error dari backend
       if (err.response?.data?.details) {
-        // Error dengan detail (password strength)
         const detailMessage = err.response.data.details.join('\n');
         setError(`${err.response.data.error}:\n${detailMessage}`);
       } else {
-        // Error biasa
         setError(err.response?.data?.error || 'Registrasi gagal. Coba lagi.');
       }
     } finally {
@@ -127,7 +117,6 @@ const Register = () => {
     }
   };
 
-  // Password strength checker
   const getPasswordStrength = (password) => {
     if (password.length === 0) return null;
     if (password.length < 6) return 'weak';
@@ -139,7 +128,6 @@ const Register = () => {
 
   return (
     <>
-      {/* Luxury Background */}
       <div className="luxury-background"></div>
       
       <div className="register-container">
@@ -188,7 +176,6 @@ const Register = () => {
                 minLength="8"
               />
               
-              {/* Password Requirements Checklist */}
               
             </div>
 

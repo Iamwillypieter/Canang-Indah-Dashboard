@@ -3,7 +3,6 @@
   font-family: Inter, system-ui, sans-serif;
 }
 
-/* ===== HEADER ===== */
 .qc-header {
   display: flex;
   justify-content: space-between;
@@ -20,7 +19,6 @@
   font-size: 13px;
 }
 
-/* ===== MODE SWITCH ===== */
 .mode-switch {
   display: flex;
   gap: 8px;
@@ -41,7 +39,6 @@
   border-color: #0ea5e9;
 }
 
-/* ===== TABLE ===== */
 .qc-table-wrapper {
   overflow: auto;
   max-height: 70vh;
@@ -77,7 +74,6 @@
   outline: none;
 }
 
-/* ===== VIEW MODE ===== */
 .view-only {
   background: #f1f5f9;
   color: #475569;
@@ -89,7 +85,6 @@
   font-weight: bold;
 }
 
-/* ===== ACTION ===== */
 .qc-action {
   margin-top: 16px;
   text-align: right;

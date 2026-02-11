@@ -40,7 +40,6 @@ export function useResinInspectionForm() {
         };
   });
 
-  // ✅ AUTO SAVE (INI YANG KAMU MAU)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
   }, [formData]);
@@ -73,13 +72,11 @@ export function useResinInspectionForm() {
       if (!res.ok) throw new Error("Gagal simpan");
 
       alert("✅ Data Resin Inspection berhasil disimpan!");
-      // ❌ TIDAK remove localStorage
     } catch (err) {
       alert("❌ " + err.message);
     }
   };
 
-  // 🔥 CLEAR MANUAL (OPTIONAL)
   const clearForm = () => {
     if (!window.confirm("Hapus semua data form?")) return;
     localStorage.removeItem(STORAGE_KEY);
