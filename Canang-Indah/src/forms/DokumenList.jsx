@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "./DokumenList.css";
 
-const API_BASE = "http://localhost:3001/api";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+console.log('API_BASE:', API_BASE);
 
 /* ================= FORM REGISTRY ================= */
 const FORM_TYPES = {

@@ -10,26 +10,66 @@ import {
   updateFlakes
 } from "../services/flakesService";
 
-export const useFlakesForm = ({ mode, documentId, navigate }) => {
-  const [rows, setRows] = useState(
-    initialThicknesses.map(t => ({ tebal: t, jumlah: 0 }))
-  );
+const STORAGE_KEY = "flakesFormDraft";
 
-  const [header, setHeader] = useState({
-    tanggal: "",
-    jam: "",
-    shift: "",
-    ukuranPapan: "",
-    group: "",
-    jarakPisau: "",
-    keterangan: "",
-    pemeriksa: ""
+export const useFlakesForm = ({ mode, documentId, navigate }) => {
+  const [rows, setRows] = useState(() => {
+    if (mode === "create") {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return parsed.rows || initialThicknesses.map(t => ({ tebal: t, jumlah: 0 }));
+        } catch (e) {
+          console.error('Error parsing saved rows:', e);
+        }
+      }
+    }
+    return initialThicknesses.map(t => ({ tebal: t, jumlah: 0 }));
+  });
+
+  const [header, setHeader] = useState(() => {
+    if (mode === "create") {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return parsed.header || {
+            tanggal: "",
+            jam: "",
+            shift: "",
+            ukuranPapan: "",
+            group: "",
+            jarakPisau: "",
+            keterangan: "",
+            pemeriksa: ""
+          };
+        } catch (e) {
+          console.error('Error parsing saved header:', e);
+        }
+      }
+    }
+    return {
+      tanggal: "",
+      jam: "",
+      shift: "",
+      ukuranPapan: "",
+      group: "",
+      jarakPisau: "",
+      keterangan: "",
+      pemeriksa: ""
+    };
   });
 
   const [isLoading, setIsLoading] = useState(mode !== "create");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // LOAD DATA
+  useEffect(() => {
+    if (mode === "create") {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ rows, header }));
+    }
+  }, [rows, header, mode]);
+
   useEffect(() => {
     if (mode === "edit" || mode === "view") {
       loadData();
@@ -91,6 +131,9 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
           : await createFlakes(payload);
 
       alert("✅ Laporan berhasil disimpan");
+      
+      localStorage.removeItem(STORAGE_KEY);
+      
       navigate(`/lab/pb/admin1/flakes/${result.documentId || documentId}`);
     } catch (e) {
       alert(`❌ ${e.message}`);

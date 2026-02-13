@@ -1,31 +1,62 @@
-const BASE_URL = "http://localhost:3001/api/flakes-documents";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const BASE_URL = `${API_BASE}/flakes-documents`;
+
+// Helper function untuk get auth token
+const getAuthToken = () => {
+  return localStorage.getItem('token');
+};
+
+const apiRequest = async (url, options = {}) => {
+  const token = getAuthToken();
+  
+  const config = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers
+    }
+  };
+
+  const response = await fetch(url, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+  }
+  
+  return response.json();
+};
 
 export const fetchFlakesById = async (id) => {
-  const res = await fetch(`${BASE_URL}/${id}`);
-  if (!res.ok) throw new Error("Gagal memuat data");
-  return res.json();
+  try {
+    return await apiRequest(`${BASE_URL}/${id}`);
+  } catch (error) {
+    console.error('Fetch flakes error:', error);
+    throw new Error("Gagal memuat data");
+  }
 };
 
 export const createFlakes = async (payload) => {
-  const res = await fetch(BASE_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Gagal menyimpan");
-  return data;
+  try {
+    return await apiRequest(BASE_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  } catch (error) {
+    console.error('Create flakes error:', error);
+    throw new Error(error.message || "Gagal menyimpan");
+  }
 };
 
 export const updateFlakes = async (id, payload) => {
-  const res = await fetch(`${BASE_URL}/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Gagal update");
-  return data;
+  try {
+    return await apiRequest(`${BASE_URL}/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    });
+  } catch (error) {
+    console.error('Update flakes error:', error);
+    throw new Error(error.message || "Gagal update");
+  }
 };

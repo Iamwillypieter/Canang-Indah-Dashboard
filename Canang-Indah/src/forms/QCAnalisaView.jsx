@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
 const TOTAL_ROWS = 32;
 
 const createEmptyRow = (index) => ({
@@ -35,10 +37,27 @@ export default function QCAnalisaView() {
     fetchDocument();
   }, [id]);
 
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
   const fetchDocument = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/qc-analisa/${id}`);
+      const token = getAuthToken();
+      
+      const res = await fetch(`${API_BASE}/qc-analisa/${id}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Dokumen tidak ditemukan");
+      }
+
       const data = await res.json();
 
       setDocumentData(data);
@@ -74,8 +93,9 @@ export default function QCAnalisaView() {
         rows: filledRows
       });
     } catch (err) {
-      console.error(err);
-      alert("Gagal memuat dokumen");
+      console.error('Fetch document error:', err);
+      alert("❌ " + (err.message || "Gagal memuat dokumen"));
+      navigate("/lab/pb/admin1/dokumen");
     } finally {
       setLoading(false);
     }
@@ -101,9 +121,14 @@ export default function QCAnalisaView() {
     );
 
     try {
-      const res = await fetch(`http://localhost:3001/api/qc-analisa/${id}`, {
+      const token = getAuthToken();
+      
+      const res = await fetch(`${API_BASE}/qc-analisa/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { "Authorization": `Bearer ${token}` })
+        },
         body: JSON.stringify({
           tanggal: formData.tanggal,
           shift_group: formData.shift_group,
@@ -111,14 +136,17 @@ export default function QCAnalisaView() {
         })
       });
 
-      if (!res.ok) throw new Error("Update gagal");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Update gagal");
+      }
 
       alert("✅ Data berhasil diperbarui");
       setIsEditing(false);
       fetchDocument();
     } catch (err) {
-      alert("❌ Gagal update");
-      console.error(err);
+      console.error('Update error:', err);
+      alert("❌ " + (err.message || "Gagal update"));
     }
   };
 

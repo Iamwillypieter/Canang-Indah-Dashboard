@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ResinInspectionView.css";
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
 export default function ResinInspectionView() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -15,10 +17,27 @@ export default function ResinInspectionView() {
     fetchDocument();
   }, [id]);
 
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
   const fetchDocument = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/resin-inspection/${id}`);
+      const token = getAuthToken();
+      
+      const res = await fetch(`${API_BASE}/resin-inspection/${id}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Dokumen tidak ditemukan");
+      }
+
       const data = await res.json();
       setDocumentData(data);
 
@@ -44,8 +63,9 @@ export default function ResinInspectionView() {
         solidContent: groupSolidRows(data.solidContent)
       });
     } catch (err) {
-      console.error(err);
-      alert("❌ Gagal memuat dokumen");
+      console.error('Fetch document error:', err);
+      alert("❌ " + (err.message || "Gagal memuat dokumen"));
+      navigate("/lab/pb/admin1/dokumen");
     } finally {
       setLoading(false);
     }
@@ -77,31 +97,56 @@ export default function ResinInspectionView() {
     if (!window.confirm("⚠️ Apakah Anda yakin ingin menghapus dokumen ini?")) return;
 
     try {
+      const token = getAuthToken();
+      
       const res = await fetch(
-        `http://localhost:3001/api/resin-inspection-documents/${id}`,
-        { method: "DELETE" }
+        `${API_BASE}/resin-inspection-documents/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          }
+        }
       );
-      if (!res.ok) throw new Error();
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Gagal menghapus dokumen");
+      }
+      
       alert("✅ Dokumen berhasil dihapus");
       navigate("/lab/pb/admin1/dokumen");
-    } catch {
-      alert("❌ Gagal menghapus dokumen");
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert("❌ " + (err.message || "Gagal menghapus dokumen"));
     }
   };
 
   const handleUpdate = async () => {
     try {
-      const res = await fetch(`http://localhost:3001/api/resin-inspection/${id}`, {
+      const token = getAuthToken();
+      
+      const res = await fetch(`${API_BASE}/resin-inspection/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { "Authorization": `Bearer ${token}` })
+        },
         body: JSON.stringify(formData)
       });
-      if (!res.ok) throw new Error();
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Gagal update dokumen");
+      }
+      
       alert("✅ Dokumen berhasil diperbarui");
       setIsEditing(false);
       fetchDocument();
-    } catch {
-      alert("❌ Gagal update dokumen");
+    } catch (err) {
+      console.error('Update error:', err);
+      alert("❌ " + (err.message || "Gagal update dokumen"));
     }
   };
 

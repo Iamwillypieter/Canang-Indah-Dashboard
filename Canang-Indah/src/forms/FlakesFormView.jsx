@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import FlakesForm from "./FlakesForm";
 import "./FlakesFormView.css";
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
 export default function FlakesFormView() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -20,21 +22,33 @@ export default function FlakesFormView() {
     }
   }, [id]);
 
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
   const fetchDocument = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/flakes-documents/${id}`);
+      const token = getAuthToken();
+      
+      const res = await fetch(`${API_BASE}/flakes-documents/${id}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
       
       if (!res.ok) {
-        throw new Error("Dokumen tidak ditemukan");
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Dokumen tidak ditemukan");
       }
 
       const data = await res.json();
       setDoc(data);
       setLoading(false);
     } catch (err) {
-      console.error(err);
-      setError("Gagal memuat dokumen Flakes");
+      console.error('Fetch document error:', err);
+      setError(err.message || "Gagal memuat dokumen Flakes");
       setLoading(false);
     }
   };

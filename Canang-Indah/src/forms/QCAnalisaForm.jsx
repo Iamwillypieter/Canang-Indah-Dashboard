@@ -5,6 +5,8 @@ import QCAnalisaHeader from "../components/QCAnalisaHeader.jsx";
 
 const STORAGE_KEY = "qcAnalisaScreenDraft";
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
 const getInitialData = () => ({
   tanggalDefault: new Date().toISOString().split("T")[0],
   shiftDefault: "Shift A",
@@ -40,6 +42,10 @@ export default function QCAnalisaForm() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
   }, [formData]);
 
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
   const handleChange = (e, rowIndex) => {
     const { name, value } = e.target;
     const newRows = [...formData.rows];
@@ -51,9 +57,14 @@ export default function QCAnalisaForm() {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://localhost:3001/api/qc-analisa", {
+      const token = getAuthToken();
+      
+      const res = await fetch(`${API_BASE}/qc-analisa`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { "Authorization": `Bearer ${token}` })
+        },
         body: JSON.stringify({
           tanggal: formData.rows[0].tanggal,
           shift_group: formData.rows[0].shift_group,
@@ -61,15 +72,19 @@ export default function QCAnalisaForm() {
         })
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Gagal menyimpan data");
+      }
 
+      const data = await res.json();
       localStorage.removeItem(STORAGE_KEY);
-      alert(`✅ ${data.count} baris berhasil disimpan`);
+      alert(`✅ ${data.count || formData.rows.length} baris berhasil disimpan`);
       navigate("/lab/pb/admin1/dokumen");
 
     } catch (err) {
-      alert("❌ Gagal simpan data");
+      console.error('Submit error:', err);
+      alert("❌ " + (err.message || "Gagal menyimpan data"));
     }
   };
 

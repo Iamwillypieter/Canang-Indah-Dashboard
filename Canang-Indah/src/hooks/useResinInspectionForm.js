@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 
 const STORAGE_KEY = "resinInspectionForm";
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
 export function useResinInspectionForm() {
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -44,6 +46,10 @@ export function useResinInspectionForm() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
   }, [formData]);
 
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
   const handleChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -63,17 +69,30 @@ export function useResinInspectionForm() {
   const handleSubmit = async e => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:3001/api/resin-inspection", {
+      const token = getAuthToken();
+      
+      const res = await fetch(`${API_BASE}/resin-inspection`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { "Authorization": `Bearer ${token}` })
+        },
         body: JSON.stringify(formData)
       });
 
-      if (!res.ok) throw new Error("Gagal simpan");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Gagal menyimpan data");
+      }
 
+      const data = await res.json();
       alert("✅ Data Resin Inspection berhasil disimpan!");
+      
+      localStorage.removeItem(STORAGE_KEY);
+      window.location.reload();
     } catch (err) {
-      alert("❌ " + err.message);
+      console.error('Submit error:', err);
+      alert("❌ " + (err.message || "Terjadi kesalahan saat menyimpan"));
     }
   };
 
