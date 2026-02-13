@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./SupervisorPage.css";
 
-const API_BASE = "http://localhost:3001/api";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 /* ================= FORM REGISTRY ================= */
 const FORM_TYPES = {
@@ -42,13 +42,28 @@ export default function SupervisorPage() {
     fetchDocuments();
   }, []);
 
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  const fetchWithAuth = async (url) => {
+    const token = getAuthToken();
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      }
+    });
+    return response;
+  };
+
   const fetchDocuments = async () => {
     setLoading(true);
     try {
       // Fetch dari semua endpoints
       const requests = Object.entries(FORM_TYPES).map(
         async ([key, config]) => {
-          const res = await fetch(config.endpoint);
+          const res = await fetchWithAuth(config.endpoint);
           
           if (!res.ok) {
             console.warn(`Failed to fetch ${config.label}`);
@@ -82,7 +97,7 @@ export default function SupervisorPage() {
       setDocuments(mergedDocs);
     } catch (err) {
       console.error("❌ FETCH SUPERVISOR ERROR:", err);
-      alert("❌ Gagal memuat data dokumen");
+      alert("❌ Gagal memuat data dokumen: " + (err.message || "Terjadi kesalahan"));
     } finally {
       setLoading(false);
     }
