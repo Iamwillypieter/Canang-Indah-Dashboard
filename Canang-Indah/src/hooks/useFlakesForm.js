@@ -13,6 +13,7 @@ import {
 const STORAGE_KEY = "flakesFormDraft";
 
 export const useFlakesForm = ({ mode, documentId, navigate }) => {
+  // 👇 STATE: rows
   const [rows, setRows] = useState(() => {
     if (mode === "create") {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -28,28 +29,10 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
     return initialThicknesses.map(t => ({ tebal: t, jumlah: 0 }));
   });
 
+  // 👇 STATE: header (dengan tagName)
   const [header, setHeader] = useState(() => {
-    if (mode === "create") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          return parsed.header || {
-            tanggal: "",
-            jam: "",
-            shift: "",
-            ukuranPapan: "",
-            group: "",
-            jarakPisau: "",
-            keterangan: "",
-            pemeriksa: ""
-          };
-        } catch (e) {
-          console.error('Error parsing saved header:', e);
-        }
-      }
-    }
-    return {
+    const defaultHeader = {
+      tagName: "", // 👈 Tambahkan field tagName
       tanggal: "",
       jam: "",
       shift: "",
@@ -59,17 +42,32 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
       keterangan: "",
       pemeriksa: ""
     };
+
+    if (mode === "create") {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return { ...defaultHeader, ...(parsed.header || {}) };
+        } catch (e) {
+          console.error('Error parsing saved header:', e);
+        }
+      }
+    }
+    return defaultHeader;
   });
 
   const [isLoading, setIsLoading] = useState(mode !== "create");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 👇 Auto-save ke localStorage (termasuk tagName)
   useEffect(() => {
     if (mode === "create") {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ rows, header }));
     }
   }, [rows, header, mode]);
 
+  // 👇 Load data dari API kalau mode edit/view
   useEffect(() => {
     if (mode === "edit" || mode === "view") {
       loadData();
@@ -82,6 +80,7 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
       const data = await fetchFlakesById(documentId);
 
       setHeader({
+        tagName: data.header?.tag_name || data.header?.tagName || "", // 👈 Load tagName (support snake_case & camelCase)
         tanggal: formatDateForInput(data.header?.tanggal),
         jam: data.header?.jam || "",
         shift: data.header?.shift || "",
@@ -104,6 +103,7 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
         }))
       );
     } catch (e) {
+      console.error("Load error:", e);
       alert("❌ Gagal memuat data");
     } finally {
       setIsLoading(false);
@@ -116,8 +116,13 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
     const { totalJumlah, grandTotalKetebalan, rataRata } =
       calculateTotals(rows);
 
+    // 👇 Payload dengan tagName
     const payload = {
-      header,
+      tag_name: header.tagName, // 👈 Kirim tagName ke backend
+      header: {
+        ...header,
+        tanggal: header.tanggal // pastikan tanggal tetap terkirim
+      },
       detail: rows.filter(r => r.jumlah > 0),
       total_jumlah: totalJumlah,
       grand_total_ketebalan: grandTotalKetebalan,
@@ -136,6 +141,7 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
       
       navigate(`/lab/pb/admin1/flakes/${result.documentId || documentId}`);
     } catch (e) {
+      console.error("Submit error:", e);
       alert(`❌ ${e.message}`);
     } finally {
       setIsSubmitting(false);

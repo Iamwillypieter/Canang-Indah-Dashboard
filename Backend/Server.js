@@ -261,13 +261,13 @@ app.get('/api/dashboard', authenticateToken, (req, res) => {
 
 
 /* =========================
-   SIMPAN QC ANALISA
+   SIMPAN QC ANALISA (POST)
 ========================= */
 app.post("/api/qc-analisa", async (req, res) => {
   const client = await pool.connect();
 
   try {
-    const { tanggal, shift_group, rows } = req.body;
+    const { tag_name, tanggal, shift_group, rows } = req.body;
 
     if (!tanggal || !shift_group || !rows || rows.length === 0) {
       return res.status(400).json({ error: "Data tidak lengkap" });
@@ -281,16 +281,17 @@ app.post("/api/qc-analisa", async (req, res) => {
       return res.status(400).json({ error: "Semua baris kosong" });
     }
 
-
     await client.query("BEGIN");
 
-    // insert dokumen
+    // INSERT dokumen dengan tag_name
     const docResult = await client.query(
-      `INSERT INTO qc_analisa_documents (title, tanggal, shift_group)
-       VALUES ($1,$2,$3)
+      `INSERT INTO qc_analisa_documents 
+       (title, tag_name, tanggal, shift_group, created_at)
+       VALUES ($1, $2, $3, $4, NOW())
        RETURNING id`,
       [
         `QC Analisa ${tanggal} ${shift_group}`,
+        tag_name || null,
         tanggal,
         shift_group
       ]
@@ -298,7 +299,7 @@ app.post("/api/qc-analisa", async (req, res) => {
 
     const documentId = docResult.rows[0].id;
 
-    // insert detail rows
+    // Insert detail rows
     for (const row of validRows) {
       await client.query(
         `INSERT INTO qc_analisa_screen (
@@ -307,13 +308,7 @@ app.post("/api/qc-analisa", async (req, res) => {
           fraction_gt_2, fraction_gt_1, fraction_0_5,
           fraction_0_25, fraction_lt_0_25,
           jumlah_gr, keterangan, diperiksa_oleh
-        ) VALUES (
-          $1,$2,$3,$4,$5,
-          $6,$7,$8,
-          $9,$10,$11,
-          $12,$13,
-          $14,$15,$16
-        )`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [
           documentId,
           row.tanggal || null,
@@ -332,7 +327,6 @@ app.post("/api/qc-analisa", async (req, res) => {
           row.keterangan || null,
           row.diperiksa_oleh || null
         ]
-
       );
     }
 
@@ -341,98 +335,79 @@ app.post("/api/qc-analisa", async (req, res) => {
     res.status(201).json({
       message: "QC Analisa berhasil disimpan",
       documentId,
-      count: rows.length
+      count: validRows.length
     });
 
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("ERROR SIMPAN:", err);
-    res.status(500).json({ error: "Gagal simpan QC Analisa" });
+    console.error("ERROR SIMPAN QC:", err);
+    res.status(500).json({ error: "Gagal simpan QC Analisa: " + err.message });
   } finally {
     client.release();
   }
 });
 
 /* =========================
-   LIST DOKUMEN
+   LIST DOKUMEN (GET ALL) - ⚠️ PALING PENTING!
 ========================= */
 app.get("/api/qc-analisa-documents", async (req, res) => {
-  const result = await pool.query(`
-    SELECT id, title, created_at
-    FROM qc_analisa_documents
-    ORDER BY created_at DESC
-  `);
-
-  res.json(result.rows);
+  try {
+    const result = await pool.query(
+      `SELECT 
+         id, 
+         title, 
+         tag_name,
+         tanggal,
+         shift_group,
+         created_at
+       FROM qc_analisa_documents
+       ORDER BY created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Fetch QC docs error:", err);
+    res.status(500).json({ error: "Gagal mengambil data: " + err.message });
+  }
 });
 
 /* =========================
-   DETAIL DOKUMEN
+   DETAIL DOKUMEN (GET BY ID)
 ========================= */
 app.get("/api/qc-analisa/:id", async (req, res) => {
   const { id } = req.params;
 
-  const doc = await pool.query(
-    "SELECT * FROM qc_analisa_documents WHERE id=$1",
-    [id]
-  );
-
-  const rows = await pool.query(
-    "SELECT * FROM qc_analisa_screen WHERE document_id=$1 ORDER BY id",
-    [id]
-  );
-
-  res.json({
-    document: doc.rows[0],
-    rows: rows.rows
-  });
-});
-
-/* =========================
-   HAPUS DOKUMEN
-========================= */
-app.delete("/api/qc-analisa-documents/:id", async (req, res) => {
-  const { id } = req.params;
-  const client = await pool.connect();
-
   try {
-    await client.query("BEGIN");
-
-    // Hapus detail rows
-    await client.query(
-      "DELETE FROM qc_analisa_screen WHERE document_id = $1",
+    const doc = await pool.query(
+      `SELECT id, title, tag_name, tanggal, shift_group, created_at 
+       FROM qc_analisa_documents WHERE id=$1`,
       [id]
     );
 
-    // Hapus dokumen utama
-    const result = await client.query(
-      "DELETE FROM qc_analisa_documents WHERE id = $1 RETURNING id",
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      await client.query("ROLLBACK");
+    if (doc.rows.length === 0) {
       return res.status(404).json({ error: "Dokumen tidak ditemukan" });
     }
 
-    await client.query("COMMIT");
-    res.json({ message: "Dokumen berhasil dihapus" });
+    const rows = await pool.query(
+      "SELECT * FROM qc_analisa_screen WHERE document_id=$1 ORDER BY id",
+      [id]
+    );
 
+    res.json({
+      document: doc.rows[0],
+      rows: rows.rows
+    });
   } catch (err) {
-    await client.query("ROLLBACK");
-    console.error("ERROR HAPUS:", err);
-    res.status(500).json({ error: "Gagal menghapus dokumen" });
-  } finally {
-    client.release();
+    console.error("Fetch QC detail error:", err);
+    res.status(500).json({ error: "Gagal memuat dokumen: " + err.message });
   }
 });
 
 /* =========================
-   UPDATE QC ANALISA
+   UPDATE QC ANALISA (PUT)
 ========================= */
 app.put("/api/qc-analisa/:id", async (req, res) => {
   const { id } = req.params;
-  const { tanggal, shift_group, rows } = req.body;
+  const { tag_name, tanggal, shift_group, rows } = req.body;
   const client = await pool.connect();
 
   try {
@@ -450,20 +425,21 @@ app.put("/api/qc-analisa/:id", async (req, res) => {
 
     await client.query("BEGIN");
 
-    // Update dokumen
+    // UPDATE dokumen dengan tag_name
     await client.query(
       `UPDATE qc_analisa_documents 
-       SET title = $1, tanggal = $2, shift_group = $3
-       WHERE id = $4`,
+       SET title = $1, tag_name = $2, tanggal = $3, shift_group = $4, updated_at = NOW()
+       WHERE id = $5`,
       [
         `QC Analisa ${tanggal} ${shift_group}`,
+        tag_name || null,
         tanggal,
         shift_group,
         id
       ]
     );
 
-    // Hapus data lama
+    // Hapus data lama di child table
     await client.query(
       "DELETE FROM qc_analisa_screen WHERE document_id = $1",
       [id]
@@ -509,10 +485,49 @@ app.put("/api/qc-analisa/:id", async (req, res) => {
 
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("ERROR UPDATE:", err);
-    res.status(500).json({ error: "Gagal memperbarui QC Analisa" });
+    console.error("ERROR UPDATE QC:", err);
+    res.status(500).json({ error: "Gagal memperbarui QC Analisa: " + err.message });
   } finally {
     client.release();
+  }
+});
+
+/* =========================
+   HAPUS DOKUMEN (DELETE) - ⚠️ FIX: pakai client.query di dalam transaction!
+========================= */
+app.delete("/api/qc-analisa-documents/:id", async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();  // 👈 Pakai client untuk transaction
+
+  try {
+    await client.query("BEGIN");
+
+    // Hapus child records dulu (foreign key constraint) - 👈 PAKAI client.query!
+    await client.query(
+      "DELETE FROM qc_analisa_screen WHERE document_id = $1",
+      [id]
+    );
+
+    // Hapus dokumen utama - 👈 PAKAI client.query!
+    const result = await client.query(
+      "DELETE FROM qc_analisa_documents WHERE id = $1 RETURNING id",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+    }
+
+    await client.query("COMMIT");
+    res.json({ message: "Dokumen berhasil dihapus" });
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("ERROR HAPUS QC:", err);
+    res.status(500).json({ error: "Gagal menghapus dokumen: " + err.message });
+  } finally {
+    client.release();  // 👈 Release client, bukan pool
   }
 });
 
@@ -520,27 +535,39 @@ app.put("/api/qc-analisa/:id", async (req, res) => {
 
 
 
-/* Resin Inspection Backend*/
+/* ================= RESIN INSPECTION BACKEND ================= */
 
+// ✅ POST: Simpan data baru (sudah include tag_name)
 app.post("/api/resin-inspection", async (req, res) => {
   const client = await pool.connect();
   try {
-    const { date, shift, group, inspection, solidContent, comment_by, createdBy } = req.body;
+    const { 
+      tag_name,    // 👈 Tambahkan destructuring
+      date, shift, group, 
+      inspection, solidContent, 
+      comment_by, createdBy 
+    } = req.body;
 
     await client.query("BEGIN");
 
+    // 👇 INSERT dengan tag_name
     const doc = await client.query(
       `INSERT INTO resin_inspection_documents
-       (title, date, shift, group_name, comment_by, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6)
+       (title, tag_name, date, shift, group_name, comment_by, created_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        RETURNING id`,
-      [`Resin Inspection ${date} ${shift}`, date, shift, group, comment_by, createdBy]
+      [
+        `Resin Inspection ${date} ${shift}`, 
+        tag_name || null,
+        date, shift, group, comment_by, createdBy
+      ]
     );
 
     const documentId = doc.rows[0].id;
 
-    inspection.forEach((row, i) => {
-      client.query(
+    // Insert inspection rows
+    for (const [i, row] of inspection.entries()) {
+      await client.query(
         `INSERT INTO resin_inspection_inspection
          (document_id, load_no, cert_test_no, resin_tank, quantity,
           specific_gravity, viscosity, ph, gel_time, water_tolerance, appearance, solids)
@@ -552,11 +579,12 @@ app.post("/api/resin-inspection", async (req, res) => {
           row.gelTime, row.waterTolerance, row.appearance, row.solids
         ]
       );
-    });
+    }
 
-    solidContent.forEach(sample => {
-      sample.rows.forEach((row, idx) => {
-        client.query(
+    // Insert solidContent rows
+    for (const sample of solidContent || []) {
+      for (const [idx, row] of (sample.rows || []).entries()) {
+        await client.query(
           `INSERT INTO resin_inspection_solids
            (document_id, sample_time, row_no, alum_foil_no,
             wt_alum_foil, wt_glue, wt_alum_foil_dry_glue,
@@ -569,68 +597,136 @@ app.post("/api/resin-inspection", async (req, res) => {
             row.solidsContent, row.remark
           ]
         );
-      });
-    });
+      }
+    }
 
     await client.query("COMMIT");
     res.json({ message: "Resin Inspection tersimpan", documentId });
+    
   } catch (e) {
     await client.query("ROLLBACK");
-    res.status(500).json({ error: "Gagal simpan" });
+    console.error("Resin save error:", e);
+    res.status(500).json({ error: "Gagal simpan: " + e.message });
   } finally {
     client.release();
   }
 });
 
-
+// ✅ GET ALL: Ambil semua dokumen untuk DocumentList (HANYA SATU ENDPOINT!)
 app.get("/api/resin-inspection-documents", async (req, res) => {
-  const result = await pool.query(
-    `SELECT id, title, created_at FROM resin_inspection_documents ORDER BY created_at DESC`
-  );
-  res.json(result.rows);
+  try {
+    const result = await pool.query(
+      `SELECT 
+         id, 
+         title, 
+         tag_name,              -- 👈 WAJIB: kirim tag_name
+         date, 
+         shift,                 -- 👈 WAJIB: kirim shift
+         group_name,            -- 👈 WAJIB: kirim group_name
+         comment_by, 
+         created_by, 
+         created_at
+       FROM resin_inspection_documents
+       ORDER BY created_at DESC`
+    );
+
+    const documents = result.rows;
+    
+    // Optional: ambil inspection pertama untuk ditampilkan di list
+    for (const doc of documents) {
+      const insp = await pool.query(
+        `SELECT resin_tank, cert_test_no, quantity 
+         FROM resin_inspection_inspection 
+         WHERE document_id = $1 LIMIT 1`,
+        [doc.id]
+      );
+      if (insp.rows[0]) {
+        doc.inspection = [{
+          resinTank: insp.rows[0].resin_tank,
+          certTestNo: insp.rows[0].cert_test_no,
+          quantity: insp.rows[0].quantity
+        }];
+      }
+    }
+
+    res.json(documents);
+  } catch (err) {
+    console.error("Fetch resin docs error:", err);
+    res.status(500).json({ error: "Gagal mengambil data: " + err.message });
+  }
 });
 
+// ✅ GET BY ID: Ambil detail dokumen untuk View/Edit
 app.get("/api/resin-inspection/:id", async (req, res) => {
   const { id } = req.params;
 
-  const doc = await pool.query(
-    `SELECT * FROM resin_inspection_documents WHERE id=$1`, [id]
-  );
-  const inspection = await pool.query(
-    `SELECT * FROM resin_inspection_inspection WHERE document_id=$1 ORDER BY load_no`, [id]
-  );
-  const solids = await pool.query(
-    `SELECT * FROM resin_inspection_solids WHERE document_id=$1 ORDER BY sample_time, row_no`, [id]
-  );
+  try {
+    const doc = await pool.query(
+      `SELECT id, title, tag_name, date, shift, group_name, comment_by, created_by, created_at 
+       FROM resin_inspection_documents WHERE id=$1`, 
+      [id]
+    );
+    
+    if (doc.rows.length === 0) {
+      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+    }
 
-  res.json({
-    document: doc.rows[0],
-    inspection: inspection.rows,
-    solidContent: solids.rows
-  });
+    const [inspection, solids] = await Promise.all([
+      pool.query(
+        `SELECT * FROM resin_inspection_inspection WHERE document_id=$1 ORDER BY load_no`, 
+        [id]
+      ),
+      pool.query(
+        `SELECT * FROM resin_inspection_solids WHERE document_id=$1 ORDER BY sample_time, row_no`, 
+        [id]
+      )
+    ]);
+
+    res.json({
+      document: doc.rows[0],  // 👈 Sudah include tag_name
+      inspection: inspection.rows,
+      solidContent: solids.rows
+    });
+  } catch (err) {
+    console.error("Fetch resin detail error:", err);
+    res.status(500).json({ error: "Gagal memuat dokumen" });
+  }
 });
 
+// ✅ PUT: Update dokumen (sudah include tag_name)
 app.put("/api/resin-inspection/:id", async (req, res) => {
   const client = await pool.connect();
   const { id } = req.params;
-  const { date, shift, group, inspection, solidContent, comment_by, createdBy } = req.body;
+  const { 
+    tag_name,    // 👈 Tambahkan destructuring
+    date, shift, group, 
+    inspection, solidContent, 
+    comment_by, createdBy 
+  } = req.body;
 
   try {
     await client.query("BEGIN");
 
+    // 👇 UPDATE dengan tag_name
     await client.query(
       `UPDATE resin_inspection_documents
-       SET title=$1, date=$2, shift=$3, group_name=$4,
-           comment_by=$5, created_by=$6
-       WHERE id=$7`,
-      [`Resin Inspection ${date} ${shift}`, date, shift, group, comment_by, createdBy, id]
+       SET title=$1, tag_name=$2, date=$3, shift=$4, group_name=$5,
+           comment_by=$6, created_by=$7, updated_at=NOW()
+       WHERE id=$8`,
+      [
+        `Resin Inspection ${date} ${shift}`, 
+        tag_name || null,  // 👈 Update tag_name
+        date, shift, group, comment_by, createdBy, id
+      ]
     );
 
+    // Delete old child records
     await client.query(`DELETE FROM resin_inspection_inspection WHERE document_id=$1`, [id]);
     await client.query(`DELETE FROM resin_inspection_solids WHERE document_id=$1`, [id]);
 
-    inspection.forEach((row, i) => {
-      client.query(
+    // Insert new inspection rows
+    for (const [i, row] of inspection.entries()) {
+      await client.query(
         `INSERT INTO resin_inspection_inspection
          (document_id, load_no, cert_test_no, resin_tank, quantity,
           specific_gravity, viscosity, ph, gel_time, water_tolerance, appearance, solids)
@@ -642,11 +738,12 @@ app.put("/api/resin-inspection/:id", async (req, res) => {
           row.gelTime, row.waterTolerance, row.appearance, row.solids
         ]
       );
-    });
+    }
 
-    solidContent.forEach(sample => {
-      sample.rows.forEach((row, idx) => {
-        client.query(
+    // Insert new solidContent rows
+    for (const sample of solidContent || []) {
+      for (const [idx, row] of (sample.rows || []).entries()) {
+        await client.query(
           `INSERT INTO resin_inspection_solids
            (document_id, sample_time, row_no, alum_foil_no,
             wt_alum_foil, wt_glue, wt_alum_foil_dry_glue,
@@ -659,22 +756,40 @@ app.put("/api/resin-inspection/:id", async (req, res) => {
             row.solidsContent, row.remark
           ]
         );
-      });
-    });
+      }
+    }
 
     await client.query("COMMIT");
     res.json({ message: "Update berhasil" });
+    
   } catch (e) {
     await client.query("ROLLBACK");
-    res.status(500).json({ error: "Gagal update" });
+    console.error("Resin update error:", e);
+    res.status(500).json({ error: "Gagal update: " + e.message });
   } finally {
     client.release();
   }
 });
 
+// ✅ DELETE: Hapus dokumen
 app.delete("/api/resin-inspection-documents/:id", async (req, res) => {
-  await pool.query(`DELETE FROM resin_inspection_documents WHERE id=$1`, [req.params.id]);
-  res.json({ message: "Dokumen dihapus" });
+  try {
+    await client.query("BEGIN");
+    
+    // Delete child records first (foreign key constraint)
+    await pool.query(`DELETE FROM resin_inspection_inspection WHERE document_id=$1`, [req.params.id]);
+    await pool.query(`DELETE FROM resin_inspection_solids WHERE document_id=$1`, [req.params.id]);
+    
+    // Delete parent document
+    await pool.query(`DELETE FROM resin_inspection_documents WHERE id=$1`, [req.params.id]);
+    
+    await client.query("COMMIT");
+    res.json({ message: "Dokumen dihapus" });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    console.error("Resin delete error:", e);
+    res.status(500).json({ error: "Gagal menghapus: " + e.message });
+  }
 });
 
 

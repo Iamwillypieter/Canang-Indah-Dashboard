@@ -112,12 +112,7 @@ export default function QCAnalisaView() {
     e.preventDefault();
 
     const filteredRows = formData.rows.filter(
-      (r) =>
-        r.material ||
-        r.jam ||
-        r.jumlah_gr ||
-        r.keterangan ||
-        r.diperiksa_oleh
+      (r) => r.material || r.jam || r.jumlah_gr || r.keterangan || r.diperiksa_oleh
     );
 
     try {
@@ -130,6 +125,7 @@ export default function QCAnalisaView() {
           ...(token && { "Authorization": `Bearer ${token}` })
         },
         body: JSON.stringify({
+          tag_name: documentData.document.tag_name,  // 👈 Kirim tag_name
           tanggal: formData.tanggal,
           shift_group: formData.shift_group,
           rows: filteredRows
@@ -239,6 +235,19 @@ export default function QCAnalisaView() {
         <div>
           <h2 style={styles.title}>
             QC Analisa – {documentData.document.title}
+            
+            {/* 👇 TAMBAHKAN BADGE TAG NAME */}
+            {documentData.document.tag_name && (
+              <span style={{
+                ...styles.viewBadge,
+                background: "#dbeafe",
+                color: "#1e40af",
+                marginLeft: 12
+              }}>
+                🏷️ {documentData.document.tag_name}
+              </span>
+            )}
+            
             {isEditing ? (
               <span style={styles.editBadge}>EDIT MODE</span>
             ) : (
@@ -246,7 +255,9 @@ export default function QCAnalisaView() {
             )}
           </h2>
           <div style={styles.subtitle}>
-            Document ID: {id}
+            Document ID: {id} • 
+            Tanggal: {documentData.document.tanggal} • 
+            Shift: {documentData.document.shift_group}
           </div>
         </div>
 

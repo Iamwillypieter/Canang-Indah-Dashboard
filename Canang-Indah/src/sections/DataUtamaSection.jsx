@@ -44,9 +44,14 @@ export default function DataUtamaSection({ formData, samples, onChange, onSample
             onChange={onChange} 
             className="form-select"
           >
-            <option>Shift A</option>
-            <option>Shift B</option>
-            <option>Shift C</option>
+            <option value="">Shift</option>
+            {[1, 2, 3, 4].map((num) => (
+              ['A', 'B', 'C', 'D'].map((char) => (
+                <option key={`${num}${char}`} value={`${num}${char}`}>
+                  {`${num}${char}`}
+                </option>
+              ))
+            ))}
           </select>
         </div>
         <div className="form-group">

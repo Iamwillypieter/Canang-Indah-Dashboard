@@ -118,3 +118,12 @@
   margin-bottom: 8px;
   color: #1e293b;
 }
+
+.tag-badge {
+  background: #0ea5e9;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  margin-right: 10px;
+}

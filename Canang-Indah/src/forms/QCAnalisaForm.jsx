@@ -4,17 +4,17 @@ import QCAnalisaTable from "../components/QCAnalisaTable.jsx";
 import QCAnalisaHeader from "../components/QCAnalisaHeader.jsx";
 
 const STORAGE_KEY = "qcAnalisaScreenDraft";
-
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 const getInitialData = () => ({
+  tagName: "", // 👈 Tambahkan field tagName di awal
   tanggalDefault: new Date().toISOString().split("T")[0],
   shiftDefault: "Shift A",
   rows: Array(32).fill().map((_, i) => ({
     id: i + 1,
     jam: "",
     tanggal: new Date().toISOString().split("T")[0],
-    shift_group: "Shift A",
+    shift_group: "",
     material: "",
     fraction_gt_8: "",
     fraction_gt_4: "",
@@ -38,19 +38,24 @@ export default function QCAnalisaForm() {
     return saved ? JSON.parse(saved) : getInitialData();
   });
 
+  // Auto-save ke localStorage termasuk tagName
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
   }, [formData]);
 
-  const getAuthToken = () => {
-    return localStorage.getItem('token');
-  };
+  const getAuthToken = () => localStorage.getItem('token');
 
+  // Handle perubahan input di table (jam, material, dll)
   const handleChange = (e, rowIndex) => {
     const { name, value } = e.target;
     const newRows = [...formData.rows];
     newRows[rowIndex][name] = value;
     setFormData({ ...formData, rows: newRows });
+  };
+
+  // 👇 Handle khusus untuk tagName dari Header
+  const handleTagNameChange = (value) => {
+    setFormData(prev => ({ ...prev, tagName: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -66,8 +71,9 @@ export default function QCAnalisaForm() {
           ...(token && { "Authorization": `Bearer ${token}` })
         },
         body: JSON.stringify({
-          tanggal: formData.rows[0].tanggal,
-          shift_group: formData.rows[0].shift_group,
+          tag_name: formData.tagName, // 👈 Kirim tagName ke backend
+          tanggal: formData.rows[0]?.tanggal,
+          shift_group: formData.rows[0]?.shift_group,
           rows: formData.rows
         })
       });
@@ -90,7 +96,11 @@ export default function QCAnalisaForm() {
 
   return (
     <div style={styles.container}>
-      <QCAnalisaHeader />
+      {/* 👇 Pass tagName dan onTagChange ke Header */}
+      <QCAnalisaHeader 
+        tagName={formData.tagName} 
+        onTagChange={handleTagNameChange} 
+      />
       
       <form onSubmit={handleSubmit}>
         <QCAnalisaTable 

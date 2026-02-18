@@ -63,16 +63,13 @@ function DateCell({ name, value, onChange, rowIndex }) {
 function SelectCell({ name, value, onChange, rowIndex }) {
   return (
     <td style={styles.td}>
-      <select 
+      <input 
+        type="text"
         name={name} 
         value={value} 
         onChange={(e) => onChange(e, rowIndex)} 
-        style={{...styles.input, appearance: 'none'}}
-      >
-        <option>Shift A</option>
-        <option>Shift B</option>
-        <option>Shift C</option>
-      </select>
+        style={styles.input}
+      />
     </td>
   );
 }

@@ -42,11 +42,14 @@ export default function ResinInspectionView() {
       setDocumentData(data);
 
       setFormData({
+        tagName: data.document.tag_name || data.document.tagName || "",  // Support snake_case & camelCase
+        
         date: data.document.date,
         shift: data.document.shift,
-        group: data.document.group_name,
+        group: data.document.group_name,  // Backend kirim group_name
         comment_by: data.document.comment_by || "",
         createdBy: data.document.created_by || "",
+        
         inspection: data.inspection.map(row => ({
           id: row.id,
           certTestNo: row.cert_test_no || "",
@@ -133,7 +136,17 @@ export default function ResinInspectionView() {
           "Content-Type": "application/json",
           ...(token && { "Authorization": `Bearer ${token}` })
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          // 👈 Kirim tag_name (snake_case untuk backend)
+          tag_name: formData.tagName,
+          date: formData.date,
+          shift: formData.shift,
+          group: formData.group,
+          comment_by: formData.comment_by,
+          createdBy: formData.createdBy,
+          inspection: formData.inspection,
+          solidContent: formData.solidContent
+        })
       });
       
       if (!res.ok) {
@@ -185,6 +198,12 @@ export default function ResinInspectionView() {
         <div className="header-info">
           <h2>{isEditing ? "📝 Edit Resin Inspection" : "🧴 Resin Inspection"}</h2>
           <div className="doc-meta">
+            {/* 👈 TAMBAHKAN TAG NAME BADGE */}
+            {formData?.tagName && (
+              <span className="tag-badge">
+                🏷️ <strong>{formData.tagName}</strong>
+              </span>
+            )}
             <span><strong>Title:</strong> {documentData.document.title}</span>
             <span><strong>Created:</strong> {new Date(documentData.document.created_at).toLocaleString('id-ID')}</span>
           </div>

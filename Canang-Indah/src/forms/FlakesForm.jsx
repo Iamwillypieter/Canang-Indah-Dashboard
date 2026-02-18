@@ -66,6 +66,19 @@ const FlakesForm = ({ isEditMode = false }) => {
         <div className="header-section">
           <div className="header-column">
             <div className="input-group">
+              <label>Tag Name Document *</label>
+              <input
+                type="text"
+                name="tagName"
+                value={header.tagName || ""}
+                onChange={handleHeaderChange}
+                disabled={mode === "view"}
+                placeholder="Contoh: 1A, 1B, 0001"
+                style={{ fontWeight: 'bold', borderColor: '#0ea5e9' }}
+              />
+            </div>
+
+            <div className="input-group">
               <label>Tanggal *</label>
               <input
                 type="date"
@@ -88,7 +101,9 @@ const FlakesForm = ({ isEditMode = false }) => {
                 placeholder="Pagi / Siang / Malam"
               />
             </div>
+          </div>
 
+          <div className="header-column">
             <div className="input-group">
               <label>Group</label>
               <input
@@ -100,9 +115,7 @@ const FlakesForm = ({ isEditMode = false }) => {
                 placeholder="Group A / B / C"
               />
             </div>
-          </div>
 
-          <div className="header-column">
             <div className="input-group">
               <label>Jam</label>
               <input
@@ -130,8 +143,7 @@ const FlakesForm = ({ isEditMode = false }) => {
               <label>Jarak Pisau</label>
               <div className="with-unit">
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
                   name="jarakPisau"
                   value={header.jarakPisau}
                   onChange={handleHeaderChange}
@@ -177,10 +189,7 @@ const FlakesForm = ({ isEditMode = false }) => {
                   </td>
 
                   {i === 0 && (
-                    <td
-                      rowSpan={rows.length}
-                      className="notes-cell"
-                    >
+                    <td rowSpan={rows.length} className="notes-cell">
                       <textarea
                         name="keterangan"
                         value={header.keterangan}

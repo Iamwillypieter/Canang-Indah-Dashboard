@@ -19,7 +19,9 @@ export default function ResinInspectionForm() {
       <h2>RAW RESIN INSPECTION 🛠️</h2>
 
       <form onSubmit={handleSubmit}>
+        {/* 👇 Tambahkan prop tagName */}
         <ResinInspectionHeader
+          tagName={formData.tagName}  // 👈 Oper tagName ke Header
           date={formData.date}
           shift={formData.shift}
           group={formData.group}
