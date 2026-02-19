@@ -773,22 +773,59 @@ app.put("/api/resin-inspection/:id", async (req, res) => {
 
 // ✅ DELETE: Hapus dokumen
 app.delete("/api/resin-inspection-documents/:id", async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();  // 👈 Pakai client untuk transaction
+
   try {
     await client.query("BEGIN");
+
+    // 👇 HAPUS SEMUA CHILD TABLES (urutannya penting!)
     
-    // Delete child records first (foreign key constraint)
-    await pool.query(`DELETE FROM resin_inspection_inspection WHERE document_id=$1`, [req.params.id]);
-    await pool.query(`DELETE FROM resin_inspection_solids WHERE document_id=$1`, [req.params.id]);
-    
-    // Delete parent document
-    await pool.query(`DELETE FROM resin_inspection_documents WHERE id=$1`, [req.params.id]);
-    
+    // 1. Hapus dari resin_inspection_inspection
+    await client.query(
+      "DELETE FROM resin_inspection_inspection WHERE document_id = $1",
+      [id]
+    );
+
+    // 2. Hapus dari resin_inspection_solids ⚠️ JANGAN LUPA INI!
+    await client.query(
+      "DELETE FROM resin_inspection_solids WHERE document_id = $1",
+      [id]
+    );
+
+    // 3. Baru hapus dokumen utama
+    const result = await client.query(
+      "DELETE FROM resin_inspection_documents WHERE id = $1 RETURNING id",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+    }
+
     await client.query("COMMIT");
-    res.json({ message: "Dokumen dihapus" });
-  } catch (e) {
+    res.json({ message: "Dokumen berhasil dihapus" });
+
+  } catch (err) {
     await client.query("ROLLBACK");
-    console.error("Resin delete error:", e);
-    res.status(500).json({ error: "Gagal menghapus: " + e.message });
+    
+    // 👇 LOG ERROR DETAIL KE TERMINAL (PENTING!)
+    console.error("💥 DELETE RESIN ERROR:", {
+      message: err.message,
+      code: err.code,
+      detail: err.detail,
+      hint: err.hint,
+      table: err.table,
+      constraint: err.constraint
+    });
+    
+    res.status(500).json({ 
+      error: "Gagal menghapus dokumen: " + err.message,
+      code: err.code  // 👈 Kirim error code ke frontend untuk debug
+    });
+  } finally {
+    client.release();  // 👈 Release client, bukan pool
   }
 });
 
@@ -796,14 +833,15 @@ app.delete("/api/resin-inspection-documents/:id", async (req, res) => {
 
 
 /* =========================
-   FLAKES DOCUMENTS API
+   FLAKES DOCUMENTS API - FIXED VERSION
 ========================= */
 
-// CREATE Flakes Document Baru
+// ✅ CREATE Flakes Document Baru (dengan tag_name)
 app.post("/api/flakes-documents", async (req, res) => {
   const client = await pool.connect();
   try {
-    const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
+    // 👇 Tambahkan destructuring tag_name
+    const { tag_name, header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
 
     // Validasi input
     if (!header || !detail || detail.length === 0) {
@@ -817,17 +855,21 @@ app.post("/api/flakes-documents", async (req, res) => {
     await client.query("BEGIN");
 
     try {
-      // Insert dokumen utama
+      // 👇 INSERT dengan tag_name
       const docResult = await client.query(
-        `INSERT INTO flakes_documents (title, created_at, updated_at)
-         VALUES ($1, NOW(), NOW())
+        `INSERT INTO flakes_documents 
+         (title, tag_name, created_at, updated_at)
+         VALUES ($1, $2, NOW(), NOW())
          RETURNING id`,
-        [`Flakes ${header.tanggal}`]
+        [
+          `Flakes ${header.tanggal}`,
+          tag_name || null  // 👈 Simpan tag_name
+        ]
       );
 
       const documentId = docResult.rows[0].id;
 
-      //  Insert header
+      // Insert header
       await client.query(
         `INSERT INTO flakes_header (
           document_id, tanggal, jam, shift, ukuran_papan, 
@@ -846,7 +888,7 @@ app.post("/api/flakes-documents", async (req, res) => {
         ]
       );
 
-      //  Insert detail rows
+      // Insert detail rows
       for (const row of detail) {
         await client.query(
           `INSERT INTO flakes_detail (document_id, tebal, jumlah, total_ketebalan, created_at)
@@ -860,7 +902,7 @@ app.post("/api/flakes-documents", async (req, res) => {
         );
       }
 
-      //  Insert summary
+      // Insert summary
       await client.query(
         `INSERT INTO flakes_summary (
           document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at
@@ -889,21 +931,23 @@ app.post("/api/flakes-documents", async (req, res) => {
   } catch (err) {
     console.error("❌ ERROR CREATE FLAKES:", err);
     res.status(500).json({ 
-      error: "Gagal menyimpan Flakes document",
-      message: err.message 
+      error: "Gagal menyimpan Flakes document: " + err.message,
+      code: err.code,
+      detail: err.detail
     });
   } finally {
     client.release();
   }
 });
 
-// READ Flakes documents
+// ✅ READ Flakes documents LIST (dengan tag_name)
 app.get("/api/flakes-documents", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
         fd.id, 
         fd.title, 
+        fd.tag_name,          -- 👈 WAJIB: tambahkan tag_name
         fd.created_at,
         fh.tanggal,
         fh.shift,
@@ -916,6 +960,7 @@ app.get("/api/flakes-documents", async (req, res) => {
     const documents = result.rows.map(doc => ({
       id: doc.id,
       title: doc.title || `Flakes ${doc.tanggal ? new Date(doc.tanggal).toLocaleDateString('id-ID') : 'Baru'}`,
+      tag_name: doc.tag_name,  // 👈 Return tag_name ke frontend
       created_at: doc.created_at,
       tanggal: doc.tanggal,
       shift: doc.shift,
@@ -926,18 +971,18 @@ app.get("/api/flakes-documents", async (req, res) => {
     res.json(documents);
   } catch (err) {
     console.error("❌ ERROR GET FLAKES LIST:", err);
-    res.status(500).json({ error: "Gagal memuat daftar Flakes" });
+    res.status(500).json({ error: "Gagal memuat daftar Flakes: " + err.message });
   }
 });
 
-// READ Flakes document
+// ✅ READ Flakes document DETAIL (dengan tag_name)
 app.get("/api/flakes-documents/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Get document info
+    // 👇 SELECT dengan tag_name
     const docResult = await pool.query(
-      `SELECT fd.*, fh.*
+      `SELECT fd.id, fd.title, fd.tag_name, fd.created_at, fd.updated_at, fh.*
        FROM flakes_documents fd
        LEFT JOIN flakes_header fh ON fd.id = fh.document_id
        WHERE fd.id = $1`,
@@ -986,6 +1031,7 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
 
     res.json({
       id: parseInt(id),
+      tag_name: doc.tag_name,  // 👈 Return tag_name ke frontend
       header,
       detail,
       summary: {
@@ -997,14 +1043,15 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
 
   } catch (err) {
     console.error("❌ ERROR GET FLAKES DETAIL:", err);
-    res.status(500).json({ error: "Gagal memuat detail Flakes" });
+    res.status(500).json({ error: "Gagal memuat detail Flakes: " + err.message });
   }
 });
 
-// UPDATE Flakes document
+// ✅ UPDATE Flakes document (dengan tag_name)
 app.put("/api/flakes-documents/:id", async (req, res) => {
   const { id } = req.params;
-  const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
+  // 👇 Tambahkan destructuring tag_name
+  const { tag_name, header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
   const client = await pool.connect();
 
   try {
@@ -1015,12 +1062,26 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     await client.query("BEGIN");
 
     try {
-      // Update header
+      // 👇 UPDATE header dengan tag_name di flakes_documents
+      await client.query(
+        `UPDATE flakes_documents SET
+          title = $1,
+          tag_name = $2,   -- 👈 Update tag_name
+          updated_at = NOW()
+         WHERE id = $3`,
+        [
+          `Flakes ${header.tanggal}`,
+          tag_name || null,  // 👈 Update tag_name
+          parseInt(id)
+        ]
+      );
+
+      // Update header table
       await client.query(
         `UPDATE flakes_header SET
           tanggal = $1, jam = $2, shift = $3, ukuran_papan = $4,
           "group" = $5, jarak_pisau = $6, keterangan = $7, pemeriksa = $8,
-          created_at = NOW()
+          updated_at = NOW()
          WHERE document_id = $9`,
         [
           header.tanggal,
@@ -1067,7 +1128,7 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
             total_jumlah = $1, 
             grand_total_ketebalan = $2, 
             rata_rata_ketebalan = $3,
-            created_at = NOW()
+            updated_at = NOW()
            WHERE document_id = $4`,
           [
             parseInt(total_jumlah) || 0,
@@ -1090,15 +1151,6 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
         );
       }
 
-      // Update document title
-      await client.query(
-        `UPDATE flakes_documents SET
-          title = $1,
-          updated_at = NOW()
-         WHERE id = $2`,
-        [`Flakes ${header.tanggal}`, parseInt(id)]
-      );
-
       await client.query("COMMIT");
 
       res.json({
@@ -1112,17 +1164,19 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     }
 
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("❌ ERROR UPDATE FLAKES:", err);
     res.status(500).json({ 
-      error: "Gagal memperbarui Flakes document",
-      message: err.message 
+      error: "Gagal memperbarui Flakes document: " + err.message,
+      code: err.code,
+      detail: err.detail
     });
   } finally {
     client.release();
   }
 });
 
-// DELETE Flakes document
+// ✅ DELETE Flakes document (sudah benar, tetap sama)
 app.delete("/api/flakes-documents/:id", async (req, res) => {
   const { id } = req.params;
   const client = await pool.connect();
@@ -1134,7 +1188,6 @@ app.delete("/api/flakes-documents/:id", async (req, res) => {
     await client.query(`DELETE FROM flakes_detail WHERE document_id = $1`, [id]);
     await client.query(`DELETE FROM flakes_header WHERE document_id = $1`, [id]);
 
-    // Delete dokumen utama
     const result = await client.query(
       `DELETE FROM flakes_documents WHERE id = $1 RETURNING id`,
       [id]
@@ -1155,7 +1208,7 @@ app.delete("/api/flakes-documents/:id", async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("❌ ERROR DELETE FLAKES:", err);
-    res.status(500).json({ error: "Gagal menghapus Flakes document" });
+    res.status(500).json({ error: "Gagal menghapus Flakes document: " + err.message });
   } finally {
     client.release();
   }

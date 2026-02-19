@@ -32,7 +32,7 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
   // 👇 STATE: header (dengan tagName)
   const [header, setHeader] = useState(() => {
     const defaultHeader = {
-      tagName: "", // 👈 Tambahkan field tagName
+      tagName: "",
       tanggal: "",
       jam: "",
       shift: "",
@@ -60,14 +60,14 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
   const [isLoading, setIsLoading] = useState(mode !== "create");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 👇 Auto-save ke localStorage (termasuk tagName)
+  // 👇 Auto-save ke localStorage
   useEffect(() => {
     if (mode === "create") {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ rows, header }));
     }
   }, [rows, header, mode]);
 
-  // 👇 Load data dari API kalau mode edit/view
+  // 👇 Load data dari API
   useEffect(() => {
     if (mode === "edit" || mode === "view") {
       loadData();
@@ -80,7 +80,8 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
       const data = await fetchFlakesById(documentId);
 
       setHeader({
-        tagName: data.header?.tag_name || data.header?.tagName || "", // 👈 Load tagName (support snake_case & camelCase)
+        // 👇 FIX: Cek tag_name di root level dulu!
+        tagName: data.tag_name || data.tagName || data.header?.tag_name || data.header?.tagName || "",
         tanggal: formatDateForInput(data.header?.tanggal),
         jam: data.header?.jam || "",
         shift: data.header?.shift || "",
@@ -113,16 +114,11 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
-    const { totalJumlah, grandTotalKetebalan, rataRata } =
-      calculateTotals(rows);
+    const { totalJumlah, grandTotalKetebalan, rataRata } = calculateTotals(rows);
 
-    // 👇 Payload dengan tagName
     const payload = {
-      tag_name: header.tagName, // 👈 Kirim tagName ke backend
-      header: {
-        ...header,
-        tanggal: header.tanggal // pastikan tanggal tetap terkirim
-      },
+      tag_name: header.tagName,  // 👈 Kirim snake_case ke backend
+      header: { ...header, tanggal: header.tanggal },
       detail: rows.filter(r => r.jumlah > 0),
       total_jumlah: totalJumlah,
       grand_total_ketebalan: grandTotalKetebalan,
@@ -130,15 +126,12 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
     };
 
     try {
-      const result =
-        mode === "edit"
-          ? await updateFlakes(documentId, payload)
-          : await createFlakes(payload);
+      const result = mode === "edit"
+        ? await updateFlakes(documentId, payload)
+        : await createFlakes(payload);
 
       alert("✅ Laporan berhasil disimpan");
-      
       localStorage.removeItem(STORAGE_KEY);
-      
       navigate(`/lab/pb/admin1/flakes/${result.documentId || documentId}`);
     } catch (e) {
       console.error("Submit error:", e);
