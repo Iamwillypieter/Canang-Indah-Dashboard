@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useFormPersistence } from '../helper/useFormPersistence.js';
 
 export function useLabPBFormData() {
-  // Main Form Data
+  // 👇 Main Form Data - TAMBAHKAN tagName di initial state
   const [formData, setFormData, clearFormData] = useFormPersistence('formData', {
+    tagName: "",                    // 👈 WAJIB: field untuk tag name document
     timestamp: new Date().toISOString().slice(0, 16),
     board_no: '',
     set_weight: '',
@@ -146,9 +147,10 @@ export function useLabPBFormData() {
 
   const [samples, setSamples, clearSamplesData] = useFormPersistence('samples', createInitialSamples());
 
+  // 👇 Clear ALL form data - pastikan tagName juga di-reset
   const clearAllFormData = () => {
     if (window.confirm('⚠️ Apakah Anda yakin ingin menghapus semua data form yang sudah diisi?')) {
-      clearFormData();
+      clearFormData();    // 👈 Ini akan reset formData termasuk tagName ke initial state
       clearSamplesData();
       clearIbData();
       clearBsData();
@@ -164,6 +166,7 @@ export function useLabPBFormData() {
     }
   };
 
+  // Auto-update timestamp jika form masih kosong
   useEffect(() => {
     if (!formData.board_no && !formData.tested_by) {
       setFormData(prev => ({
@@ -173,6 +176,7 @@ export function useLabPBFormData() {
     }
   }, []);
 
+  // Ensure samples array is always valid
   useEffect(() => {
     if (!Array.isArray(samples) || samples.length !== 24) {
       setSamples(createInitialSamples());

@@ -1050,8 +1050,8 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
 // ✅ UPDATE Flakes document (dengan tag_name)
 app.put("/api/flakes-documents/:id", async (req, res) => {
   const { id } = req.params;
-  // 👇 Tambahkan destructuring tag_name
   const { tag_name, header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
+
   const client = await pool.connect();
 
   try {
@@ -1061,112 +1061,117 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
 
     await client.query("BEGIN");
 
-    try {
-      // 👇 UPDATE header dengan tag_name di flakes_documents
+    /* ===== UPDATE DOCUMENT ===== */
+    await client.query(
+      `UPDATE flakes_documents SET
+        title = $1,
+        tag_name = $2,
+        updated_at = NOW()
+       WHERE id = $3`,
+      [
+        `Flakes ${header.tanggal}`,
+        tag_name || null,
+        Number(id)
+      ]
+    );
+
+    /* ===== UPDATE HEADER ===== */
+    await client.query(
+      `UPDATE flakes_header SET
+        tanggal = $1,
+        jam = $2,
+        shift = $3,
+        ukuran_papan = $4,
+        "group" = $5,
+        jarak_pisau = $6,
+        keterangan = $7,
+        pemeriksa = $8,
+        updated_at = NOW()
+       WHERE document_id = $9`,
+      [
+        header.tanggal,
+        header.jam || null,
+        header.shift || null,
+        header.ukuranPapan || null,
+        header.group || null,
+        header.jarakPisau || null,
+        header.keterangan || null,
+        header.pemeriksa || null,
+        Number(id)
+      ]
+    );
+
+    /* ===== REFRESH DETAIL ===== */
+    await client.query(
+      `DELETE FROM flakes_detail WHERE document_id = $1`,
+      [Number(id)]
+    );
+
+    for (const row of detail) {
+      const tebal = Number(row.tebal) || 0;
+      const jumlah = Number(row.jumlah) || 0;
+
       await client.query(
-        `UPDATE flakes_documents SET
-          title = $1,
-          tag_name = $2,   -- 👈 Update tag_name
-          updated_at = NOW()
-         WHERE id = $3`,
+        `INSERT INTO flakes_detail 
+         (document_id, tebal, jumlah, total_ketebalan, created_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
         [
-          `Flakes ${header.tanggal}`,
-          tag_name || null,  // 👈 Update tag_name
-          parseInt(id)
+          Number(id),
+          tebal,
+          jumlah,
+          tebal * jumlah
         ]
       );
-
-      // Update header table
-      await client.query(
-        `UPDATE flakes_header SET
-          tanggal = $1, jam = $2, shift = $3, ukuran_papan = $4,
-          "group" = $5, jarak_pisau = $6, keterangan = $7, pemeriksa = $8,
-          updated_at = NOW()
-         WHERE document_id = $9`,
-        [
-          header.tanggal,
-          header.jam || null,
-          header.shift || null,
-          header.ukuranPapan || null,
-          header.group || null,
-          header.jarakPisau || null,
-          header.keterangan || null,
-          header.pemeriksa || null,
-          parseInt(id)
-        ]
-      );
-
-      // Delete old detail
-      await client.query(
-        `DELETE FROM flakes_detail WHERE document_id = $1`,
-        [parseInt(id)]
-      );
-
-      // Insert new detail
-      for (const row of detail) {
-        await client.query(
-          `INSERT INTO flakes_detail (document_id, tebal, jumlah, total_ketebalan, created_at)
-           VALUES ($1, $2, $3, $4, NOW())`,
-          [
-            parseInt(id),
-            parseFloat(row.tebal) || 0,
-            parseInt(row.jumlah) || 0,
-            parseFloat(row.tebal * row.jumlah) || 0
-          ]
-        );
-      }
-
-      // Update summary
-      const summaryCheck = await client.query(
-        `SELECT id FROM flakes_summary WHERE document_id = $1`,
-        [parseInt(id)]
-      );
-
-      if (summaryCheck.rows.length > 0) {
-        await client.query(
-          `UPDATE flakes_summary SET
-            total_jumlah = $1, 
-            grand_total_ketebalan = $2, 
-            rata_rata_ketebalan = $3,
-            updated_at = NOW()
-           WHERE document_id = $4`,
-          [
-            parseInt(total_jumlah) || 0,
-            parseFloat(grand_total_ketebalan) || 0,
-            parseFloat(rata_rata) || 0,
-            parseInt(id)
-          ]
-        );
-      } else {
-        await client.query(
-          `INSERT INTO flakes_summary (
-            document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at
-          ) VALUES ($1, $2, $3, $4, NOW())`,
-          [
-            parseInt(id),
-            parseInt(total_jumlah) || 0,
-            parseFloat(grand_total_ketebalan) || 0,
-            parseFloat(rata_rata) || 0
-          ]
-        );
-      }
-
-      await client.query("COMMIT");
-
-      res.json({
-        message: "Flakes document berhasil diperbarui",
-        success: true
-      });
-
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
     }
+
+    /* ===== UPSERT SUMMARY ===== */
+    const summaryCheck = await client.query(
+      `SELECT id FROM flakes_summary WHERE document_id = $1`,
+      [Number(id)]
+    );
+
+    if (summaryCheck.rows.length > 0) {
+      await client.query(
+        `UPDATE flakes_summary SET
+          total_jumlah = $1,
+          grand_total_ketebalan = $2,
+          rata_rata_ketebalan = $3,
+          updated_at = NOW()
+         WHERE document_id = $4`,
+        [
+          Number(total_jumlah) || 0,
+          Number(grand_total_ketebalan) || 0,
+          Number(rata_rata) || 0,
+          Number(id)
+        ]
+      );
+    } else {
+      await client.query(
+        `INSERT INTO flakes_summary
+         (document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
+        [
+          Number(id),
+          Number(total_jumlah) || 0,
+          Number(grand_total_ketebalan) || 0,
+          Number(rata_rata) || 0
+        ]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    res.json({
+      message: "Flakes document berhasil diperbarui",
+      success: true
+    });
 
   } catch (err) {
     await client.query("ROLLBACK");
+
     console.error("❌ ERROR UPDATE FLAKES:", err);
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: "Gagal memperbarui Flakes document: " + err.message,
       code: err.code,
       detail: err.detail
@@ -1175,6 +1180,7 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     client.release();
   }
 });
+
 
 // ✅ DELETE Flakes document (sudah benar, tetap sama)
 app.delete("/api/flakes-documents/:id", async (req, res) => {
@@ -1217,12 +1223,18 @@ app.delete("/api/flakes-documents/:id", async (req, res) => {
 
 
 /* =========================
-SIMPAN LAPORAN LAB PB BARU
+   LAB PB FORM BACKEND - FIXED VERSION (with tag_name support)
+========================= */
+
+/* =========================
+   SIMPAN LAPORAN LAB PB BARU (POST)
 ========================= */
 app.post('/api/lab-pb', async (req, res) => {
   const client = await pool.connect();
   try {
+    // 👇 Tambahkan destructuring tag_name
     const {
+      tag_name,  // 👈 WAJIB: ambil tag_name dari body
       timestamp, board_no, set_weight, shift_group, tested_by,
       density_min, density_max, board_type, glue_sl, glue_cl,
       thick_min, thick_max, samples = [],
@@ -1237,15 +1249,17 @@ app.post('/api/lab-pb', async (req, res) => {
 
     await client.query('BEGIN');
 
-    // Simpan dokumen utama
+    // 👇 INSERT dokumen utama dengan tag_name
     const docResult = await client.query(
       `INSERT INTO lab_pb_documents (
-        timestamp, board_no, set_weight, shift_group, tested_by,
+        title, tag_name, timestamp, board_no, set_weight, shift_group, tested_by,
         density_min, density_max, board_type, glue_sl, glue_cl,
-        thick_min, thick_max
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING id, board_no, timestamp`,
+        thick_min, thick_max, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
+      RETURNING id, board_no, timestamp, tag_name`,
       [
+        `Lab PB ${board_no}`,      // 👈 title otomatis
+        tag_name || null,          // 👈 Simpan tag_name (snake_case)
         timestamp, board_no, set_weight || null, shift_group, tested_by,
         density_min || null, density_max || null, board_type || null, 
         glue_sl || null, glue_cl || null, thick_min || null, thick_max || null
@@ -1425,6 +1439,7 @@ app.post('/api/lab-pb', async (req, res) => {
       message: "Laporan Lab PB berhasil disimpan",
       documentId,
       boardNo: board_no,
+      tagName: tag_name,  // 👈 Return tag_name ke frontend
       timestamp: docResult.rows[0].timestamp
     });
 
@@ -1432,8 +1447,9 @@ app.post('/api/lab-pb', async (req, res) => {
     await client.query('ROLLBACK');
     console.error("❌ ERROR SIMPAN LAB PB:", err);
     res.status(500).json({ 
-      error: "Gagal menyimpan laporan Lab PB",
-      detail: process.env.NODE_ENV === 'development' ? err.message : undefined
+      error: "Gagal menyimpan laporan Lab PB: " + err.message,
+      code: err.code,
+      detail: process.env.NODE_ENV === 'development' ? err.detail : undefined
     });
   } finally {
     client.release();
@@ -1441,62 +1457,49 @@ app.post('/api/lab-pb', async (req, res) => {
 });
 
 /* =========================
-LIST DOKUMEN (dengan pagination & filter)
+   LIST DOKUMEN LAB PB (GET) - FIXED (tanpa title)
 ========================= */
 app.get('/api/lab-pb-documents', async (req, res) => {
   try {
-    const { page = 1, limit = 20, board_no = '', date_from, date_to } = req.query;
+    const { page = 1, limit = 20, board_no = '' } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    // Build query dengan filter
-    let query = `
+    // 👇 HAPUS title dari SELECT (karena kolom tidak ada!)
+    const query = `
       SELECT id, board_no, timestamp, shift_group, tested_by, 
-             created_at, updated_at
+             created_at, updated_at, tag_name  -- ✅ TIDAK ADA title
       FROM lab_pb_documents
       WHERE ($1 = '' OR board_no ILIKE $1)
+      ORDER BY created_at DESC 
+      LIMIT $2 OFFSET $3
     `;
-    const params = [`%${board_no}%`];
-    let paramCount = 2;
-
-    if (date_from) {
-      query += ` AND timestamp >= $${paramCount}`;
-      params.push(date_from);
-      paramCount++;
-    }
-    if (date_to) {
-      query += ` AND timestamp <= $${paramCount}`;
-      params.push(date_to);
-      paramCount++;
-    }
-
-    query += ` ORDER BY timestamp DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
-    params.push(parseInt(limit), offset);
-
+    
+    const params = [`%${board_no}%`, parseInt(limit), offset];
     const result = await pool.query(query, params);
 
-    // Hitung total  
-    let countQuery = `
+    const countQuery = `
       SELECT COUNT(*) as total 
       FROM lab_pb_documents 
       WHERE ($1 = '' OR board_no ILIKE $1)
     `;
-    let countParams = [`%${board_no}%`];
-    paramCount = 2;
+    const countResult = await pool.query(countQuery, [`%${board_no}%`]);
 
-    if (date_from) {
-      countQuery += ` AND timestamp >= $${paramCount}`;
-      countParams.push(date_from);
-      paramCount++;
-    }
-    if (date_to) {
-      countQuery += ` AND timestamp <= $${paramCount}`;
-      countParams.push(date_to);
-    }
-
-    const countResult = await pool.query(countQuery, countParams);
+    // 👇 Generate title di frontend (bukan dari DB)
+    const documents = result.rows.map(doc => ({
+      id: doc.id,
+      title: `Lab PB ${doc.board_no}`,  // 👈 Generate di sini, bukan SELECT dari DB
+      tag_name: doc.tag_name,  // ✅ Kirim tag_name untuk badge
+      board_no: doc.board_no,
+      shift_group: doc.shift_group,
+      tested_by: doc.tested_by,
+      timestamp: doc.timestamp,
+      created_at: doc.created_at,
+      updated_at: doc.updated_at,
+      type: "labPBForm"
+    }));
 
     res.json({
-      documents: result.rows,
+      documents,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -1506,29 +1509,35 @@ app.get('/api/lab-pb-documents', async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ ERROR LIST DOKUMEN:", err);
-    res.status(500).json({ error: "Gagal mengambil daftar dokumen" });
+    console.error("❌ ERROR LIST LAB PB:", err);
+    res.status(500).json({ 
+      error: "Gagal mengambil daftar dokumen: " + err.message 
+    });
   }
 });
 
 /* =========================
-DETAIL DOKUMEN (VIEW)
+   DETAIL DOKUMEN (GET BY ID) - FIXED (tanpa title)
 ========================= */
 app.get('/api/lab-pb/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    // Ambil dokumen utama
+    // 👇 HAPUS title dari SELECT (karena kolom tidak ada!)
     const docResult = await pool.query(
-      `SELECT * FROM lab_pb_documents WHERE id = $1`,
+      `SELECT id, tag_name, timestamp, board_no, set_weight, shift_group, tested_by,
+              density_min, density_max, board_type, glue_sl, glue_cl, thick_min, thick_max,
+              created_at, updated_at, status, submitted_at 
+       FROM lab_pb_documents WHERE id = $1`,
       [id]
     );
+    
     if (docResult.rows.length === 0) {
       return res.status(404).json({ error: "Dokumen tidak ditemukan" });
     }
 
     const doc = docResult.rows[0];
 
-    // Ambil semua data
+    // Ambil semua data child tables
     const [
       samples,
       ibTests,
@@ -1551,11 +1560,15 @@ app.get('/api/lab-pb/:id', async (req, res) => {
       pool.query('SELECT * FROM lab_pb_additional_tests WHERE document_id = $1', [id])
     ]);
 
-    // Format data sesuai struktur
+    // Format data sesuai struktur frontend
     const formattedData = {
+      id: doc.id,
+      tag_name: doc.tag_name,  // 👈 Return tag_name di ROOT level (penting untuk hook!)
       document: {
         id: doc.id,
-        timestamp: doc.timestamp.toISOString().slice(0, 16),
+        title: `Lab PB ${doc.board_no}`,  // 👈 Generate title di frontend (bukan dari DB)
+        tag_name: doc.tag_name,
+        timestamp: doc.timestamp?.toISOString?.()?.slice(0, 16) || doc.timestamp,
         board_no: doc.board_no,
         set_weight: doc.set_weight,
         shift_group: doc.shift_group,
@@ -1568,7 +1581,9 @@ app.get('/api/lab-pb/:id', async (req, res) => {
         thick_min: doc.thick_min,
         thick_max: doc.thick_max,
         created_at: doc.created_at,
-        updated_at: doc.updated_at
+        updated_at: doc.updated_at,
+        status: doc.status,
+        submitted_at: doc.submitted_at
       },
       samples: samples.rows.map(s => ({
         no: s.sample_no,
@@ -1692,18 +1707,19 @@ app.get('/api/lab-pb/:id', async (req, res) => {
 
   } catch (err) {
     console.error("❌ ERROR DETAIL DOKUMEN:", err);
-    res.status(500).json({ error: "Gagal mengambil detail dokumen" });
+    res.status(500).json({ error: "Gagal mengambil detail dokumen: " + err.message });
   }
 });
 
 /* =========================
-UPDATE DOKUMEN (EDIT)
+   UPDATE DOKUMEN LAB PB (PUT) - FIXED (tanpa title)
 ========================= */
 app.put('/api/lab-pb/:id', async (req, res) => {
   const { id } = req.params;
   const client = await pool.connect();
   try {
     const {
+      tag_name,  // 👈 Ambil tag_name dari body
       timestamp, board_no, set_weight, shift_group, tested_by,
       density_min, density_max, board_type, glue_sl, glue_cl,
       thick_min, thick_max, samples = [],
@@ -1718,23 +1734,35 @@ app.put('/api/lab-pb/:id', async (req, res) => {
 
     await client.query('BEGIN');
 
-    // Update dokumen utama
+    // 👇 HAPUS title dari UPDATE (karena kolom tidak ada!)
+    // UPDATE hanya kolom yang benar-benar ada di tabel
     await client.query(
       `UPDATE lab_pb_documents SET
-        timestamp = $1, board_no = $2, set_weight = $3, shift_group = $4,
-        tested_by = $5, density_min = $6, density_max = $7, board_type = $8,
-        glue_sl = $9, glue_cl = $10, thick_min = $11, thick_max = $12,
+        timestamp = $1, 
+        board_no = $2, 
+        set_weight = $3, 
+        shift_group = $4,
+        tested_by = $5, 
+        density_min = $6, 
+        density_max = $7, 
+        board_type = $8,
+        glue_sl = $9, 
+        glue_cl = $10, 
+        thick_min = $11, 
+        thick_max = $12,
+        tag_name = $13,  -- 👈 UPDATE tag_name
         updated_at = NOW()
-      WHERE id = $13`,
+      WHERE id = $14`,
       [
         timestamp, board_no, set_weight || null, shift_group, tested_by,
         density_min || null, density_max || null, board_type || null,
         glue_sl || null, glue_cl || null, thick_min || null, thick_max || null,
+        tag_name || null,  // 👈 Kirim tag_name
         id
       ]
     );
 
-    // Hapus data lama 
+    // Hapus data lama dari child tables
     await Promise.all([
       client.query('DELETE FROM lab_pb_samples WHERE document_id = $1', [id]),
       client.query('DELETE FROM lab_pb_internal_bonding WHERE document_id = $1', [id]),
@@ -1747,7 +1775,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       client.query('DELETE FROM lab_pb_additional_tests WHERE document_id = $1', [id])
     ]);
 
-    // Simpan samples
+    // Simpan samples (baru)
     for (const sample of samples) {
       await client.query(
         `INSERT INTO lab_pb_samples (
@@ -1764,7 +1792,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       );
     }
 
-    // Simpan Internal Bonding
+    // Simpan Internal Bonding (baru)
     const positions = ['le', 'ml', 'md', 'mr', 'ri'];
     for (const pos of positions) {
       await client.query(
@@ -1782,7 +1810,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       );
     }
 
-    // Simpan Bending Strength
+    // Simpan Bending Strength (baru)
     for (const pos of positions) {
       await client.query(
         `INSERT INTO lab_pb_bending_strength (
@@ -1799,7 +1827,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       );
     }
 
-    // Simpan Screw Test
+    // Simpan Screw Test (baru)
     for (const pos of positions) {
       await client.query(
         `INSERT INTO lab_pb_screw_test (
@@ -1816,7 +1844,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       );
     }
 
-    // Simpan Density Profile
+    // Simpan Density Profile (baru)
     for (const pos of positions) {
       const min = densityProfileData[`min_${pos}`];
       const mean = densityProfileData[`mean_${pos}`];
@@ -1838,7 +1866,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       );
     }
 
-    // Simpan MC Board
+    // Simpan MC Board (baru)
     for (const pos of positions) {
       const w1 = mcBoardData[`w1_${pos}`];
       const w2 = mcBoardData[`w2_${pos}`];
@@ -1861,7 +1889,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       );
     }
 
-    // Simpan Swelling 2h
+    // Simpan Swelling 2h (baru)
     for (const pos of positions) {
       const t1 = swellingData[`t1_${pos}`];
       const t2 = swellingData[`t2_${pos}`];
@@ -1884,7 +1912,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       );
     }
 
-    // Simpan Surface Soundness
+    // Simpan Surface Soundness (baru)
     for (const pos of ['le', 'ri']) {
       await client.query(
         `INSERT INTO lab_pb_surface_soundness (
@@ -1899,7 +1927,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
       );
     }
 
-    // Simpan Additional Tests
+    // Simpan Additional Tests (baru)
     await client.query(
       `INSERT INTO lab_pb_additional_tests (
         document_id, avg_tebal_flakes, avg_cons_hardener, geltime_sl, geltime_cl
@@ -1918,15 +1946,16 @@ app.put('/api/lab-pb/:id', async (req, res) => {
     res.json({
       message: "Laporan Lab PB berhasil diperbarui",
       documentId: id,
-      boardNo: board_no
+      boardNo: board_no,
+      tagName: tag_name  // 👈 Return tag_name ke frontend
     });
 
   } catch (err) {
     await client.query('ROLLBACK');
     console.error("❌ ERROR UPDATE LAB PB:", err);
     res.status(500).json({ 
-      error: "Gagal memperbarui laporan Lab PB",
-      detail: process.env.NODE_ENV === 'development' ? err.message : undefined
+      error: "Gagal memperbarui laporan Lab PB: " + err.message,
+      code: err.code
     });
   } finally {
     client.release();
@@ -1934,7 +1963,7 @@ app.put('/api/lab-pb/:id', async (req, res) => {
 });
 
 /* =========================
-HAPUS DOKUMEN
+   HAPUS DOKUMEN (DELETE)
 ========================= */
 app.delete('/api/lab-pb-documents/:id', async (req, res) => {
   const { id } = req.params;
@@ -1942,9 +1971,20 @@ app.delete('/api/lab-pb-documents/:id', async (req, res) => {
   try {
     await client.query('BEGIN');
 
+    // 👇 Hapus child tables dulu (foreign key constraint)
+    await client.query('DELETE FROM lab_pb_samples WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_internal_bonding WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_bending_strength WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_screw_test WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_density_profile WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_mc_board WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_swelling WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_surface_soundness WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_additional_tests WHERE document_id = $1', [id]);
 
+    // Baru hapus dokumen utama
     const result = await client.query(
-      `DELETE FROM lab_pb_documents WHERE id = $1 RETURNING id, board_no`,
+      `DELETE FROM lab_pb_documents WHERE id = $1 RETURNING id, board_no, tag_name`,
       [id]
     );
 
@@ -1957,20 +1997,59 @@ app.delete('/api/lab-pb-documents/:id', async (req, res) => {
 
     res.json({
       message: `Dokumen Lab PB #${result.rows[0].board_no} berhasil dihapus`,
-      documentId: result.rows[0].id
+      documentId: result.rows[0].id,
+      tagName: result.rows[0].tag_name
     });
 
   } catch (err) {
     await client.query('ROLLBACK');
     console.error("❌ ERROR HAPUS DOKUMEN:", err);
-    res.status(500).json({ error: "Gagal menghapus dokumen" });
+    res.status(500).json({ error: "Gagal menghapus dokumen: " + err.message });
   } finally {
     client.release();
   }
 });
 
 /* =========================
-HEALTH CHECK
+   LEGACY ENDPOINT: /api/lab-pb-form-documents (alias untuk compatibility)
+========================= */
+app.get('/api/lab-pb-form-documents', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id,
+        title,
+        tag_name,              -- 👈 Tambahkan tag_name
+        board_no,
+        shift_group,
+        tested_by,
+        created_at,
+        updated_at
+      FROM lab_pb_documents
+      ORDER BY created_at DESC
+    `);
+
+    // Format response konsisten dengan endpoint utama
+    const documents = result.rows.map(doc => ({
+      id: doc.id,
+      title: doc.title || `Lab PB ${doc.board_no}`,
+      tag_name: doc.tag_name,  // 👈 Return tag_name
+      board_no: doc.board_no,
+      shift_group: doc.shift_group,
+      tested_by: doc.tested_by,
+      created_at: doc.created_at,
+      type: "labPBForm"
+    }));
+
+    res.json(documents);
+  } catch (err) {
+    console.error("❌ ERROR LEGACY ENDPOINT:", err);
+    res.status(500).json({ error: "Gagal mengambil data: " + err.message });
+  }
+});
+
+/* =========================
+   HEALTH CHECK
 ========================= */
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -1980,18 +2059,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/api/lab-pb-form-documents', async (req, res) => {
-  const result = await pool.query(`
-    SELECT 
-      id,
-      board_no AS title,
-      created_at
-    FROM lab_pb_documents
-    ORDER BY created_at DESC
-  `);
 
-  res.json(result.rows);
-});
 
 
 // Health check endpoint

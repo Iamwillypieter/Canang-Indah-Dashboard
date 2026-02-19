@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   initialThicknesses,
   formatDateForInput,
@@ -13,23 +13,23 @@ import {
 const STORAGE_KEY = "flakesFormDraft";
 
 export const useFlakesForm = ({ mode, documentId, navigate }) => {
-  // 👇 STATE: rows
+  /* ================= STATE: ROWS ================= */
   const [rows, setRows] = useState(() => {
     if (mode === "create") {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          return parsed.rows || initialThicknesses.map(t => ({ tebal: t, jumlah: 0 }));
+          if (Array.isArray(parsed.rows)) return parsed.rows;
         } catch (e) {
-          console.error('Error parsing saved rows:', e);
+          console.error("❌ Error parsing saved rows:", e);
         }
       }
     }
     return initialThicknesses.map(t => ({ tebal: t, jumlah: 0 }));
   });
 
-  // 👇 STATE: header (dengan tagName)
+  /* ================= STATE: HEADER ================= */
   const [header, setHeader] = useState(() => {
     const defaultHeader = {
       tagName: "",
@@ -50,26 +50,33 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
           const parsed = JSON.parse(saved);
           return { ...defaultHeader, ...(parsed.header || {}) };
         } catch (e) {
-          console.error('Error parsing saved header:', e);
+          console.error("❌ Error parsing saved header:", e);
         }
       }
     }
+
     return defaultHeader;
   });
 
   const [isLoading, setIsLoading] = useState(mode !== "create");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 👇 Auto-save ke localStorage
+  /* ================= MEMO: TOTALS ================= */
+  const totals = useMemo(() => calculateTotals(rows), [rows]);
+
+  /* ================= AUTO SAVE ================= */
   useEffect(() => {
     if (mode === "create") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ rows, header }));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ rows, header })
+      );
     }
   }, [rows, header, mode]);
 
-  // 👇 Load data dari API
+  /* ================= LOAD DATA ================= */
   useEffect(() => {
-    if (mode === "edit" || mode === "view") {
+    if ((mode === "edit" || mode === "view") && documentId) {
       loadData();
     }
   }, [mode, documentId]);
@@ -79,9 +86,14 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
     try {
       const data = await fetchFlakesById(documentId);
 
+      /* ===== HEADER MAPPING ===== */
       setHeader({
-        // 👇 FIX: Cek tag_name di root level dulu!
-        tagName: data.tag_name || data.tagName || data.header?.tag_name || data.header?.tagName || "",
+        tagName:
+          data.tag_name ||
+          data.tagName ||
+          data.header?.tag_name ||
+          data.header?.tagName ||
+          "",
         tanggal: formatDateForInput(data.header?.tanggal),
         jam: data.header?.jam || "",
         shift: data.header?.shift || "",
@@ -92,55 +104,103 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
         pemeriksa: data.header?.pemeriksa || ""
       });
 
-      const map = new Map();
-      data.detail?.forEach(d =>
-        map.set(parseFloat(d.tebal), parseInt(d.jumlah) || 0)
-      );
+      /* ===== DETAIL → ROWS ===== */
+      const detailMap = new Map();
+
+      (data.detail || []).forEach(d => {
+        const tebal = parseFloat(d.tebal);
+        const jumlah = parseInt(d.jumlah) || 0;
+        detailMap.set(tebal, jumlah);
+      });
 
       setRows(
         initialThicknesses.map(t => ({
           tebal: t,
-          jumlah: map.get(t) || 0
+          jumlah: detailMap.get(t) || 0
         }))
       );
     } catch (e) {
-      console.error("Load error:", e);
+      console.error("💥 Load error:", e);
       alert("❌ Gagal memuat data");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSubmit = async () => {
+  /* ================= VALIDATION ================= */
+  const validateForm = () => {
+    if (!header.tagName.trim()) {
+      alert("⚠ Tag Name wajib diisi");
+      return false;
+    }
+
+    if (!header.tanggal) {
+      alert("⚠ Tanggal wajib diisi");
+      return false;
+    }
+
+    if (totals.totalJumlah <= 0) {
+      alert("⚠ Jumlah flakes masih kosong");
+      return false;
+    }
+
+    return true;
+  };
+
+  /* ================= SUBMIT ================= */
+  const handleSubmit = useCallback(async () => {
+    if (!validateForm()) return;
+
     setIsSubmitting(true);
 
-    const { totalJumlah, grandTotalKetebalan, rataRata } = calculateTotals(rows);
-
     const payload = {
-      tag_name: header.tagName,  // 👈 Kirim snake_case ke backend
-      header: { ...header, tanggal: header.tanggal },
-      detail: rows.filter(r => r.jumlah > 0),
-      total_jumlah: totalJumlah,
-      grand_total_ketebalan: grandTotalKetebalan,
-      rata_rata: rataRata
+      tag_name: header.tagName, // snake_case → backend
+      header: {
+        tanggal: header.tanggal,
+        jam: header.jam,
+        shift: header.shift,
+        ukuranPapan: header.ukuranPapan,
+        group: header.group,
+        jarakPisau: header.jarakPisau,
+        keterangan: header.keterangan,
+        pemeriksa: header.pemeriksa
+      },
+      detail: rows
+        .filter(r => r.jumlah > 0)
+        .map(r => ({
+          tebal: Number(r.tebal),
+          jumlah: Number(r.jumlah)
+        })),
+      total_jumlah: totals.totalJumlah,
+      grand_total_ketebalan: totals.grandTotalKetebalan,
+      rata_rata: totals.rataRata
     };
 
     try {
-      const result = mode === "edit"
-        ? await updateFlakes(documentId, payload)
-        : await createFlakes(payload);
+      const result =
+        mode === "edit"
+          ? await updateFlakes(documentId, payload)
+          : await createFlakes(payload);
 
       alert("✅ Laporan berhasil disimpan");
+
       localStorage.removeItem(STORAGE_KEY);
-      navigate(`/lab/pb/admin1/flakes/${result.documentId || documentId}`);
+
+      const targetId =
+        result?.documentId ||
+        result?.id ||
+        documentId;
+
+      navigate(`/lab/pb/admin1/flakes/${targetId}`);
     } catch (e) {
-      console.error("Submit error:", e);
+      console.error("💥 Submit error:", e);
       alert(`❌ ${e.message}`);
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [mode, documentId, header, rows, totals, navigate]);
 
+  /* ================= RETURN ================= */
   return {
     rows,
     setRows,
@@ -149,6 +209,6 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
     isLoading,
     isSubmitting,
     handleSubmit,
-    ...calculateTotals(rows)
+    ...totals
   };
 };

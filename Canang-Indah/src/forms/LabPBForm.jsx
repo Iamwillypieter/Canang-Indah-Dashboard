@@ -70,6 +70,11 @@ export default function LabPBForm() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // 👇 Handler khusus untuk tagName (opsional, bisa pakai handleChange biasa)
+  const handleTagNameChange = (value) => {
+    setFormData(prev => ({ ...prev, tagName: value }));
+  };
+
   const handleIbChange = (e) => {
     setIbData({ ...ibData, [e.target.name]: e.target.value });
   };
@@ -159,6 +164,7 @@ export default function LabPBForm() {
     }
     try {
       const payload = {
+        tag_name: formData.tagName?.trim() || null,
         timestamp: new Date(formData.timestamp).toISOString(),
         board_no: formData.board_no,
         set_weight: formData.set_weight,
@@ -321,6 +327,8 @@ export default function LabPBForm() {
           samples={samples} 
           onChange={handleChange} 
           onSamplesChange={setSamples} 
+          tagName={formData.tagName}           // 👈 Oper value tagName
+          onTagNameChange={handleTagNameChange}
         />
         
         <InternalBondingSection 

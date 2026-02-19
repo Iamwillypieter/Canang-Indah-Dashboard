@@ -1,9 +1,46 @@
 import SampleTable from '../components/SampleTable.jsx';
 
-export default function DataUtamaSection({ formData, samples, onChange, onSamplesChange }) {
+export default function DataUtamaSection({ 
+  formData, 
+  samples, 
+  onChange, 
+  onSamplesChange,
+  tagName,           // 👈 Tambahkan prop tagName
+  onTagNameChange    // 👈 Tambahkan prop handler khusus (opsional)
+}) {
+  
+  // Helper: Handle tagName change (bisa pakai onChange biasa atau custom)
+  const handleTagNameChange = (e) => {
+    if (onTagNameChange) {
+      onTagNameChange(e.target.value);
+    } else {
+      onChange(e); // Fallback ke onChange biasa
+    }
+  };
+
   return (
     <div className="section">
       <h3 className="section-title">⚙️ Data Utama</h3>
+      
+      {/* 👑 TAG NAME - Identitas Utama Dokumen */}
+      <div className="form-group tag-name-group">
+        <label className="form-label required">🏷️ Tag Name Document:</label>
+        <input 
+          type="text" 
+          name="tagName"
+          value={tagName || formData.tagName || ""}
+          onChange={handleTagNameChange} 
+          placeholder="Ex: 0001 1A"
+          className="form-input tag-name-input"
+          required
+          style={{ 
+            fontWeight: '600',
+            borderColor: '#0ea5e9',
+            backgroundColor: '#f0f9ff'
+          }}
+        />
+      </div>
+
       <div className="form-grid">
         <div className="form-group">
           <label className="form-label">Timestamp:</label>
@@ -45,7 +82,7 @@ export default function DataUtamaSection({ formData, samples, onChange, onSample
             className="form-select"
           >
             <option value="">Shift</option>
-            {[1, 2, 3, 4].map((num) => (
+            {[1, 2, 3].map((num) => (
               ['A', 'B', 'C', 'D'].map((char) => (
                 <option key={`${num}${char}`} value={`${num}${char}`}>
                   {`${num}${char}`}
