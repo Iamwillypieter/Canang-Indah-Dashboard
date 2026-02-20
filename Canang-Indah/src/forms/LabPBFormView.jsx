@@ -48,7 +48,13 @@ export default function LabPBFormView({ mode = 'view' }) {
     const loadData = async () => {
       try {
         const data = await getLabReportById(id);
-        setFormData(data.document);
+        
+        // 👇 FIX: Pastikan tag_name ada di formData (support both root & nested)
+        setFormData({
+          ...data.document,
+          tag_name: data.tag_name || data.document?.tag_name  // 👈 Prioritaskan root, fallback ke nested
+        });
+        
         setSamples(data.samples);
         setIbData(data.ibData || {});
         setBsData(data.bsData || {});
@@ -60,6 +66,7 @@ export default function LabPBFormView({ mode = 'view' }) {
         setTebalFlakesData(data.tebalFlakesData || {});
         setConsHardenerData(data.consHardenerData || {});
         setGeltimeData(data.geltimeData || {});
+        
       } catch (err) {
         alert("❌ Error: " + err.message);
         navigate('/lab/pb/admin1/lab-pb-form');
@@ -69,6 +76,7 @@ export default function LabPBFormView({ mode = 'view' }) {
     };
     loadData();
   }, [id, navigate]);
+
 
   // --- HANDLERS ---
   const handleInputChange = (setter, state) => (e) => {
@@ -80,9 +88,17 @@ export default function LabPBFormView({ mode = 'view' }) {
     if (!window.confirm('💾 Update data dokumen ini?')) return;
 
     try {
+      // 👇 FIX: Pastikan payload kirim tag_name (snake_case) ke backend
       const payload = {
+        // 👇 Pastikan tag_name ada di root payload (snake_case)
+        tag_name: formData.tagName || formData.tag_name,  // Support both camelCase & snake_case
+        
+        // 👇 Spread formData, tapi field tag_name sudah di-override di atas
         ...formData,
+        
         samples,
+        
+        // Sections dengan calculated averages
         ibData: { 
           ...ibData, 
           ib_avg: calculateIbAverage(ibData), 
@@ -120,10 +136,22 @@ export default function LabPBFormView({ mode = 'view' }) {
         geltimeData
       };
 
+      // 👇 LOG payload untuk debug (opsional)
+      console.log('📦 Update Payload:', {
+        tag_name: payload.tag_name,
+        board_no: payload.board_no,
+        tested_by: payload.tested_by
+      });
+
       await updateLabReport(id, payload);
+    
       alert('✅ Data berhasil diperbarui!');
+      
+      // 👇 WAJIB: Redirect ke halaman list yang akan fetch data terbaru
       navigate('/lab/pb/admin1/dokumen');
+      
     } catch (err) {
+      console.error('💥 Update error:', err);
       alert('❌ Gagal update: ' + err.message);
     }
   };

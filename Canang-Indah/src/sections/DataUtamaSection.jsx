@@ -5,43 +5,24 @@ export default function DataUtamaSection({
   samples, 
   onChange, 
   onSamplesChange,
-  tagName,           // 👈 Tambahkan prop tagName
-  onTagNameChange    // 👈 Tambahkan prop handler khusus (opsional)
+  onTagNameChange
 }) {
-  
-  // Helper: Handle tagName change (bisa pakai onChange biasa atau custom)
+
   const handleTagNameChange = (e) => {
     if (onTagNameChange) {
       onTagNameChange(e.target.value);
     } else {
-      onChange(e); // Fallback ke onChange biasa
+      onChange(e);
     }
   };
 
   return (
     <div className="section">
       <h3 className="section-title">⚙️ Data Utama</h3>
-      
-      {/* 👑 TAG NAME - Identitas Utama Dokumen */}
-      <div className="form-group tag-name-group">
-        <label className="form-label required">🏷️ Tag Name Document:</label>
-        <input 
-          type="text" 
-          name="tagName"
-          value={tagName || formData.tagName || ""}
-          onChange={handleTagNameChange} 
-          placeholder="Ex: 0001 1A"
-          className="form-input tag-name-input"
-          required
-          style={{ 
-            fontWeight: '600',
-            borderColor: '#0ea5e9',
-            backgroundColor: '#f0f9ff'
-          }}
-        />
-      </div>
 
       <div className="form-grid">
+        
+        {/* Timestamp */}
         <div className="form-group">
           <label className="form-label">Timestamp:</label>
           <input 
@@ -52,6 +33,8 @@ export default function DataUtamaSection({
             className="form-input"
           />
         </div>
+
+        {/* Board No */}
         <div className="form-group">
           <label className="form-label">Board No:</label>
           <input 
@@ -62,6 +45,8 @@ export default function DataUtamaSection({
             className="form-input"
           />
         </div>
+
+        {/* Set Weight */}
         <div className="form-group">
           <label className="form-label">Set Weight:</label>
           <input 
@@ -73,6 +58,8 @@ export default function DataUtamaSection({
             className="form-input"
           />
         </div>
+
+        {/* Shift */}
         <div className="form-group">
           <label className="form-label">Shift/Group:</label>
           <select 
@@ -91,6 +78,8 @@ export default function DataUtamaSection({
             ))}
           </select>
         </div>
+
+        {/* Tested By */}
         <div className="form-group">
           <label className="form-label">Tested By:</label>
           <input 
@@ -101,6 +90,20 @@ export default function DataUtamaSection({
             className="form-input"
           />
         </div>
+
+        {/* 👑 TAG NAME — pindah ke sini */}
+        <div className="form-group">
+          <label className="form-label required">🏷️ Tag Name:</label>
+          <input 
+            type="text" 
+            name="tagName"
+            value={formData.tagName || ""}  
+            onChange={handleTagNameChange}
+            placeholder="Contoh: 1A, 1B, 0001"
+            className="form-input"
+          />
+        </div>
+
       </div>
 
       <h4 className="sub-section-title">🔧 Spesifikasi Teknis</h4>
@@ -116,6 +119,7 @@ export default function DataUtamaSection({
             className="form-input"
           />
         </div>
+
         <div className="form-group">
           <label className="form-label">Density Max:</label>
           <input 
@@ -127,6 +131,7 @@ export default function DataUtamaSection({
             className="form-input"
           />
         </div>
+
         <div className="form-group">
           <label className="form-label">Board Type:</label>
           <input 
@@ -136,6 +141,7 @@ export default function DataUtamaSection({
             className="form-input"
           />
         </div>
+
         <div className="form-group">
           <label className="form-label">Glue SL:</label>
           <input 
@@ -146,6 +152,7 @@ export default function DataUtamaSection({
             className="form-input"
           />
         </div>
+
         <div className="form-group">
           <label className="form-label">Glue CL:</label>
           <input 
@@ -156,6 +163,7 @@ export default function DataUtamaSection({
             className="form-input"
           />
         </div>
+
         <div className="form-group">
           <label className="form-label">Thick Min:</label>
           <input 
@@ -167,6 +175,7 @@ export default function DataUtamaSection({
             className="form-input"
           />
         </div>
+
         <div className="form-group">
           <label className="form-label">Thick Max:</label>
           <input 

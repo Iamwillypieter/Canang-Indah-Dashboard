@@ -4,6 +4,9 @@ import "./ResinInspectionView.css";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
+// 👇 KEY untuk localStorage edit mode (beda dengan create mode)
+const EDIT_STORAGE_KEY = (id) => `resinInspectionEdit_${id}`;
+
 export default function ResinInspectionView() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -13,13 +16,50 @@ export default function ResinInspectionView() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // 👇 Helper: Load dari localStorage (edit mode)
+  const loadFromLocalStorage = () => {
+    if (!id) return null;
+    try {
+      const saved = localStorage.getItem(EDIT_STORAGE_KEY(id));
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.warn('Failed to load from localStorage:', e);
+      return null;
+    }
+  };
+
+  // 👇 Helper: Save ke localStorage (edit mode)
+  const saveToLocalStorage = (data) => {
+    if (!id) return;
+    try {
+      localStorage.setItem(EDIT_STORAGE_KEY(id), JSON.stringify(data));
+    } catch (e) {
+      console.warn('Failed to save to localStorage:', e);
+    }
+  };
+
+  // 👇 Helper: Clear localStorage (edit mode)
+  const clearLocalStorage = () => {
+    if (!id) return;
+    try {
+      localStorage.removeItem(EDIT_STORAGE_KEY(id));
+    } catch (e) {
+      console.warn('Failed to clear localStorage:', e);
+    }
+  };
+
   useEffect(() => {
     fetchDocument();
   }, [id]);
 
-  const getAuthToken = () => {
-    return localStorage.getItem('token');
-  };
+  // 👇 Auto-save ke localStorage HANYA saat mode edit & formData berubah
+  useEffect(() => {
+    if (isEditing && formData) {
+      saveToLocalStorage(formData);
+    }
+  }, [formData, isEditing, id]);
+
+  const getAuthToken = () => localStorage.getItem('token');
 
   const fetchDocument = async () => {
     setLoading(true);
@@ -41,30 +81,38 @@ export default function ResinInspectionView() {
       const data = await res.json();
       setDocumentData(data);
 
-      setFormData({
-        tagName: data.document.tag_name || data.document.tagName || "",  // Support snake_case & camelCase
-        
-        date: data.document.date,
-        shift: data.document.shift,
-        group: data.document.group_name,  // Backend kirim group_name
-        comment_by: data.document.comment_by || "",
-        createdBy: data.document.created_by || "",
-        
-        inspection: data.inspection.map(row => ({
-          id: row.id,
-          certTestNo: row.cert_test_no || "",
-          resinTank: row.resin_tank || "",
-          quantity: row.quantity || "",
-          specificGravity: row.specific_gravity || "",
-          viscosity: row.viscosity || "",
-          ph: row.ph || "",
-          gelTime: row.gel_time || "",
-          waterTolerance: row.water_tolerance || "",
-          appearance: row.appearance || "",
-          solids: row.solids || ""
-        })),
-        solidContent: groupSolidRows(data.solidContent)
-      });
+      // 👇 PRIORITAS: Load dari localStorage dulu kalau ada (edit mode)
+      const savedEdit = loadFromLocalStorage();
+      
+      if (savedEdit && isEditing) {
+        // Pakai data dari localStorage (draft edit)
+        setFormData(savedEdit);
+        console.log('📥 Loaded edit draft from localStorage');
+      } else {
+        // Pakai data fresh dari API
+        setFormData({
+          tagName: data.document.tag_name || data.document.tagName || "",
+          date: data.document.date,
+          shift: data.document.shift,
+          group: data.document.group_name,
+          comment_by: data.document.comment_by || "",
+          createdBy: data.document.created_by || "",
+          inspection: data.inspection.map(row => ({
+            id: row.id,
+            certTestNo: row.cert_test_no || "",
+            resinTank: row.resin_tank || "",
+            quantity: row.quantity || "",
+            specificGravity: row.specific_gravity || "",
+            viscosity: row.viscosity || "",
+            ph: row.ph || "",
+            gelTime: row.gel_time || "",
+            waterTolerance: row.water_tolerance || "",
+            appearance: row.appearance || "",
+            solids: row.solids || ""
+          })),
+          solidContent: groupSolidRows(data.solidContent)
+        });
+      }
     } catch (err) {
       console.error('Fetch document error:', err);
       alert("❌ " + (err.message || "Gagal memuat dokumen"));
@@ -118,6 +166,7 @@ export default function ResinInspectionView() {
         throw new Error(errorData.error || "Gagal menghapus dokumen");
       }
       
+      clearLocalStorage(); // 👇 Clear edit draft
       alert("✅ Dokumen berhasil dihapus");
       navigate("/lab/pb/admin1/dokumen");
     } catch (err) {
@@ -130,6 +179,14 @@ export default function ResinInspectionView() {
     try {
       const token = getAuthToken();
       
+      // 👇 LOG payload untuk debug
+      console.log('📦 PUT Payload:', {
+        tag_name: formData.tagName,
+        date: formData.date,
+        shift: formData.shift,
+        group: formData.group
+      });
+      
       const res = await fetch(`${API_BASE}/resin-inspection/${id}`, {
         method: "PUT",
         headers: {
@@ -137,7 +194,6 @@ export default function ResinInspectionView() {
           ...(token && { "Authorization": `Bearer ${token}` })
         },
         body: JSON.stringify({
-          // 👈 Kirim tag_name (snake_case untuk backend)
           tag_name: formData.tagName,
           date: formData.date,
           shift: formData.shift,
@@ -154,9 +210,12 @@ export default function ResinInspectionView() {
         throw new Error(errorData.error || "Gagal update dokumen");
       }
       
+      // 👇 CLEAR localStorage setelah update sukses
+      clearLocalStorage();
+      
       alert("✅ Dokumen berhasil diperbarui");
       setIsEditing(false);
-      fetchDocument();
+      fetchDocument(); // 👇 Reload data terbaru dari API
     } catch (err) {
       console.error('Update error:', err);
       alert("❌ " + (err.message || "Gagal update dokumen"));
@@ -175,6 +234,24 @@ export default function ResinInspectionView() {
     setFormData({ ...formData, solidContent: updated });
   };
 
+  // 👇 Handler untuk field header (termasuk tagName)
+  const handleHeaderChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // 👇 Cancel edit: clear localStorage & reload dari API
+  const handleCancelEdit = () => {
+    if (window.confirm("⚠️ Batalkan edit? Perubahan belum disimpan akan hilang.")) {
+      clearLocalStorage();
+      setIsEditing(false);
+      fetchDocument(); // Reload fresh data dari API
+    }
+  };
+
   if (loading || !documentData || !formData) {
     return (
       <div className="resin-view-loading">
@@ -186,7 +263,7 @@ export default function ResinInspectionView() {
   // Helper untuk render cell 
   const renderCell = (value, onChangeFn, type = "text") => {
     if (isEditing) {
-      return <input type={type} value={value} onChange={(e) => onChangeFn(e.target.value)} className="edit-input" />;
+      return <input type={type} value={value || ""} onChange={(e) => onChangeFn(e.target.value)} className="edit-input" />;
     }
     return <span className="view-text">{value || "-"}</span>;
   };
@@ -198,7 +275,7 @@ export default function ResinInspectionView() {
         <div className="header-info">
           <h2>{isEditing ? "📝 Edit Resin Inspection" : "🧴 Resin Inspection"}</h2>
           <div className="doc-meta">
-            {/* 👈 TAMBAHKAN TAG NAME BADGE */}
+            {/* Tag Name Badge */}
             {formData?.tagName && (
               <span className="tag-badge">
                 🏷️ <strong>{formData.tagName}</strong>
@@ -206,6 +283,13 @@ export default function ResinInspectionView() {
             )}
             <span><strong>Title:</strong> {documentData.document.title}</span>
             <span><strong>Created:</strong> {new Date(documentData.document.created_at).toLocaleString('id-ID')}</span>
+            
+            {/* 👇 Indicator kalau ada draft di localStorage */}
+            {isEditing && loadFromLocalStorage() && (
+              <span className="draft-indicator" title="Ada draft tersimpan">
+                💾 Draft
+              </span>
+            )}
           </div>
         </div>
 
@@ -213,15 +297,7 @@ export default function ResinInspectionView() {
           {isEditing ? (
             <>
               <button className="btn-save" onClick={handleUpdate}>💾 Simpan Perubahan</button>
-              <button
-                className="btn-cancel"
-                onClick={() => {
-                  setIsEditing(false);
-                  fetchDocument();
-                }}
-              >
-                ✖️ Batal
-              </button>
+              <button className="btn-cancel" onClick={handleCancelEdit}>✖️ Batal</button>
             </>
           ) : (
             <>
@@ -259,7 +335,7 @@ export default function ResinInspectionView() {
             </thead>
             <tbody>
               {formData.inspection.map((row, i) => (
-                <tr key={i}>
+                <tr key={row.id || i}>
                   <td className="col-no">{i + 1}</td>
                   <td>{renderCell(row.certTestNo, (val) => handleInspectionChange(i, "certTestNo", val))}</td>
                   <td>{renderCell(row.resinTank, (val) => handleInspectionChange(i, "resinTank", val))}</td>
@@ -306,7 +382,7 @@ export default function ResinInspectionView() {
                 </thead>
                 <tbody>
                   {sample.rows.map((row, rIdx) => (
-                    <tr key={rIdx}>
+                    <tr key={row.id || `${sIdx}-${rIdx}`}>
                       <td className="col-no">{rIdx + 1}</td>
                       <td>{renderCell(row.alumFoilNo, (val) => handleSolidChange(sIdx, rIdx, "alumFoilNo", val))}</td>
                       <td>{renderCell(row.wtAlumFoil, (val) => handleSolidChange(sIdx, rIdx, "wtAlumFoil", val))}</td>

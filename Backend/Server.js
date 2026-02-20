@@ -1222,9 +1222,6 @@ app.delete("/api/flakes-documents/:id", async (req, res) => {
 
 
 
-/* =========================
-   LAB PB FORM BACKEND - FIXED VERSION (with tag_name support)
-========================= */
 
 /* =========================
    SIMPAN LAPORAN LAB PB BARU (POST)
@@ -1232,9 +1229,8 @@ app.delete("/api/flakes-documents/:id", async (req, res) => {
 app.post('/api/lab-pb', async (req, res) => {
   const client = await pool.connect();
   try {
-    // 👇 Tambahkan destructuring tag_name
     const {
-      tag_name,  // 👈 WAJIB: ambil tag_name dari body
+      tag_name,
       timestamp, board_no, set_weight, shift_group, tested_by,
       density_min, density_max, board_type, glue_sl, glue_cl,
       thick_min, thick_max, samples = [],
@@ -1249,30 +1245,37 @@ app.post('/api/lab-pb', async (req, res) => {
 
     await client.query('BEGIN');
 
-    // 👇 INSERT dokumen utama dengan tag_name
     const docResult = await client.query(
       `INSERT INTO lab_pb_documents (
-        title, tag_name, timestamp, board_no, set_weight, shift_group, tested_by,
+        tag_name, timestamp, board_no, set_weight, shift_group, tested_by,
         density_min, density_max, board_type, glue_sl, glue_cl,
         thick_min, thick_max, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
       RETURNING id, board_no, timestamp, tag_name`,
       [
-        `Lab PB ${board_no}`,      // 👈 title otomatis
-        tag_name || null,          // 👈 Simpan tag_name (snake_case)
-        timestamp, board_no, set_weight || null, shift_group, tested_by,
-        density_min || null, density_max || null, board_type || null, 
-        glue_sl || null, glue_cl || null, thick_min || null, thick_max || null
+        tag_name || null,
+        timestamp,
+        board_no,
+        set_weight || null,
+        shift_group,
+        tested_by,
+        density_min || null,
+        density_max || null,
+        board_type || null,
+        glue_sl || null,
+        glue_cl || null,
+        thick_min || null,
+        thick_max || null
       ]
     );
+
     const documentId = docResult.rows[0].id;
 
-    //  Simpan samples (24 pcs)
     for (const sample of samples) {
       await client.query(
-        `INSERT INTO lab_pb_samples (
-          document_id, sample_no, weight_gr, thickness_mm, length_mm, width_mm
-        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO lab_pb_samples
+        (document_id, sample_no, weight_gr, thickness_mm, length_mm, width_mm)
+        VALUES ($1,$2,$3,$4,$5,$6)`,
         [
           documentId,
           sample.no,
@@ -1284,13 +1287,13 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    //  Simpan Internal Bonding
     const positions = ['le', 'ml', 'md', 'mr', 'ri'];
+
     for (const pos of positions) {
       await client.query(
-        `INSERT INTO lab_pb_internal_bonding (
-          document_id, position, ib_value, density_value, avg_ib, avg_density
-        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO lab_pb_internal_bonding
+        (document_id, position, ib_value, density_value, avg_ib, avg_density)
+        VALUES ($1,$2,$3,$4,$5,$6)`,
         [
           documentId,
           pos,
@@ -1302,12 +1305,11 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    // Simpan Bending Strength
     for (const pos of positions) {
       await client.query(
-        `INSERT INTO lab_pb_bending_strength (
-          document_id, position, mor_value, density_value, avg_mor, avg_density
-        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO lab_pb_bending_strength
+        (document_id, position, mor_value, density_value, avg_mor, avg_density)
+        VALUES ($1,$2,$3,$4,$5,$6)`,
         [
           documentId,
           pos,
@@ -1319,12 +1321,11 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    // Simpan Screw Test
     for (const pos of positions) {
       await client.query(
-        `INSERT INTO lab_pb_screw_test (
-          document_id, position, face_value, edge_value, avg_face, avg_edge
-        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO lab_pb_screw_test
+        (document_id, position, face_value, edge_value, avg_face, avg_edge)
+        VALUES ($1,$2,$3,$4,$5,$6)`,
         [
           documentId,
           pos,
@@ -1336,94 +1337,10 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
-    //  Simpan Density Profile
-    for (const pos of positions) {
-      const min = densityProfileData[`min_${pos}`];
-      const mean = densityProfileData[`mean_${pos}`];
-      const minMeanRatio = min && mean ? (parseFloat(min) / parseFloat(mean) * 100) : null;
-
-      await client.query(
-        `INSERT INTO lab_pb_density_profile (
-          document_id, position, max_top, max_bot, min_value, mean_value, min_mean_ratio
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [
-          documentId,
-          pos,
-          densityProfileData[`max_top_${pos}`] || null,
-          densityProfileData[`max_bot_${pos}`] || null,
-          min || null,
-          mean || null,
-          minMeanRatio || null
-        ]
-      );
-    }
-
-    // Simpan MC Board
-    for (const pos of positions) {
-      const w1 = mcBoardData[`w1_${pos}`];
-      const w2 = mcBoardData[`w2_${pos}`];
-      const mc = w1 && w2 ? ((parseFloat(w1) - parseFloat(w2)) / parseFloat(w2) * 100) : null;
-
-      await client.query(
-        `INSERT INTO lab_pb_mc_board (
-          document_id, position, w1, w2, mc_value, avg_w1, avg_w2, avg_mc
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
-          documentId,
-          pos,
-          w1 || null,
-          w2 || null,
-          mc || null,
-          mcBoardData.avg_w1 || null,
-          mcBoardData.avg_w2 || null,
-          mcBoardData.avg_mc || null
-        ]
-      );
-    }
-
-    // Simpan Swelling 2h
-    for (const pos of positions) {
-      const t1 = swellingData[`t1_${pos}`];
-      const t2 = swellingData[`t2_${pos}`];
-      const ts = t1 && t2 ? ((parseFloat(t2) - parseFloat(t1)) / parseFloat(t1) * 100) : null;
-
-      await client.query(
-        `INSERT INTO lab_pb_swelling (
-          document_id, position, t1, t2, ts_value, avg_t1, avg_t2, avg_ts
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
-          documentId,
-          pos,
-          t1 || null,
-          t2 || null,
-          ts || null,
-          swellingData.avg_t1 || null,
-          swellingData.avg_t2 || null,
-          swellingData.avg_ts || null
-        ]
-      );
-    }
-
-    // Simpan Surface Soundness
-    for (const pos of ['le', 'ri']) {
-      await client.query(
-        `INSERT INTO lab_pb_surface_soundness (
-          document_id, position, t1_value, avg_surface
-        ) VALUES ($1, $2, $3, $4)`,
-        [
-          documentId,
-          pos,
-          surfaceSoundnessData[`t1_${pos}_surface`] || null,
-          surfaceSoundnessData.avg_surface || null
-        ]
-      );
-    }
-
-    // Simpan Additional Tests
     await client.query(
-      `INSERT INTO lab_pb_additional_tests (
-        document_id, avg_tebal_flakes, avg_cons_hardener, geltime_sl, geltime_cl
-      ) VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO lab_pb_additional_tests
+      (document_id, avg_tebal_flakes, avg_cons_hardener, geltime_sl, geltime_cl)
+      VALUES ($1,$2,$3,$4,$5)`,
       [
         documentId,
         tebalFlakesData.avg_tebal || null,
@@ -1438,19 +1355,13 @@ app.post('/api/lab-pb', async (req, res) => {
     res.status(201).json({
       message: "Laporan Lab PB berhasil disimpan",
       documentId,
-      boardNo: board_no,
-      tagName: tag_name,  // 👈 Return tag_name ke frontend
-      timestamp: docResult.rows[0].timestamp
+      tagName: docResult.rows[0].tag_name
     });
 
   } catch (err) {
     await client.query('ROLLBACK');
     console.error("❌ ERROR SIMPAN LAB PB:", err);
-    res.status(500).json({ 
-      error: "Gagal menyimpan laporan Lab PB: " + err.message,
-      code: err.code,
-      detail: process.env.NODE_ENV === 'development' ? err.detail : undefined
-    });
+    res.status(500).json({ error: err.message });
   } finally {
     client.release();
   }
@@ -1461,34 +1372,16 @@ app.post('/api/lab-pb', async (req, res) => {
 ========================= */
 app.get('/api/lab-pb-documents', async (req, res) => {
   try {
-    const { page = 1, limit = 20, board_no = '' } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    // 👇 HAPUS title dari SELECT (karena kolom tidak ada!)
-    const query = `
-      SELECT id, board_no, timestamp, shift_group, tested_by, 
-             created_at, updated_at, tag_name  -- ✅ TIDAK ADA title
+    const result = await pool.query(`
+      SELECT id, tag_name, board_no, shift_group, tested_by,
+             created_at, updated_at, timestamp
       FROM lab_pb_documents
-      WHERE ($1 = '' OR board_no ILIKE $1)
-      ORDER BY created_at DESC 
-      LIMIT $2 OFFSET $3
-    `;
-    
-    const params = [`%${board_no}%`, parseInt(limit), offset];
-    const result = await pool.query(query, params);
+      ORDER BY created_at DESC
+    `);
 
-    const countQuery = `
-      SELECT COUNT(*) as total 
-      FROM lab_pb_documents 
-      WHERE ($1 = '' OR board_no ILIKE $1)
-    `;
-    const countResult = await pool.query(countQuery, [`%${board_no}%`]);
-
-    // 👇 Generate title di frontend (bukan dari DB)
     const documents = result.rows.map(doc => ({
       id: doc.id,
-      title: `Lab PB ${doc.board_no}`,  // 👈 Generate di sini, bukan SELECT dari DB
-      tag_name: doc.tag_name,  // ✅ Kirim tag_name untuk badge
+      tag_name: doc.tag_name,
       board_no: doc.board_no,
       shift_group: doc.shift_group,
       tested_by: doc.tested_by,
@@ -1498,21 +1391,10 @@ app.get('/api/lab-pb-documents', async (req, res) => {
       type: "labPBForm"
     }));
 
-    res.json({
-      documents,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: parseInt(countResult.rows[0].total),
-        totalPages: Math.ceil(parseInt(countResult.rows[0].total) / parseInt(limit))
-      }
-    });
-
+    res.json(documents);
   } catch (err) {
-    console.error("❌ ERROR LIST LAB PB:", err);
-    res.status(500).json({ 
-      error: "Gagal mengambil daftar dokumen: " + err.message 
-    });
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -1738,26 +1620,35 @@ app.put('/api/lab-pb/:id', async (req, res) => {
     // UPDATE hanya kolom yang benar-benar ada di tabel
     await client.query(
       `UPDATE lab_pb_documents SET
-        timestamp = $1, 
-        board_no = $2, 
-        set_weight = $3, 
-        shift_group = $4,
-        tested_by = $5, 
-        density_min = $6, 
-        density_max = $7, 
-        board_type = $8,
-        glue_sl = $9, 
-        glue_cl = $10, 
-        thick_min = $11, 
-        thick_max = $12,
-        tag_name = $13,  -- 👈 UPDATE tag_name
+        tag_name = $1,
+        timestamp = $2,
+        board_no = $3,
+        set_weight = $4,
+        shift_group = $5,
+        tested_by = $6,
+        density_min = $7,
+        density_max = $8,
+        board_type = $9,
+        glue_sl = $10,
+        glue_cl = $11,
+        thick_min = $12,
+        thick_max = $13,
         updated_at = NOW()
       WHERE id = $14`,
       [
-        timestamp, board_no, set_weight || null, shift_group, tested_by,
-        density_min || null, density_max || null, board_type || null,
-        glue_sl || null, glue_cl || null, thick_min || null, thick_max || null,
-        tag_name || null,  // 👈 Kirim tag_name
+        tag_name || null,
+        timestamp,
+        board_no,
+        set_weight || null,
+        shift_group,
+        tested_by,
+        density_min || null,
+        density_max || null,
+        board_type || null,
+        glue_sl || null,
+        glue_cl || null,
+        thick_min || null,
+        thick_max || null,
         id
       ]
     );
@@ -2048,6 +1939,8 @@ app.get('/api/lab-pb-form-documents', async (req, res) => {
   }
 });
 
+
+
 /* =========================
    HEALTH CHECK
 ========================= */
@@ -2058,9 +1951,6 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-
-
-
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

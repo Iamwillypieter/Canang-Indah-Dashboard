@@ -161,7 +161,7 @@ export default function DocumentList() {
         details.push({ label: "Quantity", value: inspection.quantity });
       }
       if (doc.comment_by) {
-        details.push({ label: "Comment By", value: doc.comment_by });
+        details.push({ label: "Comment", value: doc.comment_by });
       }
     }
 
@@ -255,19 +255,6 @@ export default function DocumentList() {
           const rawTagName = doc.tag_name || doc.tagName || doc.tagname;
           const hasTagName = !!(rawTagName?.trim());
           const displayName = hasTagName ? rawTagName.trim() : docTitle;
-
-          // 👇 Optional debug log (comment out kalau sudah fix)
-          // if (doc.type === "qc") {
-          //   console.log("🔍 QC Doc Debug:", {
-          //     id: doc.id,
-          //     tag_name: doc.tag_name,
-          //     tagName: doc.tagName,
-          //     tagname: doc.tagname,
-          //     hasTagName,
-          //     displayName,
-          //     title: doc.title
-          //   });
-          // }
 
           return (
             <div className="doc-item" key={`${doc.type}-${doc.id}`}>

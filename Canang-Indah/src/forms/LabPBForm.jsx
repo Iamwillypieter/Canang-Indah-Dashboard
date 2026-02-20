@@ -164,9 +164,9 @@ export default function LabPBForm() {
     }
     try {
       const payload = {
-        tag_name: formData.tagName?.trim() || null,
-        timestamp: new Date(formData.timestamp).toISOString(),
+        tag_name: formData.tagName,
         board_no: formData.board_no,
+        timestamp: new Date(formData.timestamp).toISOString(),
         set_weight: formData.set_weight,
         shift_group: formData.shift_group,
         tested_by: formData.tested_by,
