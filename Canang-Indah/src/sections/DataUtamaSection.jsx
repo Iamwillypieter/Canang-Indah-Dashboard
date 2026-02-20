@@ -20,6 +20,19 @@ export default function DataUtamaSection({
     <div className="section">
       <h3 className="section-title">⚙️ Data Utama</h3>
 
+      {/* 👑 TAG NAME — PALING ATAS */}
+      <div className="form-group tagname-top">
+        <label className="form-label required">🏷️ Tag Name:</label>
+        <input 
+          type="text" 
+          name="tagName"
+          value={formData.tagName || ""}  
+          onChange={handleTagNameChange}
+          placeholder="Contoh: 1A, 1B, 0001"
+          className="form-input"
+        />
+      </div>
+
       <div className="form-grid">
         
         {/* Timestamp */}
@@ -87,19 +100,6 @@ export default function DataUtamaSection({
             value={formData.tested_by} 
             onChange={onChange} 
             required 
-            className="form-input"
-          />
-        </div>
-
-        {/* 👑 TAG NAME — pindah ke sini */}
-        <div className="form-group">
-          <label className="form-label required">🏷️ Tag Name:</label>
-          <input 
-            type="text" 
-            name="tagName"
-            value={formData.tagName || ""}  
-            onChange={handleTagNameChange}
-            placeholder="Contoh: 1A, 1B, 0001"
             className="form-input"
           />
         </div>

@@ -272,3 +272,12 @@
   content: " *";
   color: #ef4444;
 }
+
+.tagname-top {
+  margin-bottom: 20px;
+}
+
+.tagname-top .form-input {
+  font-size: 16px;
+  font-weight: 600;
+}
