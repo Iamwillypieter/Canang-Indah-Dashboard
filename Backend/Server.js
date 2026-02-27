@@ -33,7 +33,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://namafrontendkamu.vercel.app"
+    "https://canang-indah-dashboard.vercel.app/"
   ],
   credentials: true
 }));
@@ -45,12 +45,19 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Database connection dengan error handling
+// const pool = new Pool({
+//   host: process.env.DB_HOST || "localhost",
+//   user: process.env.DB_USER || "postgres",
+//   password: process.env.DB_PASSWORD || "12345",
+//   database: process.env.DB_NAME || "canang_indah",
+//   port: process.env.DB_PORT || 5432,
+// });
+
 const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD || "12345",
-  database: process.env.DB_NAME || "canang_indah",
-  port: process.env.DB_PORT || 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 pool.on('error', (err) => {
@@ -1981,8 +1988,13 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, HOST, () => {
-  console.log(`Canang Indah Dashboard API running on ${HOST}:${PORT}`);
-  console.log(`Network accessible at: http://192.168.3.248:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+// app.listen(PORT, HOST, () => {
+//   console.log(`Canang Indah Dashboard API running on ${HOST}:${PORT}`);
+//   console.log(`Network accessible at: http://192.168.3.248:${PORT}`);
+//   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+// });
+
+// akses render
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
