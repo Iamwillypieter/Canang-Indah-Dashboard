@@ -33,7 +33,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://canang-indah-dashboard.vercel.app/"
+    "https://canang-indah-dashboard.vercel.app"
   ],
   credentials: true
 }));
@@ -1966,11 +1966,6 @@ app.get('/api/health', (req, res) => {
     message: 'Lab PB API is running',
     timestamp: new Date().toISOString()
   });
-});
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
 // 404 handler
