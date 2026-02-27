@@ -17,15 +17,24 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 
-// Update CORS untuk akses jaringan lokal
+// // Update CORS untuk akses jaringan lokal
+// app.use(cors({
+//   origin: function(origin, callback) {
+//     // Izinkan akses tanpa origin (direct browser access) dan dari jaringan lokal
+//     if (!origin || origin.startsWith('http://192.168.') || origin.startsWith('http://localhost')) {
+//       return callback(null, true);
+//     }
+//     return callback(new Error('Not allowed by CORS'));
+//   },
+//   credentials: true
+// }));
+
+// Untuk deploy
 app.use(cors({
-  origin: function(origin, callback) {
-    // Izinkan akses tanpa origin (direct browser access) dan dari jaringan lokal
-    if (!origin || origin.startsWith('http://192.168.') || origin.startsWith('http://localhost')) {
-      return callback(null, true);
-    }
-    return callback(new Error('Not allowed by CORS'));
-  },
+  origin: [
+    "http://localhost:5173",
+    "https://namafrontendkamu.vercel.app"
+  ],
   credentials: true
 }));
 
