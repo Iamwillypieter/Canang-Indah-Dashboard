@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './LabPBForm.css';
 import { useLabPBFormData } from '../hooks/useLabPBFormData';
-import { submitLabReport } from '../services/Api.js';
+import { submitLabReport } from '../services/api.js';
 import {
   calculateIbAverage,
   calculateDensityAverageIb,

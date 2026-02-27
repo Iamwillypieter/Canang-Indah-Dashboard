@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './LabPBForm.css';
 import SampleTable from '../components/SampleTable.jsx';
-import { getLabReportById, updateLabReport } from '../services/Api.js';
+import { getLabReportById, updateLabReport } from '../services/api.js';
 import {
   calculateIbAverage,
   calculateDensityAverageIb,
