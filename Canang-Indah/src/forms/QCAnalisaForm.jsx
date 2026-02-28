@@ -4,7 +4,7 @@ import QCAnalisaTable from "../components/QCAnalisaTable.jsx";
 import QCAnalisaHeader from "../components/QCAnalisaHeader.jsx";
 
 const STORAGE_KEY = "qcAnalisaScreenDraft";
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const API_BASE = import.meta.env.VITE_API_URL + "/api";
 
 const getInitialData = () => ({
   tagName: "", // 👈 Tambahkan field tagName di awal

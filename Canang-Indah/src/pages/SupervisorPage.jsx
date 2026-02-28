@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import "./SupervisorPage.css";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const API_BASE = import.meta.env.VITE_API_URL + "/api";
 
 /* ================= FORM REGISTRY ================= */
 const FORM_TYPES = {
