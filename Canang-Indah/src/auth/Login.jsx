@@ -41,10 +41,10 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const API_BASE = import.meta.env.VITE_API_URL + "/api";;
       
       const res = await axios.post(
-        `${API_URL}/login`,
+        `${API_BASE}/login`,
         formData
       );
 
