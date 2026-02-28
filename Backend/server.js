@@ -62,6 +62,8 @@ pool.on('connect', () => {
   console.log('✅ Database connected successfully');
 });
 
+
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,   
   max: 100,
@@ -1979,10 +1981,8 @@ app.use((err, req, res, next) => {
 
 //akses jaringan lokal
 const PORT = process.env.PORT || 3001;
-const HOST = process.env.HOST || '0.0.0.0';
+// const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, HOST, () => {
-  console.log(`Canang Indah Dashboard API running on ${HOST}:${PORT}`);
-  console.log(`Network accessible at: http://192.168.3.248:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
