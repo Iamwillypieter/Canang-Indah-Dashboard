@@ -45,12 +45,20 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Database connection dengan error handling
+// const pool = new Pool({
+//   host: process.env.DB_HOST || "localhost",
+//   user: process.env.DB_USER || "postgres",
+//   password: process.env.DB_PASSWORD || "12345",
+//   database: process.env.DB_NAME || "canang_indah",
+//   port: process.env.DB_PORT || 5432,
+// });
+
+// untuk railway
 const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD || "12345",
-  database: process.env.DB_NAME || "canang_indah",
-  port: process.env.DB_PORT || 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 pool.on('error', (err) => {
