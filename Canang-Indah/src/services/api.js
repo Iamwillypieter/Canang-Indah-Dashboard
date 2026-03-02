@@ -35,7 +35,7 @@ export const submitLabReport = async (reportType, data) => {
     });
   }
   
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(data),  // 👈 data sudah include tag_name dari LabPBForm
@@ -46,7 +46,7 @@ export const submitLabReport = async (reportType, data) => {
 // ✅ GET: Get Lab PB Documents List (support tag_name in response)
 export const getLabPbDocuments = async (params = {}) => {
   const queryParams = new URLSearchParams(params).toString();
-  const url = `${API_BASE_URL}/lab-pb-documents${queryParams ? `?${queryParams}` : ''}`;
+  const url = `${API_BASE}/lab-pb-documents${queryParams ? `?${queryParams}` : ''}`;
   
   const response = await fetch(url, {
     headers: getHeaders()
@@ -56,7 +56,7 @@ export const getLabPbDocuments = async (params = {}) => {
 
 // ✅ GET: Get Lab Report by ID (support tag_name in response)
 export const getLabReportById = async (id) => {
-  const response = await fetch(`${API_BASE_URL}/lab-pb/${id}`, {
+  const response = await fetch(`${API_BASE}/lab-pb/${id}`, {
     headers: getHeaders()
   });
   return handleResponse(response);
@@ -69,7 +69,7 @@ export const updateLabReport = async (id, data) => {
     tag_name: data.tag_name
   });
   
-  const response = await fetch(`${API_BASE_URL}/lab-pb/${id}`, {
+  const response = await fetch(`${API_BASE}/lab-pb/${id}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(data),  // 👈 data sudah include tag_name
@@ -79,7 +79,7 @@ export const updateLabReport = async (id, data) => {
 
 // ✅ DELETE: Delete Lab PB Document
 export const deleteLabPb = async (id) => {
-  const response = await fetch(`${API_BASE_URL}/lab-pb-documents/${id}`, {
+  const response = await fetch(`${API_BASE}/lab-pb-documents/${id}`, {
     method: 'DELETE',
     headers: getHeaders()
   });
@@ -88,7 +88,7 @@ export const deleteLabPb = async (id) => {
 
 // ✅ Health Check
 export const healthCheck = async () => {
-  const response = await fetch(`${API_BASE_URL}/health`, {
+  const response = await fetch(`${API_BASE}/health`, {
     headers: getHeaders() 
   });
   return handleResponse(response);
