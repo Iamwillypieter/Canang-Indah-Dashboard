@@ -1247,36 +1247,59 @@ app.delete("/api/flakes-documents/:id", async (req, res) => {
 ========================= */
 app.post('/api/lab-pb', async (req, res) => {
   const client = await pool.connect();
+
   try {
     const {
       tag_name,
-      timestamp, board_no, set_weight, shift_group, tested_by,
-      density_min, density_max, board_type, glue_sl, glue_cl,
-      thick_min, thick_max, samples = [],
-      ibData = {}, bsData = {}, screwData = {}, densityProfileData = {},
-      mcBoardData = {}, swellingData = {}, surfaceSoundnessData = {},
-      tebalFlakesData = {}, consHardenerData = {}, geltimeData = {}
+      timestamp,
+      board_no,
+      set_weight,
+      shift_group,
+      tested_by,
+      density_min,
+      density_max,
+      board_type,
+      glue_sl,
+      glue_cl,
+      thick_min,
+      thick_max,
+      samples = [],
+      ibData = {},
+      bsData = {},
+      screwData = {},
+      densityProfileData = {},
+      mcBoardData = {},
+      swellingData = {},
+      surfaceSoundnessData = {},
+      tebalFlakesData = {},
+      consHardenerData = {},
+      geltimeData = {}
     } = req.body;
 
     if (!board_no || !tested_by) {
-      return res.status(400).json({ error: "Board No dan Tested By wajib diisi" });
+      return res.status(400).json({
+        error: "Board No dan Tested By wajib diisi"
+      });
     }
 
     await client.query('BEGIN');
+
+    /* ================= DOCUMENT ================= */
 
     const docResult = await client.query(
       `INSERT INTO lab_pb_documents (
         tag_name, timestamp, board_no, set_weight, shift_group, tested_by,
         density_min, density_max, board_type, glue_sl, glue_cl,
         thick_min, thick_max, created_at, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
-      RETURNING id, board_no, timestamp, tag_name`,
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
+      RETURNING id, tag_name`,
       [
         tag_name || null,
         timestamp,
         board_no,
         set_weight || null,
-        shift_group,
+        shift_group || null,
         tested_by,
         density_min || null,
         density_max || null,
@@ -1289,6 +1312,8 @@ app.post('/api/lab-pb', async (req, res) => {
     );
 
     const documentId = docResult.rows[0].id;
+
+    /* ================= SAMPLES ================= */
 
     for (const sample of samples) {
       await client.query(
@@ -1308,6 +1333,8 @@ app.post('/api/lab-pb', async (req, res) => {
 
     const positions = ['le', 'ml', 'md', 'mr', 'ri'];
 
+    /* ================= INTERNAL BONDING ================= */
+
     for (const pos of positions) {
       await client.query(
         `INSERT INTO lab_pb_internal_bonding
@@ -1323,6 +1350,8 @@ app.post('/api/lab-pb', async (req, res) => {
         ]
       );
     }
+
+    /* ================= BENDING STRENGTH ================= */
 
     for (const pos of positions) {
       await client.query(
@@ -1340,6 +1369,8 @@ app.post('/api/lab-pb', async (req, res) => {
       );
     }
 
+    /* ================= SCREW TEST ================= */
+
     for (const pos of positions) {
       await client.query(
         `INSERT INTO lab_pb_screw_test
@@ -1355,6 +1386,78 @@ app.post('/api/lab-pb', async (req, res) => {
         ]
       );
     }
+
+    /* ================= DENSITY PROFILE ================= */
+
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_density_profile
+        (document_id, position, max_top, max_bot, min_value, mean_value)
+        VALUES ($1,$2,$3,$4,$5,$6)`,
+        [
+          documentId,
+          pos,
+          densityProfileData[`max_top_${pos}`] || null,
+          densityProfileData[`max_bot_${pos}`] || null,
+          densityProfileData[`min_${pos}`] || null,
+          densityProfileData[`mean_${pos}`] || null
+        ]
+      );
+    }
+
+    /* ================= MC BOARD ================= */
+
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_mc_board
+        (document_id, position, w1_value, w2_value, avg_w1, avg_w2, avg_mc)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [
+          documentId,
+          pos,
+          mcBoardData[`w1_${pos}`] || null,
+          mcBoardData[`w2_${pos}`] || null,
+          mcBoardData.avg_w1 || null,
+          mcBoardData.avg_w2 || null,
+          mcBoardData.avg_mc || null
+        ]
+      );
+    }
+
+    /* ================= SWELLING ================= */
+
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_swelling
+        (document_id, position, t1_value, t2_value, avg_t1, avg_t2, avg_ts)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [
+          documentId,
+          pos,
+          swellingData[`t1_${pos}`] || null,
+          swellingData[`t2_${pos}`] || null,
+          swellingData.avg_t1 || null,
+          swellingData.avg_t2 || null,
+          swellingData.avg_ts || null
+        ]
+      );
+    }
+
+    /* ================= SURFACE SOUNDNESS ================= */
+
+    await client.query(
+      `INSERT INTO lab_pb_surface_soundness
+      (document_id, t1_le_surface, t1_ri_surface, avg_surface)
+      VALUES ($1,$2,$3,$4)`,
+      [
+        documentId,
+        surfaceSoundnessData.t1_le_surface || null,
+        surfaceSoundnessData.t1_ri_surface || null,
+        surfaceSoundnessData.avg_surface || null
+      ]
+    );
+
+    /* ================= ADDITIONAL ================= */
 
     await client.query(
       `INSERT INTO lab_pb_additional_tests
@@ -1373,8 +1476,7 @@ app.post('/api/lab-pb', async (req, res) => {
 
     res.status(201).json({
       message: "Laporan Lab PB berhasil disimpan",
-      documentId,
-      tagName: docResult.rows[0].tag_name
+      documentId
     });
 
   } catch (err) {
