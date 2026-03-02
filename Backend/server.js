@@ -30,7 +30,6 @@ const app = express();
 // }));
 
 // // Untuk deploy dari vercel
-const cors = require('cors');
 app.use(cors({
   origin: [
     "http://localhost:5173",
@@ -38,6 +37,7 @@ app.use(cors({
   ],
   credentials: true
 }));
+app.options("*", cors());app.options("*", cors());
 
 app.use(helmet());
 
