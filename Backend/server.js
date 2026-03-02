@@ -1436,13 +1436,17 @@ app.post('/api/lab-pb', async (req, res) => {
     for (const pos of positions) {
       await client.query(
         `INSERT INTO lab_pb_swelling
-        (document_id, position, t1_value, t2_value, avg_t1, avg_t2, avg_ts)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        (document_id, position, t1, t2, ts_value, avg_t1, avg_t2, avg_ts)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
         [
           documentId,
           pos,
           swellingData[`t1_${pos}`] || null,
           swellingData[`t2_${pos}`] || null,
+
+          // kalau kamu punya TS per posisi
+          null,
+
           swellingData.avg_t1 || null,
           swellingData.avg_t2 || null,
           swellingData.avg_ts || null
