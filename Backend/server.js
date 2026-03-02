@@ -1456,7 +1456,9 @@ app.post('/api/lab-pb', async (req, res) => {
 
     /* ================= SURFACE SOUNDNESS ================= */
 
-    for (const pos of positions) {
+    const surfacePositions = ['le', 'ri'];
+
+    for (const pos of surfacePositions) {
       await client.query(
         `INSERT INTO lab_pb_surface_soundness
         (document_id, position, t1_value, avg_surface)
