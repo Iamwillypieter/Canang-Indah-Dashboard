@@ -1407,22 +1407,26 @@ app.post('/api/lab-pb', async (req, res) => {
 
     /* ================= MC BOARD ================= */
 
-    for (const item of mcBoardData) {
+    for (const pos of positions) {
       await client.query(
         `
         INSERT INTO lab_pb_mc_board
         (document_id, position, w1, w2, mc_value, avg_w1, avg_w2, avg_mc)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
         `,
         [
           documentId,
-          item.position,
-          item.w1,
-          item.w2,
-          item.mc_value,
-          item.avg_w1,
-          item.avg_w2,
-          item.avg_mc,
+          pos,
+          mcBoardData[`w1_${pos}`] || null,
+          mcBoardData[`w2_${pos}`] || null,
+
+          // Kalau kamu punya mc per posisi
+          null, 
+
+          // Average global
+          mcBoardData.avg_w1 || null,
+          mcBoardData.avg_w2 || null,
+          mcBoardData.avg_mc || null
         ]
       );
     }
