@@ -1456,17 +1456,19 @@ app.post('/api/lab-pb', async (req, res) => {
 
     /* ================= SURFACE SOUNDNESS ================= */
 
-    await client.query(
-      `INSERT INTO lab_pb_surface_soundness
-      (document_id, t1_le_surface, t1_ri_surface, avg_surface)
-      VALUES ($1,$2,$3,$4)`,
-      [
-        documentId,
-        surfaceSoundnessData.t1_le_surface || null,
-        surfaceSoundnessData.t1_ri_surface || null,
-        surfaceSoundnessData.avg_surface || null
-      ]
-    );
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_surface_soundness
+        (document_id, position, t1_value, avg_surface)
+        VALUES ($1,$2,$3,$4)`,
+        [
+          documentId,
+          pos,
+          surfaceSoundnessData[`t1_${pos}_surface`] || null,
+          surfaceSoundnessData.avg_surface || null
+        ]
+      );
+    }
 
     /* ================= ADDITIONAL ================= */
 
