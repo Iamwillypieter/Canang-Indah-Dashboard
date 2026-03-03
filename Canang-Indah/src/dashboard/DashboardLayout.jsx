@@ -105,7 +105,9 @@ export default function DashboardLayout() {
               {userRole === 'admin' && (
                 <>
                   Admin 
-                  <span className="shift-badge">{userData?.shift_group}</span>
+                  {userData?.shift_group && (
+                    <span className="shift-badge">{userData.shift_group}</span>
+                  )}
                 </>
               )}
               {userRole === 'supervisor' && 'Supervisor'}

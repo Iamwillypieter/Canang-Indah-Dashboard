@@ -332,7 +332,12 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     
     // Generate JWT token
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { 
+        id: user.id, 
+        username: user.username, 
+        role: user.role,
+        shift_group: user.shift_group   // 🔥 tambahkan ini
+      },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -345,7 +350,8 @@ app.post('/api/login', loginLimiter, async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        role: user.role
+        role: user.role,
+        shift_group: user.shift_group
       }
     });
     
