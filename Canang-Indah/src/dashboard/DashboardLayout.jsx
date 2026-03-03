@@ -102,8 +102,13 @@ export default function DashboardLayout() {
           <div className="user-details">
             <span className="username">{userData?.username || 'User'}</span>
             <span className="role">
-              {userRole === 'admin' ? 'Admin' : 
-               userRole === 'supervisor' ? 'Supervisor' : 'User'}
+              {userRole === 'admin' && (
+                <>
+                  Admin 
+                  <span className="shift-badge">{userData?.shift_group}</span>
+                </>
+              )}
+              {userRole === 'supervisor' && 'Supervisor'}
             </span>
           </div>
         </div>

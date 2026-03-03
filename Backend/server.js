@@ -144,28 +144,28 @@ const validatePassword = (password) => {
 // Route Register
 app.post('/api/register', authLimiter, async (req, res) => {
   try {
-    const { username, password, confirmPassword, role } = req.body;
+    const { username, password, confirmPassword, role, shift_group } = req.body;
     
-    // Validasi input
+    // Validasi input dasar
     if (!username || !password || !confirmPassword || !role) {
       return res.status(400).json({ error: 'Semua field harus diisi' });
     }
-    
+
     // Validasi username length
     if (username.length < 3 || username.length > 50) {
       return res.status(400).json({ error: 'Username harus 3-50 karakter' });
     }
-    
+
     // Validasi username format
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      return res.status(400).json({ error: 'Username hanya boleh mengandung huruf, angka, dan underscore' });
+      return res.status(400).json({ error: 'Username hanya boleh huruf, angka, underscore' });
     }
-    
+
     // Validasi password match
     if (password !== confirmPassword) {
       return res.status(400).json({ error: 'Password tidak cocok' });
     }
-    
+
     // Validasi password strength
     const passwordErrors = validatePassword(password);
     if (passwordErrors.length > 0) {
@@ -174,38 +174,69 @@ app.post('/api/register', authLimiter, async (req, res) => {
         details: passwordErrors
       });
     }
-    
-    //  pilih role
+
+    // Validasi role
     if (!['admin', 'supervisor'].includes(role)) {
       return res.status(400).json({ error: 'Role tidak valid' });
     }
-    
-    // Cek username jika sudah ada
+
+    // 🔥 VALIDASI SHIFT BARU
+    const validShifts = [
+      '1A','1B','1C','1D',
+      '2A','2B','2C','2D',
+      '3A','3B','3C','3D'
+    ];
+
+    let finalShift = null;
+
+    if (role === 'admin') {
+      if (!shift_group) {
+        return res.status(400).json({
+          error: 'Shift wajib dipilih untuk Admin'
+        });
+      }
+
+      if (!validShifts.includes(shift_group)) {
+        return res.status(400).json({
+          error: 'Shift tidak valid'
+        });
+      }
+
+      finalShift = shift_group;
+    }
+
+    if (role === 'supervisor') {
+      finalShift = null;
+    }
+
+    // Cek username sudah ada
     const existingUser = await pool.query(
-      'SELECT * FROM users WHERE username = $1',
+      'SELECT id FROM users WHERE username = $1',
       [username]
     );
-    
+
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ error: 'Username sudah digunakan' });
     }
-    
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
-    
-    // Insert user baru
+
+    // Insert user
     const result = await pool.query(
-      'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
-      [username, hashedPassword, role]
+      `INSERT INTO users (username, password, role, shift_group)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, username, role, shift_group`,
+      [username, hashedPassword, role, finalShift]
     );
-    
-    console.log(`✅ New user registered: ${username} (${role})`);
-    
+
+    console.log(`✅ New user registered: ${username} (${role}) Shift: ${finalShift}`);
+
     res.status(201).json({
       message: 'Registrasi berhasil',
       user: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('❌ Registration error:', error);
     res.status(500).json({ error: 'Server error saat registrasi' });
