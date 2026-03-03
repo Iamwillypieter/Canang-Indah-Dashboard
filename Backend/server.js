@@ -85,6 +85,61 @@ const loginLimiter = rateLimit({
   message: 'Terlalu banyak percobaan login.'
 });
 
+
+// ===============================
+// 🔥 TEMPORARY DB FIX ROUTE (PRO VERSION)
+// ===============================
+app.get("/fix-db", async (req, res) => {
+  try {
+    console.log("⚙ Running DB migration for shift_group...");
+
+    // 1️⃣ Tambah kolom jika belum ada
+    await pool.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS shift_group VARCHAR(2);
+    `);
+
+    // 2️⃣ Pastikan nullable
+    await pool.query(`
+      ALTER TABLE users
+      ALTER COLUMN shift_group DROP NOT NULL;
+    `);
+
+    // 3️⃣ Tambah constraint hanya boleh 1A-3D
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'users_shift_group_check'
+        ) THEN
+          ALTER TABLE users
+          ADD CONSTRAINT users_shift_group_check
+          CHECK (shift_group IN (
+            '1A','1B','1C','1D',
+            '2A','2B','2C','2D',
+            '3A','3B','3C','3D'
+          ) OR shift_group IS NULL);
+        END IF;
+      END
+      $$;
+    `);
+
+    res.json({
+      success: true,
+      message: "Database shift_group configured successfully ✅",
+    });
+
+  } catch (err) {
+    console.error("❌ DB FIX ERROR:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+
 // Logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
