@@ -1344,7 +1344,7 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    /* ================= AMBIL USER DARI DATABASE ================= */
+    /* ================= AMBIL USER ================= */
 
     const userId = req.user.id;
 
@@ -1405,19 +1405,30 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
       samples = [],
       ibData = {},
       bsData = {},
-      screwData = {},
-      densityProfileData = {},
-      mcBoardData = {},
-      swellingData = {},
-      surfaceSoundnessData = {},
-      tebalFlakesData = {},
-      consHardenerData = {},
-      geltimeData = {}
+      screwData = {}
     } = req.body;
 
     if (!board_no) {
       throw new Error("Board No wajib diisi");
     }
+
+    /* ================= GENERATE DOCUMENT NAME ================= */
+
+    const docDate = timestamp ? new Date(timestamp) : new Date();
+
+    const formattedDate = docDate
+      .toLocaleDateString("id-ID")
+      .replace(/\//g, "");
+
+    const formattedTime = docDate
+      .toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      })
+      .replace(":", ".");
+
+    const document_name = `LAB PB FORM ${tag_name} ${formattedDate} ${formattedTime}`;
 
     /* ================= INSERT DOCUMENT ================= */
 
@@ -1425,6 +1436,7 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
       `
       INSERT INTO lab_pb_documents (
         tag_name,
+        document_name,
         timestamp,
         board_no,
         set_weight,
@@ -1440,11 +1452,15 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
         created_at,
         updated_at
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
-      RETURNING id, tag_name
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
+        NOW(),NOW()
+      )
+      RETURNING id, tag_name, document_name
       `,
       [
         tag_name,
+        document_name,
         timestamp || null,
         board_no,
         set_weight || null,
@@ -1553,7 +1569,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
     res.status(201).json({
       message: "Laporan Lab PB berhasil disimpan",
       documentId,
-      tag_name
+      tag_name,
+      document_name
     });
 
   } catch (err) {
