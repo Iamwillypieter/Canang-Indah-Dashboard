@@ -1416,19 +1416,22 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     const baseDate = timestamp ? new Date(timestamp) : new Date();
 
-    // convert ke WIB (UTC+7)
-    const wibTime = new Date(baseDate.getTime() + (7 * 60 * 60 * 1000));
+    // pakai timezone Asia/Jakarta langsung
+    const jakartaTime = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Jakarta",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).format(baseDate);
 
-    // ambil UTC supaya tidak double offset
-    const day = String(wibTime.getUTCDate()).padStart(2, "0");
-    const month = String(wibTime.getUTCMonth() + 1).padStart(2, "0");
-    const year = wibTime.getUTCFullYear();
+    // hasil: 04/03/2026, 13:38
+    const [datePart, timePart] = jakartaTime.split(", ");
 
-    const hours = String(wibTime.getUTCHours()).padStart(2, "0");
-    const minutes = String(wibTime.getUTCMinutes()).padStart(2, "0");
-
-    const formattedDate = `${day}${month}${year}`;
-    const formattedTime = `${hours}.${minutes}`;
+    const formattedDate = datePart.replace(/\//g, ""); // 04032026
+    const formattedTime = timePart.replace(":", ".");  // 13.38
 
     const document_name = `LAB PB FORM ${tag_name} ${formattedDate} ${formattedTime}`;
 
