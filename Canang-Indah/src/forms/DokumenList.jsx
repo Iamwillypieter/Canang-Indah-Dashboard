@@ -384,8 +384,20 @@ export default function DocumentList() {
                             <div className="doc-icon">{config.icon}</div>
                             <div className="doc-content">
                               <div className="doc-title-wrapper">
-                                <span className="doc-title-default">🏷️ {displayName}</span>
-                                <span className={`badge badge-${doc.type}`}>{config.label}</span>
+                                <div className="doc-title-main">
+                                  <span className="doc-title-default">🏷️ {displayName}</span>
+
+                                  {/* 🔥 Tampilkan tag_name sebagai sub info */}
+                                  {doc.tag_name && doc.document_name && (
+                                    <div className="doc-subtitle">
+                                      Tag: {doc.tag_name}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <span className={`badge badge-${doc.type}`}>
+                                  {config.label}
+                                </span>
                               </div>
 
                               {headerDetails.length > 0 && (

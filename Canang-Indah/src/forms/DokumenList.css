@@ -1126,3 +1126,15 @@
     justify-content: flex-end;
   }
 }
+
+.doc-title-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.doc-subtitle {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+}
