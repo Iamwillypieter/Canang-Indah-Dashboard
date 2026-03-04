@@ -99,15 +99,33 @@ export default function DocumentList() {
 
   const handleDelete = async (doc) => {
     const config = FORM_TYPES[doc.type];
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("❌ Session habis. Silakan login ulang.");
+      return;
+    }
+
     if (!window.confirm(`Hapus dokumen "${getDocumentTitle(doc)}"?`)) return;
 
     try {
-      const res = await fetch(`${config.endpoint}/${doc.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      const res = await fetch(`${config.endpoint}/${doc.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Gagal hapus");
+      }
+
       alert("✅ Dokumen berhasil dihapus");
       fetchDocuments();
+
     } catch (err) {
-      alert("❌ Gagal menghapus dokumen");
+      alert(`❌ ${err.message}`);
     }
   };
 
@@ -366,12 +384,7 @@ export default function DocumentList() {
                             <div className="doc-icon">{config.icon}</div>
                             <div className="doc-content">
                               <div className="doc-title-wrapper">
-                                {hasTagName && (
-                                  <span className="tag-name-badge">🏷️ {displayName}</span>
-                                )}
-                                {!hasTagName && (
-                                  <span className="doc-title-default">{displayName}</span>
-                                )}
+                                <span className="doc-title-default">🏷️ {displayName}</span>
                                 <span className={`badge badge-${doc.type}`}>{config.label}</span>
                               </div>
 
