@@ -1414,19 +1414,21 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     /* ================= GENERATE DOCUMENT NAME ================= */
 
-    const docDate = timestamp ? new Date(timestamp) : new Date();
+    const baseDate = timestamp ? new Date(timestamp) : new Date();
 
-    const formattedDate = docDate
-      .toLocaleDateString("id-ID")
-      .replace(/\//g, "");
+    // convert ke WIB (UTC+7)
+    const wibTime = new Date(baseDate.getTime() + (7 * 60 * 60 * 1000));
 
-    const formattedTime = docDate
-      .toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      })
-      .replace(":", ".");
+    // ambil UTC supaya tidak double offset
+    const day = String(wibTime.getUTCDate()).padStart(2, "0");
+    const month = String(wibTime.getUTCMonth() + 1).padStart(2, "0");
+    const year = wibTime.getUTCFullYear();
+
+    const hours = String(wibTime.getUTCHours()).padStart(2, "0");
+    const minutes = String(wibTime.getUTCMinutes()).padStart(2, "0");
+
+    const formattedDate = `${day}${month}${year}`;
+    const formattedTime = `${hours}.${minutes}`;
 
     const document_name = `LAB PB FORM ${tag_name} ${formattedDate} ${formattedTime}`;
 
