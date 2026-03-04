@@ -1568,11 +1568,19 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 /* =========================
    LIST DOKUMEN LAB PB (GET) - FIXED (tanpa title)
 ========================= */
-app.get('/api/lab-pb-documents', async (req, res) => {
+app.get('/api/lab-pb-documents', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, tag_name, board_no, shift_group, tested_by,
-             created_at, updated_at, timestamp
+      SELECT 
+        id,
+        tag_name,
+        document_name,   -- 🔥 TAMBAHKAN INI
+        board_no,
+        shift_group,
+        tested_by,
+        timestamp,
+        created_at,
+        updated_at
       FROM lab_pb_documents
       ORDER BY created_at DESC
     `);
@@ -1580,6 +1588,7 @@ app.get('/api/lab-pb-documents', async (req, res) => {
     const documents = result.rows.map(doc => ({
       id: doc.id,
       tag_name: doc.tag_name,
+      document_name: doc.document_name,   // 🔥 kirim ke frontend
       board_no: doc.board_no,
       shift_group: doc.shift_group,
       tested_by: doc.tested_by,
@@ -1590,8 +1599,9 @@ app.get('/api/lab-pb-documents', async (req, res) => {
     }));
 
     res.json(documents);
+
   } catch (err) {
-    console.error(err);
+    console.error("❌ ERROR GET DOCUMENTS:", err);
     res.status(500).json({ error: err.message });
   }
 });

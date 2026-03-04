@@ -97,10 +97,18 @@ export default function DocumentList() {
 
   // 👇 Helper: Ambil judul dokumen (prioritaskan tag_name)
   const getDocumentTitle = (doc) => {
+    // 🔥 PRIORITAS PERTAMA: document_name (unique name)
+    if (doc.document_name?.trim()) {
+      return doc.document_name.trim();
+    }
+
+    // fallback lama
     const rawTag = doc.tag_name || doc.tagName || doc.tagname;
     if (rawTag?.trim()) return rawTag.trim();
+
     if (doc.title?.trim()) return doc.title.trim();
     if (doc.document_title?.trim()) return doc.document_title.trim();
+
     return `${FORM_TYPES[doc.type]?.label || "Dokumen"} #${doc.id}`;
   };
 
@@ -334,9 +342,7 @@ export default function DocumentList() {
                     {docs.map(doc => {
                       const docTitle = getDocumentTitle(doc);
                       const headerDetails = getHeaderDetails(doc);
-                      const rawTagName = doc.tag_name || doc.tagName || doc.tagname;
-                      const hasTagName = !!(rawTagName?.trim());
-                      const displayName = hasTagName ? rawTagName.trim() : docTitle;
+                      const displayName = getDocumentTitle(doc);
 
                       return (
                         <div className="doc-item" key={`${doc.type}-${doc.id}`}>
