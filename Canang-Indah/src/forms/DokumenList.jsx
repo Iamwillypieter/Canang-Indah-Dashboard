@@ -48,10 +48,24 @@ export default function DocumentList() {
 
   const fetchDocuments = async () => {
     setLoading(true);
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("❌ Session habis. Silakan login ulang.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const requests = Object.entries(FORM_TYPES).map(
         async ([key, config]) => {
-          const res = await fetch(config.endpoint);
+          const res = await fetch(config.endpoint, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+
           if (!res.ok) {
             console.warn(`Failed to fetch ${config.label}`);
             return [];
@@ -68,11 +82,13 @@ export default function DocumentList() {
       );
 
       const results = await Promise.all(requests);
+
       const mergedDocs = results
         .flat()
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       setDocuments(mergedDocs);
+
     } catch (err) {
       console.error(err);
       alert("❌ Gagal memuat daftar dokumen");
@@ -414,9 +430,7 @@ export default function DocumentList() {
                 const config = FORM_TYPES[doc.type];
                 const docTitle = getDocumentTitle(doc);
                 const headerDetails = getHeaderDetails(doc);
-                const rawTagName = doc.tag_name || doc.tagName || doc.tagname;
-                const hasTagName = !!(rawTagName?.trim());
-                const displayName = hasTagName ? rawTagName.trim() : docTitle;
+                const displayName = getDocumentTitle(doc);
 
                 return (
                   <div className="doc-item" key={`${doc.type}-${doc.id}`}>
@@ -424,12 +438,7 @@ export default function DocumentList() {
                       <div className="doc-icon">{config.icon}</div>
                       <div className="doc-content">
                         <div className="doc-title-wrapper">
-                          {hasTagName && (
-                            <span className="tag-name-badge">🏷️ {displayName}</span>
-                          )}
-                          {!hasTagName && (
-                            <span className="doc-title-default">{displayName}</span>
-                          )}
+                          <span className="doc-title-default">🏷️ {displayName}</span>
                           <span className={`badge badge-${doc.type}`}>{config.label}</span>
                         </div>
 
