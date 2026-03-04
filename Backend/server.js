@@ -973,12 +973,11 @@ app.post("/api/flakes-documents", async (req, res) => {
     const countResult = await client.query(
       `SELECT COUNT(*) FROM flakes_documents`
     );
-
     const runningNumber = String(
       Number(countResult.rows[0].count) + 1
     ).padStart(4, "0");
 
-    // 2️⃣ Format Tanggal DDMMYYYY
+    // 2️⃣ Format Tanggal DDMMYYYY (dari input user agar konsisten)
     const tanggalObj = new Date(header.tanggal);
     const dd = String(tanggalObj.getDate()).padStart(2, "0");
     const mm = String(tanggalObj.getMonth() + 1).padStart(2, "0");
@@ -988,11 +987,25 @@ app.post("/api/flakes-documents", async (req, res) => {
     // 3️⃣ Shift + Group
     const shiftGroup = `${header.shift || ""}${header.group || ""}`;
 
-    // 4️⃣ Jam Generate (real time server)
+    // 4️⃣ Jam Generate (REALTIME SERVER - WIB)
     const now = new Date();
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const formattedTime = `${hours}.${minutes}`;
+    
+    // Opsi A: Format dengan titik dua (Standar Internasional) -> "14:30"
+    // const formattedTime = now.toLocaleTimeString('id-ID', { 
+    //   timeZone: 'Asia/Jakarta', 
+    //   hour: '2-digit', 
+    //   minute: '2-digit',
+    //   hour12: false 
+    // });
+
+    // Opsi B: Format dengan titik (Sesuai kode lamamu) -> "14.30"
+    const timeWIB = now.toLocaleTimeString('id-ID', { 
+      timeZone: 'Asia/Jakarta', 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+    const formattedTime = timeWIB.replace(":", "."); 
 
     // 🎯 FINAL TAG
     const generatedTag = `FLAKES ${runningNumber} ${shiftGroup} ${formattedDate} ${formattedTime}`;
@@ -1018,6 +1031,7 @@ app.post("/api/flakes-documents", async (req, res) => {
        INSERT HEADER
     ============================== */
 
+    // ⚠️ PENTING: Gunakan formattedTime juga di database agar data konsisten
     await client.query(
       `INSERT INTO flakes_header (
         document_id, tanggal, jam, shift, ukuran_papan, 
@@ -1026,7 +1040,7 @@ app.post("/api/flakes-documents", async (req, res) => {
       [
         documentId,
         header.tanggal,
-        header.jam || null,
+        formattedTime, // <--- Pakai jam server yang sudah di-fix (WIB)
         header.shift || null,
         header.ukuranPapan || null,
         header.group || null,
@@ -1392,15 +1406,48 @@ app.delete("/api/flakes-documents/:id", async (req, res) => {
   const client = await pool.connect();
 
   try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     await client.query("BEGIN");
 
-    await client.query(`DELETE FROM flakes_summary WHERE document_id = $1`, [id]);
-    await client.query(`DELETE FROM flakes_detail WHERE document_id = $1`, [id]);
-    await client.query(`DELETE FROM flakes_header WHERE document_id = $1`, [id]);
+    // 🔐 Cek shift & group dokumen
+    const docCheck = await client.query(
+      `SELECT fh.shift, fh."group"
+       FROM flakes_header fh
+       WHERE fh.document_id = $1`,
+      [Number(id)]
+    );
+
+    if (docCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+    }
+
+    const documentShift = docCheck.rows[0].shift;
+    const documentGroup = docCheck.rows[0].group;
+
+    const userShift = req.user.shift;
+    const userGroup = req.user.group;
+    const userRole = req.user.role;
+
+    // ❌ Operator hanya bisa hapus shift sendiri
+    if (userRole !== "admin" && (documentShift !== userShift || documentGroup !== userGroup)) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({
+        error: "Anda hanya bisa menghapus dokumen shift Anda sendiri"
+      });
+    }
+
+    // Hapus semua data terkait
+    await client.query(`DELETE FROM flakes_summary WHERE document_id = $1`, [Number(id)]);
+    await client.query(`DELETE FROM flakes_detail WHERE document_id = $1`, [Number(id)]);
+    await client.query(`DELETE FROM flakes_header WHERE document_id = $1`, [Number(id)]);
 
     const result = await client.query(
       `DELETE FROM flakes_documents WHERE id = $1 RETURNING id`,
-      [id]
+      [Number(id)]
     );
 
     if (result.rows.length === 0) {
