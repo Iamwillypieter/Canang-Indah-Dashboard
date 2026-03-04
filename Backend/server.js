@@ -1414,10 +1414,10 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     /* ================= GENERATE DOCUMENT NAME ================= */
 
-    const baseDate = timestamp ? new Date(timestamp) : new Date();
+    const now = new Date();
 
-    // pakai timezone Asia/Jakarta langsung
-    const jakartaTime = new Intl.DateTimeFormat("en-GB", {
+    // format langsung ke Asia/Jakarta
+    const jakartaFormatter = new Intl.DateTimeFormat("en-GB", {
       timeZone: "Asia/Jakarta",
       day: "2-digit",
       month: "2-digit",
@@ -1425,10 +1425,12 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false
-    }).format(baseDate);
+    });
 
-    // hasil: 04/03/2026, 13:38
-    const [datePart, timePart] = jakartaTime.split(", ");
+    const formatted = jakartaFormatter.format(now);
+    // contoh hasil: 04/03/2026, 13:38
+
+    const [datePart, timePart] = formatted.split(", ");
 
     const formattedDate = datePart.replace(/\//g, ""); // 04032026
     const formattedTime = timePart.replace(":", ".");  // 13.38
