@@ -1344,22 +1344,31 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    /* ================= USER LOGIN ================= */
+    /* ================= AMBIL USER DARI DATABASE ================= */
 
     const userId = req.user.id;
-    const tested_by = req.user.name;
-    const shift_group = req.user.shift_group;
+
+    const userResult = await client.query(
+      `SELECT username, shift_group FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      throw new Error("User tidak ditemukan");
+    }
+
+    const tested_by = userResult.rows[0].username;
+    const shift_group = userResult.rows[0].shift_group;
 
     if (!shift_group) {
       throw new Error("User tidak memiliki shift_group");
     }
 
     /* ================= GENERATE TAG OTOMATIS ================= */
-    // Lock supaya tidak bentrok
 
-    const lastNumberResult = await client.query(
+    const lastTagResult = await client.query(
       `
-      SELECT tag_name 
+      SELECT tag_name
       FROM lab_pb_documents
       WHERE shift_group = $1
       ORDER BY id DESC
@@ -1371,8 +1380,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     let nextNumber = 1;
 
-    if (lastNumberResult.rows.length > 0) {
-      const lastTag = lastNumberResult.rows[0].tag_name; // contoh: 0004 1A
+    if (lastTagResult.rows.length > 0) {
+      const lastTag = lastTagResult.rows[0].tag_name; // contoh: 0004 1A
       const lastNumber = parseInt(lastTag.split(" ")[0]);
       nextNumber = lastNumber + 1;
     }
@@ -1407,9 +1416,7 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
     } = req.body;
 
     if (!board_no) {
-      return res.status(400).json({
-        error: "Board No wajib diisi"
-      });
+      throw new Error("Board No wajib diisi");
     }
 
     /* ================= INSERT DOCUMENT ================= */
@@ -1455,6 +1462,10 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     const documentId = docResult.rows[0].id;
 
+    /* ================= POSITIONS ================= */
+
+    const positions = ['le', 'ml', 'md', 'mr', 'ri'];
+
     /* ================= SAMPLES ================= */
 
     for (const sample of samples) {
@@ -1474,8 +1485,6 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
         ]
       );
     }
-
-    const positions = ['le', 'ml', 'md', 'mr', 'ri'];
 
     /* ================= INTERNAL BONDING ================= */
 
