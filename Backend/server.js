@@ -977,7 +977,7 @@ app.post("/api/flakes-documents", async (req, res) => {
       Number(countResult.rows[0].count) + 1
     ).padStart(4, "0");
 
-    // 2️⃣ Format Tanggal DDMMYYYY
+    // 2️⃣ Format Tanggal DDMMYYYY (dari input user)
     const tanggalObj = new Date(header.tanggal);
     const dd = String(tanggalObj.getDate()).padStart(2, "0");
     const mm = String(tanggalObj.getMonth() + 1).padStart(2, "0");
@@ -987,25 +987,18 @@ app.post("/api/flakes-documents", async (req, res) => {
     // 3️⃣ Shift + Group
     const shiftGroup = `${header.shift || ""}${header.group || ""}`;
 
-    // 4️⃣ Jam Generate (REALTIME SERVER - WIB)
+    // 4️⃣ 🕐 Jam Generate (REALTIME SERVER - WIB) - DIRECT EXTRACTION
     const now = new Date();
+    const timeWIB = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     
-    // Ambil waktu WIB lengkap dengan detik (Wajib ada detik untuk tipe TIME)
-    const timeWIB = now.toLocaleTimeString('id-ID', { 
-      timeZone: 'Asia/Jakarta', 
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit', 
-      hour12: false 
-    });
+    const hh = String(timeWIB.getHours()).padStart(2, '0');
+    const min = String(timeWIB.getMinutes()).padStart(2, '0');
+    const sec = String(timeWIB.getSeconds()).padStart(2, '0');
+    
+    const jamForTag = `${hh}.${min}`;      // Untuk tag: 08.23
+    const jamForDb = `${hh}:${min}:${sec}`; // Untuk DB: 08:23:45
 
-    // 🎯 Format untuk TAG NAME (Pakai titik, tanpa detik, contoh: "15.02")
-    const jamForTag = timeWIB.replace(/:/g, ".").slice(0, 5); 
-
-    // 🎯 Format untuk DATABASE (Pakai titik dua + detik, contoh: "15:02:00")
-    const jamForDb = timeWIB; 
-
-    // 🎯 FINAL TAG (Gunakan jamForTag)
+    // 🎯 FINAL TAG NAME
     const generatedTag = `FLAKES ${runningNumber} ${shiftGroup} ${formattedDate} ${jamForTag}`;
 
     /* ==============================
@@ -1029,7 +1022,6 @@ app.post("/api/flakes-documents", async (req, res) => {
        INSERT HEADER
     ============================== */
 
-    // ✅ PENTING: Gunakan jamForDb (format 15:02:00) agar PostgreSQL terima
     await client.query(
       `INSERT INTO flakes_header (
         document_id, tanggal, jam, shift, ukuran_papan, 
@@ -1038,7 +1030,7 @@ app.post("/api/flakes-documents", async (req, res) => {
       [
         documentId,
         header.tanggal,
-        jamForDb,  // <--- 🔥 GUNAKAN INI (Format "HH:MM:SS")
+        jamForDb,
         header.shift || null,
         header.ukuranPapan || null,
         header.group || null,
