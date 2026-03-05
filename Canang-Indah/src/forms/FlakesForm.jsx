@@ -30,14 +30,38 @@ const FlakesForm = ({ isEditMode = false, userInfo = null }) => {
 
   // 🎯 Auto-fill shift & group dari userInfo saat mode create
   useEffect(() => {
-    if (mode === "create" && userInfo) {
-      setHeader(prev => ({
-        ...prev,
-        shift: userInfo.shift || prev.shift,
-        group: userInfo.group || prev.group
-      }));
+    if (mode === "create") {
+      // ✅ Ambil shift: prioritaskan userInfo, fallback ke localStorage, terakhir ke default
+      const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      const finalShift = 
+        (userInfo?.shift && userInfo.shift.trim() !== "") ? userInfo.shift.trim() :
+        (savedUser?.shift && savedUser.shift.trim() !== "") ? savedUser.shift.trim() :
+        "";
+        
+      const finalGroup = 
+        userInfo?.group !== undefined ? (userInfo.group || "") :
+        (savedUser?.group !== undefined ? savedUser.group : "");
+
+      if (finalShift) {
+        setHeader(prev => ({
+          ...prev,
+          shift: finalShift,
+          group: finalGroup
+        }));
+        console.log("✅ Auto-filled header:", { shift: finalShift, group: finalGroup });
+      }
     }
   }, [mode, userInfo, setHeader]);
+
+  useEffect(() => {
+    if (mode === "create") {
+      console.log("🔍 [FlakesForm Debug]");
+      console.log("  - userInfo prop:", userInfo);
+      console.log("  - header.shift:", header.shift);
+      console.log("  - header.group:", header.group);
+    }
+  }, [mode, userInfo, header]);
 
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;

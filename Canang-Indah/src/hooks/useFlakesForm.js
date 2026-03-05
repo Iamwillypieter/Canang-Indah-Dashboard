@@ -148,7 +148,20 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
   const validateForm = () => {
     // ✅ Hanya validasi shift (group boleh kosong)
     if (mode === "create" && (!header.shift || header.shift.trim() === "")) {
-      console.warn("⚠ Validation failed: header.shift =", header.shift, "| userInfo =", userInfo);
+      // 🔁 Last resort: coba ambil dari localStorage langsung
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user?.shift?.trim()) {
+          setHeader(prev => ({
+            ...prev,
+            shift: user.shift.trim(),
+            group: user.group ?? ""
+          }));
+          console.log("🔄 Recovered shift from localStorage");
+          return true; // Lanjut validasi
+        }
+      } catch {}
+      
       alert("⚠ Data shift tidak ditemukan, silakan login ulang");
       return false;
     }
