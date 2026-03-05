@@ -12,18 +12,7 @@ import {
 
 const STORAGE_KEY = "flakesFormDraft";
 
-export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) => {
-  /* ================= HELPERS ================= */
-  // Fungsi untuk mengambil data user dari local storage secara aman
-  const getSavedUser = () => {
-    try {
-      const savedUser = JSON.parse(localStorage.getItem('user'));
-      return savedUser || null;
-    } catch (e) {
-      return null;
-    }
-  };
-
+export const useFlakesForm = ({ mode, documentId, navigate }) => {
   /* ================= STATE: ROWS ================= */
   const [rows, setRows] = useState(() => {
     if (mode === "create") {
@@ -54,27 +43,15 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
       pemeriksa: ""
     };
 
-    // 1. Cek Draft di LocalStorage
     if (mode === "create") {
-      const savedDraft = localStorage.getItem(STORAGE_KEY);
-      if (savedDraft) {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
         try {
-          const parsed = JSON.parse(savedDraft);
-          // Pastikan shift di draft tidak kosong, jika kosong lanjut ke fallback
-          if (parsed.header && (parsed.header.shift)) {
-            return { ...defaultHeader, ...parsed.header };
-          }
-        } catch (e) {}
-      }
-
-      // 2. Fallback: Ambil dari userInfo props atau localStorage user
-      const user = userInfo || getSavedUser();
-      if (user?.shift) {
-        return {
-          ...defaultHeader,
-          shift: user.shift.toString().trim(),
-          group: (user.group || "").toString().trim()
-        };
+          const parsed = JSON.parse(saved);
+          return { ...defaultHeader, ...(parsed.header || {}) };
+        } catch (e) {
+          console.error("❌ Error parsing saved header:", e);
+        }
       }
     }
 
@@ -87,96 +64,73 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
   /* ================= MEMO: TOTALS ================= */
   const totals = useMemo(() => calculateTotals(rows), [rows]);
 
-  /* ================= AUTO-FILL SYNC ================= */
-  // Sinkronisasi ulang jika userInfo baru tersedia setelah komponen mounting
-  useEffect(() => {
-    if (mode === "create" && userInfo?.shift) {
-      setHeader(prev => {
-        // Hanya update jika shift di state saat ini benar-benar kosong
-        if (!prev.shift) {
-          return {
-            ...prev,
-            shift: userInfo.shift.toString().trim(),
-            group: (userInfo.group || "").toString().trim()
-          };
-        }
-        return prev;
-      });
-    }
-  }, [mode, userInfo]);
-
-  /* ================= AUTO SAVE DRAFT ================= */
+  /* ================= AUTO SAVE ================= */
   useEffect(() => {
     if (mode === "create") {
-      const timer = setTimeout(() => {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({ rows, header })
-        );
-      }, 500); // Debounce agar tidak terlalu sering menulis ke disk
-      return () => clearTimeout(timer);
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ rows, header })
+      );
     }
   }, [rows, header, mode]);
 
-  /* ================= LOAD DATA (EDIT/VIEW) ================= */
-  const loadData = useCallback(async () => {
-    if (!documentId) return;
+  /* ================= LOAD DATA ================= */
+  useEffect(() => {
+    if ((mode === "edit" || mode === "view") && documentId) {
+      loadData();
+    }
+  }, [mode, documentId]);
+
+  const loadData = async () => {
     setIsLoading(true);
     try {
       const data = await fetchFlakesById(documentId);
-      
-      const rawHeader = data.header || data;
+
+      /* ===== HEADER MAPPING ===== */
       setHeader({
-        tagName: data.tag_name || data.tagName || rawHeader?.tag_name || "",
-        tanggal: formatDateForInput(rawHeader?.tanggal),
-        jam: rawHeader?.jam || "",
-        shift: rawHeader?.shift || "",
-        ukuranPapan: rawHeader?.ukuranPapan || "",
-        group: rawHeader?.group || "",
-        jarakPisau: rawHeader?.jarakPisau || "",
-        keterangan: rawHeader?.keterangan || "",
-        pemeriksa: rawHeader?.pemeriksa || ""
+        tagName:
+          data.tag_name ||
+          data.tagName ||
+          data.header?.tag_name ||
+          data.header?.tagName ||
+          "",
+        tanggal: formatDateForInput(data.header?.tanggal),
+        jam: data.header?.jam || "",
+        shift: data.header?.shift || "",
+        ukuranPapan: data.header?.ukuranPapan || "",
+        group: data.header?.group || "",
+        jarakPisau: data.header?.jarakPisau || "",
+        keterangan: data.header?.keterangan || "",
+        pemeriksa: data.header?.pemeriksa || ""
       });
 
-      const detailData = data.detail || [];
+      /* ===== DETAIL → ROWS ===== */
       const detailMap = new Map();
-      detailData.forEach(d => {
-        detailMap.set(parseFloat(d.tebal), parseInt(d.jumlah) || 0);
+
+      (data.detail || []).forEach(d => {
+        const tebal = parseFloat(d.tebal);
+        const jumlah = parseInt(d.jumlah) || 0;
+        detailMap.set(tebal, jumlah);
       });
 
-      setRows(initialThicknesses.map(t => ({
-        tebal: t,
-        jumlah: detailMap.get(t) || 0
-      })));
+      setRows(
+        initialThicknesses.map(t => ({
+          tebal: t,
+          jumlah: detailMap.get(t) || 0
+        }))
+      );
     } catch (e) {
       console.error("💥 Load error:", e);
       alert("❌ Gagal memuat data");
     } finally {
       setIsLoading(false);
     }
-  }, [documentId]);
-
-  useEffect(() => {
-    if ((mode === "edit" || mode === "view") && documentId) {
-      loadData();
-    }
-  }, [mode, documentId, loadData]);
+  };
 
   /* ================= VALIDATION ================= */
   const validateForm = () => {
-    // Re-check source data jika header.shift kosong (Defense mechanism)
-    let currentShift = header.shift;
-    
-    if (!currentShift && mode === "create") {
-      const backupUser = userInfo || getSavedUser();
-      if (backupUser?.shift) {
-        currentShift = backupUser.shift;
-        setHeader(prev => ({ ...prev, shift: backupUser.shift, group: backupUser.group || "" }));
-      }
-    }
-
-    if (!currentShift || currentShift.toString().trim() === "") {
-      alert("⚠ Data shift tidak ditemukan. Silakan login ulang atau pastikan koneksi stabil.");
+    if (!header.tagName.trim()) {
+      alert("⚠ Tag Name wajib diisi");
       return false;
     }
 
@@ -186,7 +140,7 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
     }
 
     if (totals.totalJumlah <= 0) {
-      alert("⚠ Jumlah flakes masih kosong. Masukkan minimal satu data.");
+      alert("⚠ Jumlah flakes masih kosong");
       return false;
     }
 
@@ -200,9 +154,10 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
     setIsSubmitting(true);
 
     const payload = {
+      tag_name: header.tagName, // snake_case → backend
       header: {
         tanggal: header.tanggal,
-        jam: mode === "edit" ? header.jam : undefined,
+        jam: header.jam,
         shift: header.shift,
         ukuranPapan: header.ukuranPapan,
         group: header.group,
@@ -222,26 +177,28 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
     };
 
     try {
-      const result = mode === "edit"
+      const result =
+        mode === "edit"
           ? await updateFlakes(documentId, payload)
           : await createFlakes(payload);
 
-      const generatedTag = result?.tag_name || result?.tagName;
-      alert(mode === "create" 
-        ? `✅ Laporan berhasil disimpan!\n🏷️ Tag: ${generatedTag}` 
-        : "✅ Laporan berhasil diperbarui");
+      alert("✅ Laporan berhasil disimpan");
 
       localStorage.removeItem(STORAGE_KEY);
-      const targetId = result?.documentId || result?.id || documentId;
+
+      const targetId =
+        result?.documentId ||
+        result?.id ||
+        documentId;
+
       navigate(`/lab/pb/admin1/flakes/${targetId}`);
-      
     } catch (e) {
       console.error("💥 Submit error:", e);
-      alert(`❌ Gagal menyimpan: ${e.message}`);
+      alert(`❌ ${e.message}`);
     } finally {
       setIsSubmitting(false);
     }
-  }, [mode, documentId, header, rows, totals, navigate, validateForm]);
+  }, [mode, documentId, header, rows, totals, navigate]);
 
   /* ================= RETURN ================= */
   return {
