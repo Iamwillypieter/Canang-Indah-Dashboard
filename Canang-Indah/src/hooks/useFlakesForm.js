@@ -32,7 +32,6 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
   /* ================= STATE: HEADER ================= */
   const [header, setHeader] = useState(() => {
     const defaultHeader = {
-      // ✅ tagName tetap ada di state (untuk display/edit), tapi tidak wajib diisi user
       tagName: "",
       tanggal: "",
       jam: "",
@@ -54,28 +53,33 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
           console.error("❌ Error parsing saved header:", e);
         }
       }
-      // 🎯 Auto-fill shift & group dari localStorage/session jika ada
-      // (Opsional: ambil dari auth context jika sudah implementasi)
     }
 
     return defaultHeader;
   });
-
-  useEffect(() => {
-    if (mode === "create" && userInfo?.shift && userInfo?.group) {
-      setHeader(prev => ({
-        ...prev,
-        shift: userInfo.shift,
-        group: userInfo.group
-      }));
-    }
-  }, [mode, userInfo]);
 
   const [isLoading, setIsLoading] = useState(mode !== "create");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   /* ================= MEMO: TOTALS ================= */
   const totals = useMemo(() => calculateTotals(rows), [rows]);
+
+  /* ================= AUTO-FILL SHIFT & GROUP FROM USER INFO ================= */
+  useEffect(() => {
+    if (mode === "create" && userInfo) {
+      // ✅ Fix: Cek shift !== undefined, dan group boleh empty string ""
+      const userShift = userInfo.shift;
+      const userGroup = userInfo.group !== undefined ? userInfo.group : "";
+      
+      if (userShift !== undefined && userShift !== null) {
+        setHeader(prev => ({
+          ...prev,
+          shift: userShift,
+          group: userGroup
+        }));
+      }
+    }
+  }, [mode, userInfo]);
 
   /* ================= AUTO SAVE ================= */
   useEffect(() => {
@@ -142,21 +146,15 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
 
   /* ================= VALIDATION ================= */
   const validateForm = () => {
-    // ✅ HAPUS validasi tagName untuk mode create (auto-generated)
-    // if (!header.tagName.trim()) { ... }
-    if (mode === "create" && (!header.shift || !header.group)) {
+    // ✅ Hanya validasi shift (group boleh kosong)
+    if (mode === "create" && (!header.shift || header.shift.trim() === "")) {
+      console.warn("⚠ Validation failed: header.shift =", header.shift, "| userInfo =", userInfo);
       alert("⚠ Data shift tidak ditemukan, silakan login ulang");
       return false;
     }
 
     if (!header.tanggal) {
       alert("⚠ Tanggal wajib diisi");
-      return false;
-    }
-
-    // ✅ Validasi shift & group (penting untuk generate tag)
-    if (mode === "create" && (!header.shift || !header.group)) {
-      alert("⚠ Shift dan Group wajib diisi untuk generate Tag Name");
       return false;
     }
 
@@ -176,12 +174,8 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
 
     /* 🎯 BUILD PAYLOAD */
     const payload = {
-      // ❌ JANGAN kirim tag_name untuk CREATE (backend generate)
-      // ✅ Untuk EDIT, backend tidak pakai tag_name dari payload (tetap pakai yang lama)
       header: {
         tanggal: header.tanggal,
-        // ❌ JANGAN kirim jam untuk CREATE (backend generate realtime)
-        // ✅ Untuk EDIT, jam bisa dikirim jika user boleh edit
         jam: mode === "edit" ? header.jam : undefined,
         shift: header.shift,
         ukuranPapan: header.ukuranPapan,
@@ -207,7 +201,6 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
           ? await updateFlakes(documentId, payload)
           : await createFlakes(payload);
 
-      // ✅ TAMPILKAN GENERATED TAG NAME KE USER
       const generatedTag = result?.tag_name || result?.tagName;
       if (mode === "create" && generatedTag) {
         alert(`✅ Laporan berhasil disimpan!\n\n🏷️ Tag Name: ${generatedTag}`);
@@ -217,12 +210,8 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
 
       localStorage.removeItem(STORAGE_KEY);
 
-      const targetId =
-        result?.documentId ||
-        result?.id ||
-        documentId;
+      const targetId = result?.documentId || result?.id || documentId;
 
-      // ✅ Navigate ke detail dengan generated tag_name di state (opsional)
       navigate(`/lab/pb/admin1/flakes/${targetId}`, {
         state: { generatedTag: generatedTag || null }
       });
