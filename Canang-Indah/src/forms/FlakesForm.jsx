@@ -65,17 +65,34 @@ const FlakesForm = ({ isEditMode = false }) => {
 
         <div className="header-section">
           <div className="header-column">
+            
+            {/* 🎯 TAG NAME - AUTO GENERATED (Display Only) */}
             <div className="input-group">
-              <label>Tag Name Document *</label>
-              <input
-                type="text"
-                name="tagName"
-                value={header.tagName || ""}
-                onChange={handleHeaderChange}
-                disabled={mode === "view"}
-                placeholder="Contoh: 1A, 1B, 0001"
-                style={{ fontWeight: 'bold', borderColor: '#0ea5e9' }}
-              />
+              <label>Tag Name Document</label>
+              {mode === "create" ? (
+                // ➕ Mode Create: Tampilkan preview format
+                <div className="tag-preview">
+                  <span className="tag-placeholder">
+                    Akan digenerate otomatis:
+                  </span>
+                  <code className="tag-example">
+                    FLAKES 0001 {header.shift || "1A"} {header.group || ""} {header.tanggal ? new Date(header.tanggal).toLocaleDateString('id-ID').replace(/\//g,'') : "DDMMYYYY"} HH.MM
+                  </code>
+                </div>
+              ) : (
+                // ✏️👁️ Mode Edit/View: Tampilkan tag_name dari data
+                <input
+                  type="text"
+                  value={header.tagName || "-"}
+                  disabled
+                  className="readonly-tag"
+                  style={{ 
+                    fontWeight: 'bold', 
+                    backgroundColor: '#f8fafc',
+                    borderColor: '#0ea5e9' 
+                  }}
+                />
+              )}
             </div>
 
             <div className="input-group">
@@ -116,16 +133,28 @@ const FlakesForm = ({ isEditMode = false }) => {
               />
             </div>
 
-            <div className="input-group">
-              <label>Jam</label>
-              <input
-                type="time"
-                name="jam"
-                value={header.jam}
-                onChange={handleHeaderChange}
-                disabled={mode === "view"}
-              />
-            </div>
+            {/* ⚠️ JAM JUGA SEBAIKNYA HIDDEN DI CREATE MODE */}
+            {mode !== "create" && (
+              <div className="input-group">
+                <label>Jam</label>
+                <input
+                  type="time"
+                  name="jam"
+                  value={header.jam?.substring(0, 5) || ""} // Format HH:mm untuk input time
+                  onChange={handleHeaderChange}
+                  disabled={mode === "view"}
+                />
+              </div>
+            )}
+            
+            {mode === "create" && (
+              <div className="input-group">
+                <label>Jam</label>
+                <div className="tag-preview">
+                  <span className="tag-placeholder">Diisi otomatis saat submit</span>
+                </div>
+              </div>
+            )}
 
             <div className="input-group">
               <label>Ukuran Papan</label>

@@ -32,6 +32,7 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
   /* ================= STATE: HEADER ================= */
   const [header, setHeader] = useState(() => {
     const defaultHeader = {
+      // ✅ tagName tetap ada di state (untuk display/edit), tapi tidak wajib diisi user
       tagName: "",
       tanggal: "",
       jam: "",
@@ -53,6 +54,8 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
           console.error("❌ Error parsing saved header:", e);
         }
       }
+      // 🎯 Auto-fill shift & group dari localStorage/session jika ada
+      // (Opsional: ambil dari auth context jika sudah implementasi)
     }
 
     return defaultHeader;
@@ -129,13 +132,17 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
 
   /* ================= VALIDATION ================= */
   const validateForm = () => {
-    if (!header.tagName.trim()) {
-      alert("⚠ Tag Name wajib diisi");
-      return false;
-    }
+    // ✅ HAPUS validasi tagName untuk mode create (auto-generated)
+    // if (!header.tagName.trim()) { ... }
 
     if (!header.tanggal) {
       alert("⚠ Tanggal wajib diisi");
+      return false;
+    }
+
+    // ✅ Validasi shift & group (penting untuk generate tag)
+    if (mode === "create" && (!header.shift || !header.group)) {
+      alert("⚠ Shift dan Group wajib diisi untuk generate Tag Name");
       return false;
     }
 
@@ -153,11 +160,15 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
 
     setIsSubmitting(true);
 
+    /* 🎯 BUILD PAYLOAD */
     const payload = {
-      tag_name: header.tagName, // snake_case → backend
+      // ❌ JANGAN kirim tag_name untuk CREATE (backend generate)
+      // ✅ Untuk EDIT, backend tidak pakai tag_name dari payload (tetap pakai yang lama)
       header: {
         tanggal: header.tanggal,
-        jam: header.jam,
+        // ❌ JANGAN kirim jam untuk CREATE (backend generate realtime)
+        // ✅ Untuk EDIT, jam bisa dikirim jika user boleh edit
+        jam: mode === "edit" ? header.jam : undefined,
         shift: header.shift,
         ukuranPapan: header.ukuranPapan,
         group: header.group,
@@ -182,7 +193,13 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
           ? await updateFlakes(documentId, payload)
           : await createFlakes(payload);
 
-      alert("✅ Laporan berhasil disimpan");
+      // ✅ TAMPILKAN GENERATED TAG NAME KE USER
+      const generatedTag = result?.tag_name || result?.tagName;
+      if (mode === "create" && generatedTag) {
+        alert(`✅ Laporan berhasil disimpan!\n\n🏷️ Tag Name: ${generatedTag}`);
+      } else {
+        alert("✅ Laporan berhasil disimpan");
+      }
 
       localStorage.removeItem(STORAGE_KEY);
 
@@ -191,7 +208,10 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
         result?.id ||
         documentId;
 
-      navigate(`/lab/pb/admin1/flakes/${targetId}`);
+      // ✅ Navigate ke detail dengan generated tag_name di state (opsional)
+      navigate(`/lab/pb/admin1/flakes/${targetId}`, {
+        state: { generatedTag: generatedTag || null }
+      });
     } catch (e) {
       console.error("💥 Submit error:", e);
       alert(`❌ ${e.message}`);
