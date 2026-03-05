@@ -13,6 +13,17 @@ import {
 const STORAGE_KEY = "flakesFormDraft";
 
 export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) => {
+  /* ================= HELPERS ================= */
+  // Fungsi untuk mengambil data user dari local storage secara aman
+  const getSavedUser = () => {
+    try {
+      const savedUser = JSON.parse(localStorage.getItem('user'));
+      return savedUser || null;
+    } catch (e) {
+      return null;
+    }
+  };
+
   /* ================= STATE: ROWS ================= */
   const [rows, setRows] = useState(() => {
     if (mode === "create") {
@@ -44,26 +55,27 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
     };
 
     // 1. Cek Draft di LocalStorage
-    const savedDraft = localStorage.getItem(STORAGE_KEY);
-    if (mode === "create" && savedDraft) {
-      try {
-        const parsed = JSON.parse(savedDraft);
-        return { ...defaultHeader, ...(parsed.header || {}) };
-      } catch (e) {}
-    }
-
-    // 2. Jika tidak ada draft, coba ambil data User dari LocalStorage langsung (Fallback)
     if (mode === "create") {
-      try {
-        const savedUser = JSON.parse(localStorage.getItem('user'));
-        if (savedUser?.shift) {
-          return { 
-            ...defaultHeader, 
-            shift: savedUser.shift.trim(), 
-            group: savedUser.group || "" 
-          };
-        }
-      } catch (e) {}
+      const savedDraft = localStorage.getItem(STORAGE_KEY);
+      if (savedDraft) {
+        try {
+          const parsed = JSON.parse(savedDraft);
+          // Pastikan shift di draft tidak kosong, jika kosong lanjut ke fallback
+          if (parsed.header && (parsed.header.shift)) {
+            return { ...defaultHeader, ...parsed.header };
+          }
+        } catch (e) {}
+      }
+
+      // 2. Fallback: Ambil dari userInfo props atau localStorage user
+      const user = userInfo || getSavedUser();
+      if (user?.shift) {
+        return {
+          ...defaultHeader,
+          shift: user.shift.toString().trim(),
+          group: (user.group || "").toString().trim()
+        };
+      }
     }
 
     return defaultHeader;
@@ -75,105 +87,96 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
   /* ================= MEMO: TOTALS ================= */
   const totals = useMemo(() => calculateTotals(rows), [rows]);
 
-  /* ================= AUTO-FILL SHIFT & GROUP FROM USER INFO ================= */
+  /* ================= AUTO-FILL SYNC ================= */
+  // Sinkronisasi ulang jika userInfo baru tersedia setelah komponen mounting
   useEffect(() => {
-    if (mode === "create" && userInfo) {
-      // ✅ Fix: Cek shift !== undefined, dan group boleh empty string ""
-      const userShift = userInfo.shift;
-      const userGroup = userInfo.group !== undefined ? userInfo.group : "";
-      
-      if (userShift !== undefined && userShift !== null) {
-        setHeader(prev => ({
-          ...prev,
-          shift: userShift,
-          group: userGroup
-        }));
-      }
+    if (mode === "create" && userInfo?.shift) {
+      setHeader(prev => {
+        // Hanya update jika shift di state saat ini benar-benar kosong
+        if (!prev.shift) {
+          return {
+            ...prev,
+            shift: userInfo.shift.toString().trim(),
+            group: (userInfo.group || "").toString().trim()
+          };
+        }
+        return prev;
+      });
     }
   }, [mode, userInfo]);
 
-  /* ================= AUTO SAVE ================= */
+  /* ================= AUTO SAVE DRAFT ================= */
   useEffect(() => {
     if (mode === "create") {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ rows, header })
-      );
+      const timer = setTimeout(() => {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ rows, header })
+        );
+      }, 500); // Debounce agar tidak terlalu sering menulis ke disk
+      return () => clearTimeout(timer);
     }
   }, [rows, header, mode]);
 
-  /* ================= LOAD DATA ================= */
-  useEffect(() => {
-    if ((mode === "edit" || mode === "view") && documentId) {
-      loadData();
-    }
-  }, [mode, documentId]);
-
-  const loadData = async () => {
+  /* ================= LOAD DATA (EDIT/VIEW) ================= */
+  const loadData = useCallback(async () => {
+    if (!documentId) return;
     setIsLoading(true);
     try {
       const data = await fetchFlakesById(documentId);
-
-      /* ===== HEADER MAPPING ===== */
+      
+      const rawHeader = data.header || data;
       setHeader({
-        tagName:
-          data.tag_name ||
-          data.tagName ||
-          data.header?.tag_name ||
-          data.header?.tagName ||
-          "",
-        tanggal: formatDateForInput(data.header?.tanggal),
-        jam: data.header?.jam || "",
-        shift: data.header?.shift || "",
-        ukuranPapan: data.header?.ukuranPapan || "",
-        group: data.header?.group || "",
-        jarakPisau: data.header?.jarakPisau || "",
-        keterangan: data.header?.keterangan || "",
-        pemeriksa: data.header?.pemeriksa || ""
+        tagName: data.tag_name || data.tagName || rawHeader?.tag_name || "",
+        tanggal: formatDateForInput(rawHeader?.tanggal),
+        jam: rawHeader?.jam || "",
+        shift: rawHeader?.shift || "",
+        ukuranPapan: rawHeader?.ukuranPapan || "",
+        group: rawHeader?.group || "",
+        jarakPisau: rawHeader?.jarakPisau || "",
+        keterangan: rawHeader?.keterangan || "",
+        pemeriksa: rawHeader?.pemeriksa || ""
       });
 
-      /* ===== DETAIL → ROWS ===== */
+      const detailData = data.detail || [];
       const detailMap = new Map();
-
-      (data.detail || []).forEach(d => {
-        const tebal = parseFloat(d.tebal);
-        const jumlah = parseInt(d.jumlah) || 0;
-        detailMap.set(tebal, jumlah);
+      detailData.forEach(d => {
+        detailMap.set(parseFloat(d.tebal), parseInt(d.jumlah) || 0);
       });
 
-      setRows(
-        initialThicknesses.map(t => ({
-          tebal: t,
-          jumlah: detailMap.get(t) || 0
-        }))
-      );
+      setRows(initialThicknesses.map(t => ({
+        tebal: t,
+        jumlah: detailMap.get(t) || 0
+      })));
     } catch (e) {
       console.error("💥 Load error:", e);
       alert("❌ Gagal memuat data");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [documentId]);
+
+  useEffect(() => {
+    if ((mode === "edit" || mode === "view") && documentId) {
+      loadData();
+    }
+  }, [mode, documentId, loadData]);
 
   /* ================= VALIDATION ================= */
   const validateForm = () => {
-    // ✅ Hanya validasi shift (group boleh kosong)
-    if (mode === "create" && (!header.shift || header.shift.trim() === "")) {
-      // 🔁 Last resort: coba ambil dari localStorage langsung
-      try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (user?.shift?.trim()) {
-          setHeader(prev => ({
-            ...prev,
-            shift: user.shift.trim(),
-            group: user.group ?? ""
-          }));
-          console.log("🔄 Recovered shift from localStorage");
-          return true; // Lanjut validasi
-        }
-      } catch {}
-      
-      alert("⚠ Data shift tidak ditemukan, silakan login ulang");
+    // Re-check source data jika header.shift kosong (Defense mechanism)
+    let currentShift = header.shift;
+    
+    if (!currentShift && mode === "create") {
+      const backupUser = userInfo || getSavedUser();
+      if (backupUser?.shift) {
+        currentShift = backupUser.shift;
+        setHeader(prev => ({ ...prev, shift: backupUser.shift, group: backupUser.group || "" }));
+      }
+    }
+
+    if (!currentShift || currentShift.toString().trim() === "") {
+      alert("⚠ Data shift tidak ditemukan. Silakan login ulang atau pastikan koneksi stabil.");
       return false;
     }
 
@@ -183,7 +186,7 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
     }
 
     if (totals.totalJumlah <= 0) {
-      alert("⚠ Jumlah flakes masih kosong");
+      alert("⚠ Jumlah flakes masih kosong. Masukkan minimal satu data.");
       return false;
     }
 
@@ -196,7 +199,6 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
 
     setIsSubmitting(true);
 
-    /* 🎯 BUILD PAYLOAD */
     const payload = {
       header: {
         tanggal: header.tanggal,
@@ -220,32 +222,26 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
     };
 
     try {
-      const result =
-        mode === "edit"
+      const result = mode === "edit"
           ? await updateFlakes(documentId, payload)
           : await createFlakes(payload);
 
       const generatedTag = result?.tag_name || result?.tagName;
-      if (mode === "create" && generatedTag) {
-        alert(`✅ Laporan berhasil disimpan!\n\n🏷️ Tag Name: ${generatedTag}`);
-      } else {
-        alert("✅ Laporan berhasil disimpan");
-      }
+      alert(mode === "create" 
+        ? `✅ Laporan berhasil disimpan!\n🏷️ Tag: ${generatedTag}` 
+        : "✅ Laporan berhasil diperbarui");
 
       localStorage.removeItem(STORAGE_KEY);
-
       const targetId = result?.documentId || result?.id || documentId;
-
-      navigate(`/lab/pb/admin1/flakes/${targetId}`, {
-        state: { generatedTag: generatedTag || null }
-      });
+      navigate(`/lab/pb/admin1/flakes/${targetId}`);
+      
     } catch (e) {
       console.error("💥 Submit error:", e);
-      alert(`❌ ${e.message}`);
+      alert(`❌ Gagal menyimpan: ${e.message}`);
     } finally {
       setIsSubmitting(false);
     }
-  }, [mode, documentId, header, rows, totals, navigate]);
+  }, [mode, documentId, header, rows, totals, navigate, validateForm]);
 
   /* ================= RETURN ================= */
   return {
