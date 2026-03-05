@@ -12,7 +12,7 @@ import {
 
 const STORAGE_KEY = "flakesFormDraft";
 
-export const useFlakesForm = ({ mode, documentId, navigate }) => {
+export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) => {
   /* ================= STATE: ROWS ================= */
   const [rows, setRows] = useState(() => {
     if (mode === "create") {
@@ -60,6 +60,16 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
 
     return defaultHeader;
   });
+
+  useEffect(() => {
+    if (mode === "create" && userInfo?.shift && userInfo?.group) {
+      setHeader(prev => ({
+        ...prev,
+        shift: userInfo.shift,
+        group: userInfo.group
+      }));
+    }
+  }, [mode, userInfo]);
 
   const [isLoading, setIsLoading] = useState(mode !== "create");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -134,6 +144,10 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
   const validateForm = () => {
     // ✅ HAPUS validasi tagName untuk mode create (auto-generated)
     // if (!header.tagName.trim()) { ... }
+    if (mode === "create" && (!header.shift || !header.group)) {
+      alert("⚠ Data shift tidak ditemukan, silakan login ulang");
+      return false;
+    }
 
     if (!header.tanggal) {
       alert("⚠ Tanggal wajib diisi");

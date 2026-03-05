@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useFlakesForm } from "../hooks/useFlakesForm.js";
 import "./FlakesForm.css";
 
-const FlakesForm = ({ isEditMode = false }) => {
+const FlakesForm = ({ isEditMode = false, userInfo = null }) => {
+  // 👈 Tambah prop userInfo untuk terima data user dari auth context
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -23,8 +24,20 @@ const FlakesForm = ({ isEditMode = false }) => {
   } = useFlakesForm({
     mode,
     documentId: id,
-    navigate
+    navigate,
+    userInfo // 👈 Pass userInfo ke hook
   });
+
+  // 🎯 Auto-fill shift & group dari userInfo saat mode create
+  useEffect(() => {
+    if (mode === "create" && userInfo) {
+      setHeader(prev => ({
+        ...prev,
+        shift: userInfo.shift || prev.shift,
+        group: userInfo.group || prev.group
+      }));
+    }
+  }, [mode, userInfo, setHeader]);
 
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;
@@ -63,6 +76,13 @@ const FlakesForm = ({ isEditMode = false }) => {
             : "👁️ Detail Laporan"}
         </h2>
 
+        {/* 🎯 INFO USER SHIFT - Hanya tampil di create mode */}
+        {mode === "create" && userInfo && (
+          <div className="user-info-banner">
+            👤 <strong>{userInfo.name}</strong> — Shift {userInfo.shift}{userInfo.group}
+          </div>
+        )}
+
         <div className="header-section">
           <div className="header-column">
             
@@ -70,13 +90,13 @@ const FlakesForm = ({ isEditMode = false }) => {
             <div className="input-group">
               <label>Tag Name Document</label>
               {mode === "create" ? (
-                // ➕ Mode Create: Tampilkan preview format
+                // ➕ Mode Create: Tampilkan preview format dengan shift/group dari user
                 <div className="tag-preview">
                   <span className="tag-placeholder">
                     Akan digenerate otomatis:
                   </span>
                   <code className="tag-example">
-                    FLAKES 0001 {header.shift || "1A"} {header.group || ""} {header.tanggal ? new Date(header.tanggal).toLocaleDateString('id-ID').replace(/\//g,'') : "DDMMYYYY"} HH.MM
+                    FLAKES 0001 {userInfo?.shift || "1A"}{userInfo?.group || ""} {header.tanggal ? new Date(header.tanggal).toLocaleDateString('id-ID').replace(/\//g,'') : "DDMMYYYY"} HH.MM
                   </code>
                 </div>
               ) : (
@@ -107,42 +127,45 @@ const FlakesForm = ({ isEditMode = false }) => {
               />
             </div>
 
-            <div className="input-group">
-              <label>Shift</label>
-              <input
-                type="text"
-                name="shift"
-                value={header.shift}
-                onChange={handleHeaderChange}
-                disabled={mode === "view"}
-                placeholder="Pagi / Siang / Malam"
-              />
-            </div>
+            {/* ❌ SHIFT & GROUP DIHAPUS DARI UI CREATE MODE */}
+            {/* Tapi tetap ditampilkan readonly di Edit/View mode untuk info */}
+            {mode !== "create" && (
+              <>
+                <div className="input-group">
+                  <label>Shift</label>
+                  <input
+                    type="text"
+                    value={header.shift || "-"}
+                    disabled
+                    className="readonly-field"
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label>Group</label>
+                  <input
+                    type="text"
+                    value={header.group || "-"}
+                    disabled
+                    className="readonly-field"
+                  />
+                </div>
+              </>
+            )}
+
           </div>
 
           <div className="header-column">
-            <div className="input-group">
-              <label>Group</label>
-              <input
-                type="text"
-                name="group"
-                value={header.group}
-                onChange={handleHeaderChange}
-                disabled={mode === "view"}
-                placeholder="Group A / B / C"
-              />
-            </div>
-
-            {/* ⚠️ JAM JUGA SEBAIKNYA HIDDEN DI CREATE MODE */}
+            
+            {/* ⚠️ JAM JUGA HANYA TAMPIL DI EDIT/VIEW MODE */}
             {mode !== "create" && (
               <div className="input-group">
                 <label>Jam</label>
                 <input
-                  type="time"
-                  name="jam"
-                  value={header.jam?.substring(0, 5) || ""} // Format HH:mm untuk input time
-                  onChange={handleHeaderChange}
-                  disabled={mode === "view"}
+                  type="text"
+                  value={header.jam?.substring(0, 5) || "-"}
+                  disabled
+                  className="readonly-field"
                 />
               </div>
             )}
