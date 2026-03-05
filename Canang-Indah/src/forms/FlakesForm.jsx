@@ -31,25 +31,23 @@ const FlakesForm = ({ isEditMode = false, userInfo = null }) => {
   // 🎯 Auto-fill shift & group dari userInfo saat mode create
   useEffect(() => {
     if (mode === "create") {
-      // ✅ Ambil shift: prioritaskan userInfo, fallback ke localStorage, terakhir ke default
       const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
       
-      const finalShift = 
-        (userInfo?.shift && userInfo.shift.trim() !== "") ? userInfo.shift.trim() :
-        (savedUser?.shift && savedUser.shift.trim() !== "") ? savedUser.shift.trim() :
-        "";
-        
-      const finalGroup = 
-        userInfo?.group !== undefined ? (userInfo.group || "") :
-        (savedUser?.group !== undefined ? savedUser.group : "");
+      // Gunakan userInfo jika ada, jika tidak pakai savedUser
+      const targetUser = (userInfo && userInfo.shift) ? userInfo : savedUser;
 
-      if (finalShift) {
-        setHeader(prev => ({
-          ...prev,
-          shift: finalShift,
-          group: finalGroup
-        }));
-        console.log("✅ Auto-filled header:", { shift: finalShift, group: finalGroup });
+      if (targetUser?.shift) {
+        setHeader(prev => {
+          // HANYA update jika shift di state saat ini masih kosong
+          if (!prev.shift) {
+            return {
+              ...prev,
+              shift: targetUser.shift.trim(),
+              group: targetUser.group || ""
+            };
+          }
+          return prev;
+        });
       }
     }
   }, [mode, userInfo, setHeader]);

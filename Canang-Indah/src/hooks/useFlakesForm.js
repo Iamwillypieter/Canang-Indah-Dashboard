@@ -43,16 +43,27 @@ export const useFlakesForm = ({ mode, documentId, navigate, userInfo = null }) =
       pemeriksa: ""
     };
 
+    // 1. Cek Draft di LocalStorage
+    const savedDraft = localStorage.getItem(STORAGE_KEY);
+    if (mode === "create" && savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        return { ...defaultHeader, ...(parsed.header || {}) };
+      } catch (e) {}
+    }
+
+    // 2. Jika tidak ada draft, coba ambil data User dari LocalStorage langsung (Fallback)
     if (mode === "create") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          return { ...defaultHeader, ...(parsed.header || {}) };
-        } catch (e) {
-          console.error("❌ Error parsing saved header:", e);
+      try {
+        const savedUser = JSON.parse(localStorage.getItem('user'));
+        if (savedUser?.shift) {
+          return { 
+            ...defaultHeader, 
+            shift: savedUser.shift.trim(), 
+            group: savedUser.group || "" 
+          };
         }
-      }
+      } catch (e) {}
     }
 
     return defaultHeader;
