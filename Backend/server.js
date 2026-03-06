@@ -1263,25 +1263,37 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
 app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
   const { id } = req.params;
-  const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
+
+  const {
+    header,
+    detail,
+    total_jumlah,
+    grand_total_ketebalan,
+    rata_rata
+  } = req.body;
 
   const client = await pool.connect();
 
   try {
 
     if (!header || !Array.isArray(detail)) {
-      return res.status(400).json({ error: "Data tidak lengkap" });
+      return res.status(400).json({
+        error: "Data tidak lengkap"
+      });
     }
 
-    if (!req.user || !req.user.shift_group) {
-      return res.status(401).json({ error: "Shift user tidak ditemukan" });
+    if (!req.user) {
+      return res.status(401).json({
+        error: "Unauthorized"
+      });
     }
 
     await client.query("BEGIN");
 
-    // =============================
+    // ======================================
     // AMBIL SHIFT DOKUMEN
-    // =============================
+    // ======================================
+
     const docCheck = await client.query(
       `SELECT shift, "group"
        FROM flakes_header
@@ -1291,24 +1303,25 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     if (docCheck.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+      return res.status(404).json({
+        error: "Dokumen tidak ditemukan"
+      });
     }
 
-    const documentShiftGroup =
-      String(docCheck.rows[0].shift).trim() +
-      String(docCheck.rows[0].group).trim();
+    const documentShift = String(docCheck.rows[0].shift).trim();
+    const documentGroup = String(docCheck.rows[0].group).trim();
 
-    const userShiftGroup = String(req.user.shift_group)
-      .replace(/\s/g, "")
-      .toUpperCase();
+    const userShift = String(req.user.shift).trim();
+    const userGroup = String(req.user.group).trim();
 
-    console.log("DOC SHIFT:", documentShiftGroup);
-    console.log("USER SHIFT:", userShiftGroup);
+    console.log("DOC SHIFT :", documentShift + documentGroup);
+    console.log("USER SHIFT:", userShift + userGroup);
 
-    // =============================
-    // VALIDASI SHIFT PEMBUAT
-    // =============================
-    if (documentShiftGroup !== userShiftGroup) {
+    // ======================================
+    // VALIDASI SHIFT
+    // ======================================
+
+    if (documentShift !== userShift || documentGroup !== userGroup) {
 
       await client.query("ROLLBACK");
 
@@ -1318,26 +1331,27 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     }
 
-    // =============================
-    // CEGAH SHIFT DIUBAH
-    // =============================
-    const headerShiftGroup =
-      String(header.shift).trim() +
-      String(header.group).trim();
+    // ======================================
+    // CEGAH PINDAH SHIFT
+    // ======================================
 
-    if (headerShiftGroup.toUpperCase() !== documentShiftGroup.toUpperCase()) {
+    if (
+      String(header.shift).trim() !== documentShift ||
+      String(header.group).trim() !== documentGroup
+    ) {
 
       await client.query("ROLLBACK");
 
       return res.status(403).json({
-        error: "Shift dokumen tidak boleh diubah"
+        error: "Shift dan group dokumen tidak boleh diubah"
       });
 
     }
 
-    // =============================
+    // ======================================
     // UPDATE DOCUMENT
-    // =============================
+    // ======================================
+
     await client.query(
       `UPDATE flakes_documents
        SET title = $1,
@@ -1349,9 +1363,10 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
       ]
     );
 
-    // =============================
+    // ======================================
     // UPDATE HEADER
-    // =============================
+    // ======================================
+
     await client.query(
       `UPDATE flakes_header
        SET tanggal = $1,
@@ -1373,23 +1388,24 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
       ]
     );
 
-    // =============================
-    // HAPUS DETAIL
-    // =============================
+    // ======================================
+    // HAPUS DETAIL LAMA
+    // ======================================
+
     await client.query(
-      `DELETE FROM flakes_detail WHERE document_id = $1`,
+      `DELETE FROM flakes_detail
+       WHERE document_id = $1`,
       [Number(id)]
     );
 
-    // =============================
-    // INSERT DETAIL
-    // =============================
+    // ======================================
+    // INSERT DETAIL BARU
+    // ======================================
+
     for (const row of detail) {
 
-      if (!row) continue;
-
-      const tebal = Number(row.tebal ?? 0);
-      const jumlah = Number(row.jumlah ?? 0);
+      const tebal = Number(row.tebal) || 0;
+      const jumlah = Number(row.jumlah) || 0;
 
       if (tebal === 0 && jumlah === 0) continue;
 
@@ -1407,9 +1423,10 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     }
 
-    // =============================
+    // ======================================
     // UPDATE SUMMARY
-    // =============================
+    // ======================================
+
     await client.query(
       `INSERT INTO flakes_summary
       (document_id,total_jumlah,grand_total_ketebalan,rata_rata_ketebalan,created_at)
