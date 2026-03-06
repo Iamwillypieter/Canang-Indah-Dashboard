@@ -1260,183 +1260,138 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
 });
 
 // ✅ UPDATE Flakes document
-app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
-
+app.put("/api/flakes-documents/:id", async (req, res) => {
   const { id } = req.params;
-
-  const {
-    header,
-    detail,
-    total_jumlah,
-    grand_total_ketebalan,
-    rata_rata
-  } = req.body;
+  const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
 
   const client = await pool.connect();
 
   try {
-
-    if (!header || !Array.isArray(detail)) {
-      return res.status(400).json({
-        error: "Data tidak lengkap"
-      });
+    // 1. Validasi Input Dasar
+    if (!header || !detail || detail.length === 0) {
+      return res.status(400).json({ error: "Data tidak lengkap" });
     }
 
+    // 2. Cek Autentikasi User
     if (!req.user) {
-      return res.status(401).json({
-        error: "Unauthorized"
-      });
+      return res.status(401).json({ error: "Unauthorized: Silahkan login terlebih dahulu" });
     }
 
     await client.query("BEGIN");
 
-    // ======================================
-    // AMBIL SHIFT DOKUMEN
-    // ======================================
+    /* ============================================================
+       🔐 LOGIKA VALIDASI AKSES (SHIFT & GROUP)
+    ============================================================ */
 
+    // Ambil data asli dari database untuk pengecekan
     const docCheck = await client.query(
-      `SELECT shift, "group"
-       FROM flakes_header
-       WHERE document_id = $1`,
+      `SELECT shift, "group" FROM flakes_header WHERE document_id = $1`,
       [Number(id)]
     );
 
     if (docCheck.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({
-        error: "Dokumen tidak ditemukan"
-      });
+      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
     }
 
-    const documentShift = String(docCheck.rows[0].shift).trim();
-    const documentGroup = String(docCheck.rows[0].group).trim();
+    const dbShift = docCheck.rows[0].shift;
+    const dbGroup = docCheck.rows[0].group;
 
-    const userShift = String(req.user.shift).trim();
-    const userGroup = String(req.user.group).trim();
+    const userShift = req.user.shift;
+    const userGroup = req.user.group;
+    const userRole = req.user.role;
 
-    console.log("DOC SHIFT :", documentShift + documentGroup);
-    console.log("USER SHIFT:", userShift + userGroup);
-
-    // ======================================
-    // VALIDASI SHIFT
-    // ======================================
-
-    if (documentShift !== userShift || documentGroup !== userGroup) {
-
-      await client.query("ROLLBACK");
-
-      return res.status(403).json({
-        error: "Dokumen hanya bisa diedit oleh shift yang membuatnya"
-      });
-
+    // RULE: Jika bukan Admin DAN (Shift berbeda ATAU Group berbeda) -> TOLAK
+    if (userRole !== "admin") {
+      if (dbShift !== userShift || dbGroup !== userGroup) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({
+          error: `Akses Ditolak! Dokumen ini milik Shift ${dbShift} Group ${dbGroup}. Anda adalah Shift ${userShift} Group ${userGroup}.`
+        });
+      }
     }
 
-    // ======================================
-    // CEGAH PINDAH SHIFT
-    // ======================================
-
-    if (
-      String(header.shift).trim() !== documentShift ||
-      String(header.group).trim() !== documentGroup
-    ) {
-
-      await client.query("ROLLBACK");
-
-      return res.status(403).json({
-        error: "Shift dan group dokumen tidak boleh diubah"
-      });
-
+    /* ============================================================
+       🚫 PROTEKSI INTEGRITAS DATA
+       Mencegah user mengubah shift/group dokumen yang sudah ada
+    ============================================================ */
+    
+    if (userRole !== "admin") {
+      // Jika user mencoba mengirimkan shift/group yang berbeda di body request
+      if (header.shift !== dbShift || header.group !== dbGroup) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({
+          error: "Anda tidak diperbolehkan mengubah identitas Shift atau Group pada dokumen ini."
+        });
+      }
     }
 
-    // ======================================
-    // UPDATE DOCUMENT
-    // ======================================
+    /* ============================================================
+       PROSES UPDATE DATA
+    ============================================================ */
 
+    // A. Update Parent Table (flakes_documents)
     await client.query(
-      `UPDATE flakes_documents
-       SET title = $1,
-           updated_at = NOW()
+      `UPDATE flakes_documents SET 
+        title = $1, 
+        updated_at = NOW() 
        WHERE id = $2`,
-      [
-        `Flakes ${header.tanggal || ""}`,
-        Number(id)
-      ]
+      [`Flakes ${header.tanggal}`, Number(id)]
     );
 
-    // ======================================
-    // UPDATE HEADER
-    // ======================================
-
+    // B. Update Header (Kecuali Shift & Group untuk non-admin)
+    // Kita gunakan data dari DB (dbShift/dbGroup) untuk memastikan tidak berubah
     await client.query(
-      `UPDATE flakes_header
-       SET tanggal = $1,
-           jam = $2,
-           ukuran_papan = $3,
-           jarak_pisau = $4,
-           keterangan = $5,
-           pemeriksa = $6,
-           updated_at = NOW()
-       WHERE document_id = $7`,
+      `UPDATE flakes_header SET
+        tanggal = $1,
+        jam = $2,
+        ukuran_papan = $3,
+        jarak_pisau = $4,
+        keterangan = $5,
+        pemeriksa = $6,
+        shift = $7,
+        "group" = $8,
+        updated_at = NOW()
+       WHERE document_id = $9`,
       [
-        header.tanggal || null,
+        header.tanggal,
         header.jam || null,
         header.ukuranPapan || null,
         header.jarakPisau || null,
         header.keterangan || null,
         header.pemeriksa || null,
+        userRole === "admin" ? header.shift : dbShift, // Admin boleh ubah, user biasa pakai data lama
+        userRole === "admin" ? header.group : dbGroup,
         Number(id)
       ]
     );
 
-    // ======================================
-    // HAPUS DETAIL LAMA
-    // ======================================
-
-    await client.query(
-      `DELETE FROM flakes_detail
-       WHERE document_id = $1`,
-      [Number(id)]
-    );
-
-    // ======================================
-    // INSERT DETAIL BARU
-    // ======================================
+    // C. Refresh Detail (Hapus lama, Masukkan baru)
+    await client.query(`DELETE FROM flakes_detail WHERE document_id = $1`, [Number(id)]);
 
     for (const row of detail) {
-
       const tebal = Number(row.tebal) || 0;
       const jumlah = Number(row.jumlah) || 0;
 
-      if (tebal === 0 && jumlah === 0) continue;
-
       await client.query(
-        `INSERT INTO flakes_detail
-        (document_id, tebal, jumlah, total_ketebalan, created_at)
-        VALUES ($1,$2,$3,$4,NOW())`,
-        [
-          Number(id),
-          tebal,
-          jumlah,
-          tebal * jumlah
-        ]
+        `INSERT INTO flakes_detail 
+         (document_id, tebal, jumlah, total_ketebalan, created_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
+        [Number(id), tebal, jumlah, tebal * jumlah]
       );
-
     }
 
-    // ======================================
-    // UPDATE SUMMARY
-    // ======================================
-
+    // D. Upsert Summary
     await client.query(
       `INSERT INTO flakes_summary
-      (document_id,total_jumlah,grand_total_ketebalan,rata_rata_ketebalan,created_at)
-      VALUES ($1,$2,$3,$4,NOW())
-      ON CONFLICT (document_id)
-      DO UPDATE SET
-        total_jumlah = EXCLUDED.total_jumlah,
-        grand_total_ketebalan = EXCLUDED.grand_total_ketebalan,
-        rata_rata_ketebalan = EXCLUDED.rata_rata_ketebalan,
-        updated_at = NOW()`,
+       (document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (document_id)
+       DO UPDATE SET
+         total_jumlah = EXCLUDED.total_jumlah,
+         grand_total_ketebalan = EXCLUDED.grand_total_ketebalan,
+         rata_rata_ketebalan = EXCLUDED.rata_rata_ketebalan,
+         updated_at = NOW()`,
       [
         Number(id),
         Number(total_jumlah) || 0,
@@ -1449,26 +1404,18 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     res.json({
       success: true,
-      message: "Flakes document berhasil diperbarui"
+      message: "Dokumen berhasil diperbarui."
     });
 
   } catch (err) {
-
     await client.query("ROLLBACK");
-
     console.error("❌ ERROR UPDATE FLAKES:", err);
-
     res.status(500).json({
-      error: "Gagal memperbarui Flakes document",
-      detail: err.message
+      error: "Terjadi kesalahan sistem: " + err.message
     });
-
   } finally {
-
     client.release();
-
   }
-
 });
 
 // ✅ DELETE Flakes document (sudah benar, tetap sama)
