@@ -1560,6 +1560,17 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
       });
     }
 
+    const shiftGroup = req.user.shift_group;
+
+    if (!shiftGroup) {
+      return res.status(400).json({
+        error: "User shift_group tidak ditemukan"
+      });
+    }
+
+    const userShift = shiftGroup.charAt(0);
+    const userGroup = shiftGroup.charAt(1);
+
     if (!header || typeof header !== "object") {
       return res.status(400).json({
         error: "Data header tidak valid"
@@ -1575,19 +1586,43 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
     await client.query("BEGIN");
 
     /* ==============================
-       CEK DOKUMEN ADA ATAU TIDAK
+       CEK DOKUMEN + SHIFT
     ============================== */
 
     const docCheck = await client.query(
-      `SELECT document_id FROM flakes_header WHERE document_id = $1`,
+      `SELECT d.id, d.tag_name, d.shift, d.group_name
+       FROM flakes_documents d
+       WHERE d.id = $1`,
       [id]
     );
 
     if (docCheck.rows.length === 0) {
+
       await client.query("ROLLBACK");
+
       return res.status(404).json({
         error: "Dokumen tidak ditemukan"
       });
+
+    }
+
+    const document = docCheck.rows[0];
+
+    /* ==============================
+       VALIDASI SHIFT
+    ============================== */
+
+    if (
+      document.shift !== userShift ||
+      document.group_name !== userGroup
+    ) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        error: `Shift ${userShift}${userGroup} tidak boleh mengedit dokumen ${document.tag_name}`
+      });
+
     }
 
     /* ==============================
@@ -1694,7 +1729,7 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Flakes document berhasil diperbarui",
+      message: `Dokumen ${document.tag_name} berhasil diperbarui`,
       documentId: id,
       updatedAt: new Date().toISOString()
     });
