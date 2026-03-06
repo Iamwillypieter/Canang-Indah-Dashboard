@@ -96,7 +96,7 @@ const FlakesForm = ({ isEditMode = false }) => {
                 value={header.shift}
                 onChange={handleHeaderChange}
                 disabled={mode === "view"}
-                placeholder="Pagi / Siang / Malam"
+                placeholder="1 / 2 / 3"
               />
             </div>
           </div>
