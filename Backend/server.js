@@ -1292,8 +1292,8 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
     const documentShift = docCheck.rows[0].shift;
     const documentGroup = docCheck.rows[0].group;
 
-    const userShift = req.user.shift;
-    const userGroup = req.user.group;
+    const userShift = req.user.shift_group?.[0];
+    const userGroup = req.user.shift_group?.[1];
 
     // NORMALIZE DATA
     const docShift = String(documentShift).trim().toUpperCase();
@@ -1304,6 +1304,8 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     console.log("DOC:", docShift, docGroup);
     console.log("USER:", usrShift, usrGroup);
+    console.log("DOC:", documentShift, documentGroup);
+    console.log("USER:", userShift, userGroup);
 
     // VALIDASI SHIFT
     if (docShift !== usrShift || docGroup !== usrGroup) {
@@ -1440,8 +1442,8 @@ app.delete("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
     const documentShift = docCheck.rows[0].shift;
     const documentGroup = docCheck.rows[0].group;
 
-    const userShift = req.user.shift;
-    const userGroup = req.user.group;
+    const userShift = req.user.shift_group?.[0];
+    const userGroup = req.user.shift_group?.[1];
 
     const docShift = String(documentShift).trim();
     const docGroup = String(documentGroup).trim();
@@ -1451,6 +1453,8 @@ app.delete("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     console.log("DOC:", docShift, docGroup);
     console.log("USER:", usrShift, usrGroup);
+    console.log("DOC:", documentShift, documentGroup);
+    console.log("USER:", userShift, userGroup);
 
     if (docShift !== usrShift || docGroup !== usrGroup) {
       await client.query("ROLLBACK");
