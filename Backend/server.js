@@ -1260,22 +1260,23 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
 });
 
 // ✅ UPDATE Flakes document
-app.put("/api/flakes-documents/:id", async (req, res) => {
+app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
 
+  // Pastikan koneksi pool tersedia
   const client = await pool.connect();
 
   try {
-    // 1. Validasi Input Dasar
+    // 1. Validasi Input Dasar (Body tidak boleh kosong)
     if (!header || !detail || detail.length === 0) {
       return res.status(400).json({ error: "Data tidak lengkap" });
     }
 
-    // 2. Cek Autentikasi User
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized: Silahkan login terlebih dahulu" });
-    }
+    /* CATATAN: 
+       Pengecekan if (!req.user) dihapus dari sini karena sudah ditangani 
+       oleh middleware 'authenticateToken' di atas.
+    */
 
     await client.query("BEGIN");
 
@@ -1283,7 +1284,7 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
        🔐 LOGIKA VALIDASI AKSES (SHIFT & GROUP)
     ============================================================ */
 
-    // Ambil data asli dari database untuk pengecekan
+    // Ambil data dokumen asli dari DB untuk verifikasi kepemilikan
     const docCheck = await client.query(
       `SELECT shift, "group" FROM flakes_header WHERE document_id = $1`,
       [Number(id)]
@@ -1301,7 +1302,7 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     const userGroup = req.user.group;
     const userRole = req.user.role;
 
-    // RULE: Jika bukan Admin DAN (Shift berbeda ATAU Group berbeda) -> TOLAK
+    // VALIDASI: Hanya Admin atau User dengan Shift & Group yang sama yang boleh edit
     if (userRole !== "admin") {
       if (dbShift !== userShift || dbGroup !== userGroup) {
         await client.query("ROLLBACK");
@@ -1309,15 +1310,8 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
           error: `Akses Ditolak! Dokumen ini milik Shift ${dbShift} Group ${dbGroup}. Anda adalah Shift ${userShift} Group ${userGroup}.`
         });
       }
-    }
 
-    /* ============================================================
-       🚫 PROTEKSI INTEGRITAS DATA
-       Mencegah user mengubah shift/group dokumen yang sudah ada
-    ============================================================ */
-    
-    if (userRole !== "admin") {
-      // Jika user mencoba mengirimkan shift/group yang berbeda di body request
+      // Cegah user mencoba mengganti identitas shift/group dokumen melalui body request
       if (header.shift !== dbShift || header.group !== dbGroup) {
         await client.query("ROLLBACK");
         return res.status(403).json({
@@ -1339,8 +1333,7 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
       [`Flakes ${header.tanggal}`, Number(id)]
     );
 
-    // B. Update Header (Kecuali Shift & Group untuk non-admin)
-    // Kita gunakan data dari DB (dbShift/dbGroup) untuk memastikan tidak berubah
+    // B. Update Header
     await client.query(
       `UPDATE flakes_header SET
         tanggal = $1,
@@ -1360,7 +1353,7 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
         header.jarakPisau || null,
         header.keterangan || null,
         header.pemeriksa || null,
-        userRole === "admin" ? header.shift : dbShift, // Admin boleh ubah, user biasa pakai data lama
+        userRole === "admin" ? header.shift : dbShift, // Tetapkan data asli jika bukan admin
         userRole === "admin" ? header.group : dbGroup,
         Number(id)
       ]
@@ -1377,11 +1370,11 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
         `INSERT INTO flakes_detail 
          (document_id, tebal, jumlah, total_ketebalan, created_at)
          VALUES ($1, $2, $3, $4, NOW())`,
-        [Number(id), tebal, jumlah, tebal * jumlah]
+        [Number(id), tebal, jumlah, (tebal * jumlah)]
       );
     }
 
-    // D. Upsert Summary
+    // D. Upsert Summary (Gunakan ON CONFLICT agar data tetap sinkron)
     await client.query(
       `INSERT INTO flakes_summary
        (document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at)
@@ -1408,13 +1401,13 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     });
 
   } catch (err) {
-    await client.query("ROLLBACK");
+    if (client) await client.query("ROLLBACK");
     console.error("❌ ERROR UPDATE FLAKES:", err);
     res.status(500).json({
       error: "Terjadi kesalahan sistem: " + err.message
     });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 
