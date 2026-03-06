@@ -684,52 +684,126 @@ app.delete("/api/qc-analisa-documents/:id", async (req, res) => {
 /* ================= RESIN INSPECTION BACKEND ================= */
 
 // ✅ POST: Simpan data baru (sudah include tag_name)
-app.post("/api/resin-inspection", async (req, res) => {
+app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
+
   const client = await pool.connect();
+
   try {
-    const { 
-      tag_name,    // 👈 Tambahkan destructuring
-      date, shift, group, 
-      inspection, solidContent, 
-      comment_by, createdBy 
-    } = req.body;
+
+    const { inspection, solidContent, comment_by } = req.body;
+
+    const user = req.user;
+
+    const shift = user.shift;
+    const group = user.group;
+    const createdBy = user.id;
 
     await client.query("BEGIN");
 
-    // 👇 INSERT dengan tag_name
+    // ========================================
+    // Generate Running Number (Per Shift + Per Day)
+    // ========================================
+
+    const countResult = await client.query(
+      `SELECT COUNT(*) 
+       FROM resin_inspection_documents
+       WHERE DATE(created_at) = CURRENT_DATE
+       AND shift = $1
+       AND group_name = $2`,
+      [shift, group]
+    );
+
+    const runningNumber = String(
+      parseInt(countResult.rows[0].count) + 1
+    ).padStart(4, "0");
+
+
+    // ========================================
+    // Generate Date & Time
+    // ========================================
+
+    const now = new Date();
+
+    const day = String(now.getDate()).padStart(2, "0");
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const year = now.getFullYear();
+
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+
+    const date = `${day}${month}${year}`;
+    const time = `${hours}.${minutes}`;
+
+
+    // ========================================
+    // Generate Tag Name
+    // ========================================
+
+    const tag_name = `Resin Inspection ${runningNumber} ${shift}${group} ${date} ${time}`;
+
+    const title = "Resin Inspection";
+
+
+    // ========================================
+    // Insert Document
+    // ========================================
+
     const doc = await client.query(
       `INSERT INTO resin_inspection_documents
        (title, tag_name, date, shift, group_name, comment_by, created_by, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       VALUES ($1,$2,NOW(),$3,$4,$5,$6,NOW())
        RETURNING id`,
       [
-        `Resin Inspection ${date} ${shift}`, 
-        tag_name || null,
-        date, shift, group, comment_by, createdBy
+        title,
+        tag_name,
+        shift,
+        group,
+        comment_by,
+        createdBy
       ]
     );
 
     const documentId = doc.rows[0].id;
 
-    // Insert inspection rows
+
+    // ========================================
+    // Insert Inspection Rows
+    // ========================================
+
     for (const [i, row] of inspection.entries()) {
+
       await client.query(
         `INSERT INTO resin_inspection_inspection
-         (document_id, load_no, cert_test_no, resin_tank, quantity,
-          specific_gravity, viscosity, ph, gel_time, water_tolerance, appearance, solids)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        (document_id, load_no, cert_test_no, resin_tank, quantity,
+        specific_gravity, viscosity, ph, gel_time, water_tolerance, appearance, solids)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
         [
-          documentId, i + 1,
-          row.certTestNo, row.resinTank, row.quantity,
-          row.specificGravity, row.viscosity, row.ph,
-          row.gelTime, row.waterTolerance, row.appearance, row.solids
+          documentId,
+          i + 1,
+          row.certTestNo,
+          row.resinTank,
+          row.quantity,
+          row.specificGravity,
+          row.viscosity,
+          row.ph,
+          row.gelTime,
+          row.waterTolerance,
+          row.appearance,
+          row.solids
         ]
       );
+
     }
 
-    // Insert solidContent rows
+
+    // ========================================
+    // Insert Solid Content
+    // ========================================
+
     for (const sample of solidContent || []) {
+
       for (const [idx, row] of (sample.rows || []).entries()) {
+
         await client.query(
           `INSERT INTO resin_inspection_solids
            (document_id, sample_time, row_no, alum_foil_no,
@@ -737,25 +811,47 @@ app.post("/api/resin-inspection", async (req, res) => {
             wt_dry_glue, solids_content, remark)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
           [
-            documentId, sample.sampleTime, idx + 1,
-            row.alumFoilNo, row.wtAlumFoil, row.wtGlue,
-            row.wtAlumFoilDryGlue, row.wtDryGlue,
-            row.solidsContent, row.remark
+            documentId,
+            sample.sampleTime,
+            idx + 1,
+            row.alumFoilNo,
+            row.wtAlumFoil,
+            row.wtGlue,
+            row.wtAlumFoilDryGlue,
+            row.wtDryGlue,
+            row.solidsContent,
+            row.remark
           ]
         );
+
       }
+
     }
 
     await client.query("COMMIT");
-    res.json({ message: "Resin Inspection tersimpan", documentId });
-    
+
+    res.json({
+      message: "Resin Inspection tersimpan",
+      tag_name,
+      documentId
+    });
+
   } catch (e) {
+
     await client.query("ROLLBACK");
+
     console.error("Resin save error:", e);
-    res.status(500).json({ error: "Gagal simpan: " + e.message });
+
+    res.status(500).json({
+      error: "Gagal simpan: " + e.message
+    });
+
   } finally {
+
     client.release();
+
   }
+
 });
 
 // ✅ GET ALL: Ambil semua dokumen untuk DocumentList (HANYA SATU ENDPOINT!)
@@ -840,55 +936,135 @@ app.get("/api/resin-inspection/:id", async (req, res) => {
 });
 
 // ✅ PUT: Update dokumen (sudah include tag_name)
-app.put("/api/resin-inspection/:id", async (req, res) => {
+app.put("/api/resin-inspection/:id", authenticateToken, async (req, res) => {
+
   const client = await pool.connect();
+
   const { id } = req.params;
-  const { 
-    tag_name,    // 👈 Tambahkan destructuring
-    date, shift, group, 
-    inspection, solidContent, 
-    comment_by, createdBy 
+
+  const {
+    inspection,
+    solidContent,
+    comment_by
   } = req.body;
 
+  const user = req.user;
+
   try {
+
     await client.query("BEGIN");
 
-    // 👇 UPDATE dengan tag_name
+    // =========================================
+    // CEK DOKUMEN
+    // =========================================
+
+    const docCheck = await client.query(
+      `SELECT id, shift, group_name, tag_name
+       FROM resin_inspection_documents
+       WHERE id = $1`,
+      [id]
+    );
+
+    if (docCheck.rows.length === 0) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        error: "Dokumen tidak ditemukan"
+      });
+
+    }
+
+    const document = docCheck.rows[0];
+
+    // =========================================
+    // VALIDASI SHIFT + GROUP
+    // =========================================
+
+    if (
+      document.shift !== user.shift ||
+      document.group_name !== user.group
+    ) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        error: `Shift ${user.shift}${user.group} tidak boleh mengedit dokumen ${document.tag_name}`
+      });
+
+    }
+
+    // =========================================
+    // UPDATE DOCUMENT (TIDAK UBAH TAG NAME)
+    // =========================================
+
     await client.query(
       `UPDATE resin_inspection_documents
-       SET title=$1, tag_name=$2, date=$3, shift=$4, group_name=$5,
-           comment_by=$6, created_by=$7, updated_at=NOW()
-       WHERE id=$8`,
+       SET comment_by = $1,
+           updated_at = NOW()
+       WHERE id = $2`,
       [
-        `Resin Inspection ${date} ${shift}`, 
-        tag_name || null,  // 👈 Update tag_name
-        date, shift, group, comment_by, createdBy, id
+        comment_by,
+        id
       ]
     );
 
-    // Delete old child records
-    await client.query(`DELETE FROM resin_inspection_inspection WHERE document_id=$1`, [id]);
-    await client.query(`DELETE FROM resin_inspection_solids WHERE document_id=$1`, [id]);
 
-    // Insert new inspection rows
+    // =========================================
+    // DELETE CHILD DATA
+    // =========================================
+
+    await client.query(
+      `DELETE FROM resin_inspection_inspection
+       WHERE document_id = $1`,
+      [id]
+    );
+
+    await client.query(
+      `DELETE FROM resin_inspection_solids
+       WHERE document_id = $1`,
+      [id]
+    );
+
+
+    // =========================================
+    // INSERT INSPECTION ROWS
+    // =========================================
+
     for (const [i, row] of inspection.entries()) {
+
       await client.query(
         `INSERT INTO resin_inspection_inspection
          (document_id, load_no, cert_test_no, resin_tank, quantity,
           specific_gravity, viscosity, ph, gel_time, water_tolerance, appearance, solids)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
         [
-          id, i + 1,
-          row.certTestNo, row.resinTank, row.quantity,
-          row.specificGravity, row.viscosity, row.ph,
-          row.gelTime, row.waterTolerance, row.appearance, row.solids
+          id,
+          i + 1,
+          row.certTestNo,
+          row.resinTank,
+          row.quantity,
+          row.specificGravity,
+          row.viscosity,
+          row.ph,
+          row.gelTime,
+          row.waterTolerance,
+          row.appearance,
+          row.solids
         ]
       );
+
     }
 
-    // Insert new solidContent rows
+
+    // =========================================
+    // INSERT SOLIDS CONTENT
+    // =========================================
+
     for (const sample of solidContent || []) {
+
       for (const [idx, row] of (sample.rows || []).entries()) {
+
         await client.query(
           `INSERT INTO resin_inspection_solids
            (document_id, sample_time, row_no, alum_foil_no,
@@ -896,83 +1072,149 @@ app.put("/api/resin-inspection/:id", async (req, res) => {
             wt_dry_glue, solids_content, remark)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
           [
-            id, sample.sampleTime, idx + 1,
-            row.alumFoilNo, row.wtAlumFoil, row.wtGlue,
-            row.wtAlumFoilDryGlue, row.wtDryGlue,
-            row.solidsContent, row.remark
+            id,
+            sample.sampleTime,
+            idx + 1,
+            row.alumFoilNo,
+            row.wtAlumFoil,
+            row.wtGlue,
+            row.wtAlumFoilDryGlue,
+            row.wtDryGlue,
+            row.solidsContent,
+            row.remark
           ]
         );
+
       }
+
     }
 
     await client.query("COMMIT");
-    res.json({ message: "Update berhasil" });
-    
+
+    res.json({
+      message: `Dokumen ${document.tag_name} berhasil diperbarui`
+    });
+
   } catch (e) {
+
     await client.query("ROLLBACK");
+
     console.error("Resin update error:", e);
-    res.status(500).json({ error: "Gagal update: " + e.message });
+
+    res.status(500).json({
+      error: "Gagal update: " + e.message
+    });
+
   } finally {
+
     client.release();
+
   }
+
 });
 
 // ✅ DELETE: Hapus dokumen
-app.delete("/api/resin-inspection-documents/:id", async (req, res) => {
+app.delete("/api/resin-inspection-documents/:id", authenticateToken, async (req, res) => {
+
   const { id } = req.params;
-  const client = await pool.connect();  // 👈 Pakai client untuk transaction
+  const client = await pool.connect();
 
   try {
+
+    const user = req.user;
+    const userShift = user.shift;
+    const userGroup = user.group;
+
     await client.query("BEGIN");
 
-    // 👇 HAPUS SEMUA CHILD TABLES (urutannya penting!)
-    
-    // 1. Hapus dari resin_inspection_inspection
-    await client.query(
-      "DELETE FROM resin_inspection_inspection WHERE document_id = $1",
+    // =========================================
+    // CEK DOKUMEN DULU
+    // =========================================
+
+    const docCheck = await client.query(
+      `SELECT id, shift, group_name, tag_name
+       FROM resin_inspection_documents
+       WHERE id = $1`,
       [id]
     );
 
-    // 2. Hapus dari resin_inspection_solids ⚠️ JANGAN LUPA INI!
-    await client.query(
-      "DELETE FROM resin_inspection_solids WHERE document_id = $1",
-      [id]
-    );
-
-    // 3. Baru hapus dokumen utama
-    const result = await client.query(
-      "DELETE FROM resin_inspection_documents WHERE id = $1 RETURNING id",
-      [id]
-    );
-
-    if (result.rows.length === 0) {
+    if (docCheck.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+      return res.status(404).json({
+        error: "Dokumen tidak ditemukan"
+      });
     }
 
+    const document = docCheck.rows[0];
+
+    // =========================================
+    // VALIDASI SHIFT & GROUP
+    // =========================================
+
+    if (document.shift !== userShift || document.group_name !== userGroup) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        error: `Shift ${userShift}${userGroup} tidak boleh menghapus dokumen ${document.tag_name}`
+      });
+
+    }
+
+    // =========================================
+    // DELETE CHILD TABLES
+    // =========================================
+
+    await client.query(
+      `DELETE FROM resin_inspection_inspection
+       WHERE document_id = $1`,
+      [id]
+    );
+
+    await client.query(
+      `DELETE FROM resin_inspection_solids
+       WHERE document_id = $1`,
+      [id]
+    );
+
+    // =========================================
+    // DELETE DOCUMENT
+    // =========================================
+
+    await client.query(
+      `DELETE FROM resin_inspection_documents
+       WHERE id = $1`,
+      [id]
+    );
+
     await client.query("COMMIT");
-    res.json({ message: "Dokumen berhasil dihapus" });
+
+    res.json({
+      message: `Dokumen ${document.tag_name} berhasil dihapus`
+    });
 
   } catch (err) {
+
     await client.query("ROLLBACK");
-    
-    // 👇 LOG ERROR DETAIL KE TERMINAL (PENTING!)
+
     console.error("💥 DELETE RESIN ERROR:", {
       message: err.message,
       code: err.code,
       detail: err.detail,
-      hint: err.hint,
-      table: err.table,
-      constraint: err.constraint
+      table: err.table
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: "Gagal menghapus dokumen: " + err.message,
-      code: err.code  // 👈 Kirim error code ke frontend untuk debug
+      code: err.code
     });
+
   } finally {
-    client.release();  // 👈 Release client, bukan pool
+
+    client.release();
+
   }
+
 });
 
 
