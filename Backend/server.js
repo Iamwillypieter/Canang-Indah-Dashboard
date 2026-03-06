@@ -690,9 +690,15 @@ app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
 
   try {
 
-    const { inspection, solidContent, comment_by } = req.body;
+    const { inspection = [], solidContent = [], comment_by = null } = req.body;
 
     const user = req.user;
+
+    if (!user || !user.shift || !user.group) {
+      return res.status(400).json({
+        error: "User shift atau group tidak ditemukan di token"
+      });
+    }
 
     const shift = user.shift;
     const group = user.group;
@@ -701,28 +707,12 @@ app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
     await client.query("BEGIN");
 
     // ========================================
-    // Generate Running Number (Per Shift + Per Day)
+    // TIMEZONE JAKARTA
     // ========================================
 
-    const countResult = await client.query(
-      `SELECT COUNT(*) 
-       FROM resin_inspection_documents
-       WHERE DATE(created_at) = CURRENT_DATE
-       AND shift = $1
-       AND group_name = $2`,
-      [shift, group]
+    const now = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
     );
-
-    const runningNumber = String(
-      parseInt(countResult.rows[0].count) + 1
-    ).padStart(4, "0");
-
-
-    // ========================================
-    // Generate Date & Time
-    // ========================================
-
-    const now = new Date();
 
     const day = String(now.getDate()).padStart(2, "0");
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -731,28 +721,52 @@ app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
 
-    const date = `${day}${month}${year}`;
-    const time = `${hours}.${minutes}`;
-
+    const dateTag = `${day}${month}${year}`;
+    const timeTag = `${hours}.${minutes}`;
 
     // ========================================
-    // Generate Tag Name
+    // RUNNING NUMBER PER SHIFT PER HARI
     // ========================================
 
-    const tag_name = `Resin Inspection ${runningNumber} ${shift}${group} ${date} ${time}`;
+    const runningResult = await client.query(
+      `
+      SELECT MAX(
+        CAST(
+          SUBSTRING(tag_name FROM 'Resin Inspection ([0-9]+)') 
+          AS INTEGER
+        )
+      ) as last_number
+      FROM resin_inspection_documents
+      WHERE DATE(created_at AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE
+      AND shift = $1
+      AND group_name = $2
+      `,
+      [shift, group]
+    );
+
+    const lastNumber = runningResult.rows[0].last_number || 0;
+
+    const runningNumber = String(lastNumber + 1).padStart(4, "0");
+
+    // ========================================
+    // GENERATE TAG NAME
+    // ========================================
+
+    const tag_name = `Resin Inspection ${runningNumber} ${shift}${group} ${dateTag} ${timeTag}`;
 
     const title = "Resin Inspection";
 
-
     // ========================================
-    // Insert Document
+    // INSERT DOCUMENT
     // ========================================
 
     const doc = await client.query(
-      `INSERT INTO resin_inspection_documents
-       (title, tag_name, date, shift, group_name, comment_by, created_by, created_at)
-       VALUES ($1,$2,NOW(),$3,$4,$5,$6,NOW())
-       RETURNING id`,
+      `
+      INSERT INTO resin_inspection_documents
+      (title, tag_name, date, shift, group_name, comment_by, created_by, created_at)
+      VALUES ($1,$2,NOW(),$3,$4,$5,$6,NOW())
+      RETURNING id
+      `,
       [
         title,
         tag_name,
@@ -765,62 +779,64 @@ app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
 
     const documentId = doc.rows[0].id;
 
-
     // ========================================
-    // Insert Inspection Rows
+    // INSERT INSPECTION
     // ========================================
 
     for (const [i, row] of inspection.entries()) {
 
       await client.query(
-        `INSERT INTO resin_inspection_inspection
+        `
+        INSERT INTO resin_inspection_inspection
         (document_id, load_no, cert_test_no, resin_tank, quantity,
         specific_gravity, viscosity, ph, gel_time, water_tolerance, appearance, solids)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        `,
         [
           documentId,
           i + 1,
-          row.certTestNo,
-          row.resinTank,
-          row.quantity,
-          row.specificGravity,
-          row.viscosity,
-          row.ph,
-          row.gelTime,
-          row.waterTolerance,
-          row.appearance,
-          row.solids
+          row.certTestNo || null,
+          row.resinTank || null,
+          row.quantity || null,
+          row.specificGravity || null,
+          row.viscosity || null,
+          row.ph || null,
+          row.gelTime || null,
+          row.waterTolerance || null,
+          row.appearance || null,
+          row.solids || null
         ]
       );
 
     }
 
-
     // ========================================
-    // Insert Solid Content
+    // INSERT SOLIDS CONTENT
     // ========================================
 
-    for (const sample of solidContent || []) {
+    for (const sample of solidContent) {
 
       for (const [idx, row] of (sample.rows || []).entries()) {
 
         await client.query(
-          `INSERT INTO resin_inspection_solids
-           (document_id, sample_time, row_no, alum_foil_no,
-            wt_alum_foil, wt_glue, wt_alum_foil_dry_glue,
-            wt_dry_glue, solids_content, remark)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          `
+          INSERT INTO resin_inspection_solids
+          (document_id, sample_time, row_no, alum_foil_no,
+          wt_alum_foil, wt_glue, wt_alum_foil_dry_glue,
+          wt_dry_glue, solids_content, remark)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          `,
           [
             documentId,
-            sample.sampleTime,
+            sample.sampleTime || null,
             idx + 1,
-            row.alumFoilNo,
-            row.wtAlumFoil,
-            row.wtGlue,
-            row.wtAlumFoilDryGlue,
-            row.wtDryGlue,
-            row.solidsContent,
-            row.remark
+            row.alumFoilNo || null,
+            row.wtAlumFoil || null,
+            row.wtGlue || null,
+            row.wtAlumFoilDryGlue || null,
+            row.wtDryGlue || null,
+            row.solidsContent || null,
+            row.remark || null
           ]
         );
 
@@ -840,7 +856,12 @@ app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
 
     await client.query("ROLLBACK");
 
-    console.error("Resin save error:", e);
+    console.error("💥 Resin save error:", {
+      message: e.message,
+      detail: e.detail,
+      table: e.table,
+      column: e.column
+    });
 
     res.status(500).json({
       error: "Gagal simpan: " + e.message
