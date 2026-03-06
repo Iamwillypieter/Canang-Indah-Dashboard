@@ -1260,7 +1260,7 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
 });
 
 // ✅ UPDATE Flakes document (dengan tag_name)
-app.put("/api/flakes-documents/:id", async (req, res) => {
+app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
 
@@ -1278,7 +1278,7 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     await client.query("BEGIN");
 
     /* ==============================
-       🔐 VALIDASI SHIFT + GROUP
+       🔐 CEK SHIFT & GROUP DOKUMEN
     ============================== */
 
     const docCheck = await client.query(
@@ -1298,36 +1298,34 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
 
     const userShift = req.user.shift;
     const userGroup = req.user.group;
-    const userRole = req.user.role;
 
-    // Jika bukan admin dan beda shift/group → tolak
-    if (
-      userRole !== "admin" &&
-      (documentShift !== userShift || documentGroup !== userGroup)
-    ) {
+    /* ==============================
+       🚫 CEGAH EDIT DARI SHIFT LAIN
+    ============================== */
+
+    if (documentShift !== userShift || documentGroup !== userGroup) {
       await client.query("ROLLBACK");
       return res.status(403).json({
-        error: "Anda hanya bisa mengedit dokumen shift Anda sendiri"
+        error: "Dokumen hanya bisa diedit oleh shift yang membuatnya"
       });
     }
 
     /* ==============================
        🚫 CEGAH PINDAH SHIFT
-       (Shift & group tidak boleh diganti)
     ============================== */
 
     if (
-      userRole !== "admin" &&
-      (header.shift !== documentShift || header.group !== documentGroup)
+      header.shift !== documentShift ||
+      header.group !== documentGroup
     ) {
       await client.query("ROLLBACK");
       return res.status(403).json({
-        error: "Anda tidak boleh mengubah shift atau group dokumen"
+        error: "Shift atau group dokumen tidak boleh diubah"
       });
     }
 
     /* ==============================
-       UPDATE DOCUMENT (TAG TETAP)
+       UPDATE DOCUMENT
     ============================== */
 
     await client.query(
@@ -1417,8 +1415,8 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     await client.query("COMMIT");
 
     res.json({
-      message: "Flakes document berhasil diperbarui",
-      success: true
+      success: true,
+      message: "Flakes document berhasil diperbarui"
     });
 
   } catch (err) {
@@ -1426,8 +1424,9 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     console.error("❌ ERROR UPDATE FLAKES:", err);
 
     res.status(500).json({
-      error: "Gagal memperbarui Flakes document: " + err.message
+      error: "Gagal memperbarui Flakes document"
     });
+
   } finally {
     client.release();
   }
