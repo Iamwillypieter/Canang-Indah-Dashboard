@@ -1295,96 +1295,123 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
 
 // ✅ UPDATE Flakes document
 app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
-  // ✨ Trim ID untuk handle trailing spaces dari frontend
+
   const rawId = req.params.id?.toString().trim();
   const id = parseInt(rawId, 10);
-  
-  if (isNaN(id)) {
+
+  if (isNaN(id) || id <= 0) {
     return res.status(400).json({ error: "ID dokumen tidak valid" });
   }
 
   const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
+
   const client = await pool.connect();
 
   try {
-    // 🔐 Validasi user sudah login
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ error: "Unauthorized: Silakan login kembali" });
+
+    if (!req.user?.id) {
+      return res.status(401).json({
+        error: "Unauthorized"
+      });
     }
 
-    // 📋 Validasi data wajib
-    if (!header || !Array.isArray(detail) || detail.length === 0) {
-      return res.status(400).json({ error: "Data tidak lengkap: header dan detail wajib diisi" });
+    if (!header || typeof header !== "object") {
+      return res.status(400).json({
+        error: "Data header tidak valid"
+      });
+    }
+
+    if (!Array.isArray(detail) || detail.length === 0) {
+      return res.status(400).json({
+        error: "Data detail wajib diisi"
+      });
     }
 
     await client.query("BEGIN");
 
     /* ==============================
-       🔐 VALIDASI SHIFT + GROUP
+       VALIDASI SHIFT DOKUMEN
     ============================== */
+
     const docCheck = await client.query(
-      `SELECT shift, "group" FROM flakes_header WHERE document_id = $1`,
+      `SELECT shift, "group"
+       FROM flakes_header
+       WHERE document_id = $1`,
       [id]
     );
 
     if (docCheck.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
-    }
-
-    const documentShift = docCheck.rows[0].shift;
-    const documentGroup = docCheck.rows[0].group;
-    const userShift = req.user.shift;
-    const userGroup = req.user.group;
-    const userRole = req.user.role;
-
-    // 🔒 Non-admin hanya bisa edit dokumen shift/group sendiri
-    if (
-      userRole !== "admin" &&
-      (documentShift !== userShift || documentGroup !== userGroup)
-    ) {
-      await client.query("ROLLBACK");
-      return res.status(403).json({
-        error: "Anda hanya bisa mengedit dokumen shift & group Anda sendiri"
+      return res.status(404).json({
+        error: "Dokumen tidak ditemukan"
       });
     }
 
+    const documentShift = String(docCheck.rows[0].shift).trim();
+    const documentGroup = String(docCheck.rows[0].group).trim();
+
+    const userShift = String(req.user.shift).trim();
+    const userGroup = String(req.user.group).trim();
+
+    console.log("DOC:", documentShift + documentGroup);
+    console.log("USER:", userShift + userGroup);
+
     /* ==============================
-       🚫 CEGAH PINDAH SHIFT/GROUP
+       VALIDASI SHIFT USER
     ============================== */
-    if (
-      userRole !== "admin" &&
-      (header.shift !== documentShift || header.group !== documentGroup)
-    ) {
+
+    if (documentShift !== userShift || documentGroup !== userGroup) {
+
       await client.query("ROLLBACK");
+
       return res.status(403).json({
-        error: "Anda tidak boleh mengubah shift atau group dokumen"
+        error: "Dokumen hanya bisa diedit oleh shift yang membuatnya"
       });
+
     }
 
     /* ==============================
-       📄 UPDATE DOCUMENT (TAG TETAP)
+       CEGAH PINDAH SHIFT
     ============================== */
+
+    if (
+      String(header.shift).trim() !== documentShift ||
+      String(header.group).trim() !== documentGroup
+    ) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        error: "Shift atau group dokumen tidak boleh diubah"
+      });
+
+    }
+
+    /* ==============================
+       UPDATE DOCUMENT
+    ============================== */
+
     await client.query(
-      `UPDATE flakes_documents SET
-        title = $1,
-        updated_at = NOW()
+      `UPDATE flakes_documents
+       SET title = $1,
+           updated_at = NOW()
        WHERE id = $2`,
       [`Flakes ${header.tanggal}`, id]
     );
 
     /* ==============================
-       📋 UPDATE HEADER
+       UPDATE HEADER
     ============================== */
+
     await client.query(
-      `UPDATE flakes_header SET
-        tanggal = $1,
-        jam = $2,
-        ukuran_papan = $3,
-        jarak_pisau = $4,
-        keterangan = $5,
-        pemeriksa = $6,
-        updated_at = NOW()
+      `UPDATE flakes_header
+       SET tanggal = $1,
+           jam = $2,
+           ukuran_papan = $3,
+           jarak_pisau = $4,
+           keterangan = $5,
+           pemeriksa = $6,
+           updated_at = NOW()
        WHERE document_id = $7`,
       [
         header.tanggal,
@@ -1398,34 +1425,52 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
     );
 
     /* ==============================
-       🔄 REFRESH DETAIL (Delete + Insert)
+       HAPUS DETAIL LAMA
     ============================== */
-    await client.query(`DELETE FROM flakes_detail WHERE document_id = $1`, [id]);
 
-    for (const row of detail) {
-      const tebal = Number(row.tebal) || 0;
-      const jumlah = Number(row.jumlah) || 0;
-      
-      // Validasi data detail
-      if (tebal < 0 || jumlah < 0) {
-        throw new Error(`Data detail tidak valid: tebal=${tebal}, jumlah=${jumlah}`);
+    await client.query(
+      `DELETE FROM flakes_detail
+       WHERE document_id = $1`,
+      [id]
+    );
+
+    /* ==============================
+       INSERT DETAIL BARU
+    ============================== */
+
+    for (let i = 0; i < detail.length; i++) {
+
+      const row = detail[i];
+
+      const tebal = Number(row?.tebal);
+      const jumlah = Number(row?.jumlah);
+
+      if (isNaN(tebal) || isNaN(jumlah)) {
+        throw new Error(`Detail row ${i + 1} tidak valid`);
       }
 
       await client.query(
-        `INSERT INTO flakes_detail 
+        `INSERT INTO flakes_detail
          (document_id, tebal, jumlah, total_ketebalan, created_at)
-         VALUES ($1, $2, $3, $4, NOW())`,
-        [id, tebal, jumlah, tebal * jumlah]
+         VALUES ($1,$2,$3,$4,NOW())`,
+        [
+          id,
+          tebal,
+          jumlah,
+          tebal * jumlah
+        ]
       );
+
     }
 
     /* ==============================
-       📊 UPSERT SUMMARY
+       UPDATE SUMMARY
     ============================== */
+
     await client.query(
       `INSERT INTO flakes_summary
        (document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at)
-       VALUES ($1, $2, $3, $4, NOW())
+       VALUES ($1,$2,$3,$4,NOW())
        ON CONFLICT (document_id)
        DO UPDATE SET
          total_jumlah = EXCLUDED.total_jumlah,
@@ -1442,38 +1487,30 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     await client.query("COMMIT");
 
-    // ✅ Response sukses
     return res.json({
-      message: "Flakes document berhasil diperbarui",
       success: true,
-      data: { documentId: id, updatedAt: new Date().toISOString() }
+      message: "Flakes document berhasil diperbarui",
+      documentId: id,
+      updatedAt: new Date().toISOString()
     });
 
   } catch (err) {
-    await client.query("ROLLBACK");
-    console.error("❌ ERROR UPDATE FLAKES:", {
-      message: err.message,
-      stack: err.stack,
-      userId: req.user?.id,
-      documentId: id
-    });
 
-    // 🔍 Bedakan error untuk client
-    if (err.message.includes("Unauthorized")) {
-      return res.status(401).json({ error: "Sesi expired, silakan login kembali" });
-    }
-    if (err.message.includes("validasi") || err.message.includes("tidak valid")) {
-      return res.status(400).json({ error: err.message });
-    }
+    await client.query("ROLLBACK");
+
+    console.error("❌ ERROR UPDATE FLAKES:", err);
 
     return res.status(500).json({
       error: "Gagal memperbarui Flakes document",
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      message: err.message
     });
 
   } finally {
+
     client.release();
+
   }
+
 });
 
 // ✅ DELETE Flakes document (sudah benar, tetap sama)
