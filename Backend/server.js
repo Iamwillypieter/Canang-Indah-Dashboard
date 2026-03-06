@@ -1544,8 +1544,10 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
   const rawId = req.params.id?.toString().trim();
   const id = parseInt(rawId, 10);
 
-  if (isNaN(id) || id <= 0) {
-    return res.status(400).json({ error: "ID dokumen tidak valid" });
+  if (!id || isNaN(id) || id <= 0) {
+    return res.status(400).json({
+      error: "ID dokumen tidak valid"
+    });
   }
 
   const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
@@ -1554,7 +1556,11 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
   try {
 
-    if (!req.user?.id) {
+    /* ==============================
+       VALIDASI USER
+    ============================== */
+
+    if (!req.user || !req.user.id) {
       return res.status(401).json({
         error: "Unauthorized"
       });
@@ -1562,41 +1568,45 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     const shiftGroup = req.user.shift_group;
 
-    if (!shiftGroup) {
+    if (!shiftGroup || shiftGroup.length < 2) {
       return res.status(400).json({
-        error: "User shift_group tidak ditemukan"
+        error: "User shift_group tidak valid"
       });
     }
 
     const userShift = shiftGroup.charAt(0);
     const userGroup = shiftGroup.charAt(1);
 
+    /* ==============================
+       VALIDASI BODY
+    ============================== */
+
     if (!header || typeof header !== "object") {
       return res.status(400).json({
-        error: "Data header tidak valid"
+        error: "Header tidak valid"
       });
     }
 
     if (!Array.isArray(detail) || detail.length === 0) {
       return res.status(400).json({
-        error: "Data detail wajib diisi"
+        error: "Detail wajib diisi"
       });
     }
 
     await client.query("BEGIN");
 
     /* ==============================
-       CEK DOKUMEN + SHIFT
+       CEK DOKUMEN
     ============================== */
 
     const docCheck = await client.query(
-      `SELECT d.id, d.tag_name, d.shift, d.group_name
-       FROM flakes_documents d
-       WHERE d.id = $1`,
+      `SELECT id, tag_name, shift, group_name
+       FROM flakes_documents
+       WHERE id = $1`,
       [id]
     );
 
-    if (docCheck.rows.length === 0) {
+    if (docCheck.rowCount === 0) {
 
       await client.query("ROLLBACK");
 
@@ -1613,8 +1623,8 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
     ============================== */
 
     if (
-      document.shift !== userShift ||
-      document.group_name !== userGroup
+      String(document.shift) !== String(userShift) ||
+      String(document.group_name) !== String(userGroup)
     ) {
 
       await client.query("ROLLBACK");
@@ -1629,12 +1639,14 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
        UPDATE DOCUMENT
     ============================== */
 
+    const title = `Flakes ${header.tanggal || "-"}`;
+
     await client.query(
       `UPDATE flakes_documents
        SET title = $1,
            updated_at = NOW()
        WHERE id = $2`,
-      [`Flakes ${header.tanggal}`, id]
+      [title, id]
     );
 
     /* ==============================
@@ -1652,7 +1664,7 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
            updated_at = NOW()
        WHERE document_id = $7`,
       [
-        header.tanggal,
+        header.tanggal || null,
         header.jam || null,
         header.ukuranPapan || null,
         header.jarakPisau || null,
@@ -1677,14 +1689,16 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     for (let i = 0; i < detail.length; i++) {
 
-      const row = detail[i];
+      const row = detail[i] || {};
 
-      const tebal = Number(row?.tebal);
-      const jumlah = Number(row?.jumlah);
+      const tebal = Number(row.tebal);
+      const jumlah = Number(row.jumlah);
 
-      if (isNaN(tebal) || isNaN(jumlah)) {
-        throw new Error(`Detail row ${i + 1} tidak valid`);
+      if (!Number.isFinite(tebal) || !Number.isFinite(jumlah)) {
+        throw new Error(`Detail baris ${i + 1} tidak valid`);
       }
+
+      const totalKetebalan = tebal * jumlah;
 
       await client.query(
         `INSERT INTO flakes_detail
@@ -1694,7 +1708,7 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
           id,
           tebal,
           jumlah,
-          tebal * jumlah
+          totalKetebalan
         ]
       );
 
