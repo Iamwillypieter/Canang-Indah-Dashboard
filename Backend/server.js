@@ -1539,85 +1539,67 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
 });
 
 // ✅ UPDATE Flakes document
-app.put("/api/flakes-documents/:id", async (req, res) => {
-  const { id } = req.params;
+app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
+
+  const rawId = req.params.id?.toString().trim();
+  const id = parseInt(rawId, 10);
+
+  if (isNaN(id) || id <= 0) {
+    return res.status(400).json({ error: "ID dokumen tidak valid" });
+  }
+
   const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
 
   const client = await pool.connect();
 
   try {
-    if (!header || !detail || detail.length === 0) {
-      return res.status(400).json({ error: "Data tidak lengkap" });
+
+    if (!req.user?.id) {
+      return res.status(401).json({
+        error: "Unauthorized"
+      });
     }
 
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
+    if (!header || typeof header !== "object") {
+      return res.status(400).json({
+        error: "Data header tidak valid"
+      });
+    }
+
+    if (!Array.isArray(detail) || detail.length === 0) {
+      return res.status(400).json({
+        error: "Data detail wajib diisi"
+      });
     }
 
     await client.query("BEGIN");
 
     /* ==============================
-       🔐 VALIDASI SHIFT + GROUP
+       CEK DOKUMEN ADA ATAU TIDAK
     ============================== */
 
     const docCheck = await client.query(
-      `SELECT shift, "group"
-       FROM flakes_header
-       WHERE document_id = $1`,
-      [Number(id)]
+      `SELECT document_id FROM flakes_header WHERE document_id = $1`,
+      [id]
     );
 
     if (docCheck.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
-    }
-
-    const documentShift = docCheck.rows[0].shift;
-    const documentGroup = docCheck.rows[0].group;
-
-    const userShift = req.user.shift;
-    const userGroup = req.user.group;
-    const userRole = req.user.role;
-
-    // Jika bukan admin dan beda shift/group → tolak
-    if (
-      userRole !== "admin" &&
-      (documentShift !== userShift || documentGroup !== userGroup)
-    ) {
-      await client.query("ROLLBACK");
-      return res.status(403).json({
-        error: "Anda hanya bisa mengedit dokumen shift Anda sendiri"
+      return res.status(404).json({
+        error: "Dokumen tidak ditemukan"
       });
     }
 
     /* ==============================
-       🚫 CEGAH PINDAH SHIFT
-       (Shift & group tidak boleh diganti)
-    ============================== */
-
-    if (
-      userRole !== "admin" &&
-      (header.shift !== documentShift || header.group !== documentGroup)
-    ) {
-      await client.query("ROLLBACK");
-      return res.status(403).json({
-        error: "Anda tidak boleh mengubah shift atau group dokumen"
-      });
-    }
-
-    /* ==============================
-       UPDATE DOCUMENT (TAG TETAP)
+       UPDATE DOCUMENT
     ============================== */
 
     await client.query(
-      `UPDATE flakes_documents SET
-        title = $1,
-        updated_at = NOW()
+      `UPDATE flakes_documents
+       SET title = $1,
+           updated_at = NOW()
        WHERE id = $2`,
-      [
-        `Flakes ${header.tanggal}`,
-        Number(id)
-      ]
+      [`Flakes ${header.tanggal}`, id]
     );
 
     /* ==============================
@@ -1625,14 +1607,14 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     ============================== */
 
     await client.query(
-      `UPDATE flakes_header SET
-        tanggal = $1,
-        jam = $2,
-        ukuran_papan = $3,
-        jarak_pisau = $4,
-        keterangan = $5,
-        pemeriksa = $6,
-        updated_at = NOW()
+      `UPDATE flakes_header
+       SET tanggal = $1,
+           jam = $2,
+           ukuran_papan = $3,
+           jarak_pisau = $4,
+           keterangan = $5,
+           pemeriksa = $6,
+           updated_at = NOW()
        WHERE document_id = $7`,
       [
         header.tanggal,
@@ -1641,52 +1623,67 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
         header.jarakPisau || null,
         header.keterangan || null,
         header.pemeriksa || null,
-        Number(id)
+        id
       ]
     );
 
     /* ==============================
-       REFRESH DETAIL
+       HAPUS DETAIL LAMA
     ============================== */
 
     await client.query(
       `DELETE FROM flakes_detail WHERE document_id = $1`,
-      [Number(id)]
+      [id]
     );
 
-    for (const row of detail) {
-      const tebal = Number(row.tebal) || 0;
-      const jumlah = Number(row.jumlah) || 0;
+    /* ==============================
+       INSERT DETAIL BARU
+    ============================== */
+
+    for (let i = 0; i < detail.length; i++) {
+
+      const row = detail[i];
+
+      const tebal = Number(row?.tebal);
+      const jumlah = Number(row?.jumlah);
+
+      if (isNaN(tebal) || isNaN(jumlah)) {
+        throw new Error(`Detail row ${i + 1} tidak valid`);
+      }
 
       await client.query(
-        `INSERT INTO flakes_detail 
+        `INSERT INTO flakes_detail
          (document_id, tebal, jumlah, total_ketebalan, created_at)
-         VALUES ($1, $2, $3, $4, NOW())`,
+         VALUES ($1,$2,$3,$4,NOW())`,
         [
-          Number(id),
+          id,
           tebal,
           jumlah,
           tebal * jumlah
         ]
       );
+
     }
 
     /* ==============================
-       UPSERT SUMMARY
+       HAPUS SUMMARY LAMA
+    ============================== */
+
+    await client.query(
+      `DELETE FROM flakes_summary WHERE document_id = $1`,
+      [id]
+    );
+
+    /* ==============================
+       INSERT SUMMARY BARU
     ============================== */
 
     await client.query(
       `INSERT INTO flakes_summary
        (document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at)
-       VALUES ($1, $2, $3, $4, NOW())
-       ON CONFLICT (document_id)
-       DO UPDATE SET
-         total_jumlah = EXCLUDED.total_jumlah,
-         grand_total_ketebalan = EXCLUDED.grand_total_ketebalan,
-         rata_rata_ketebalan = EXCLUDED.rata_rata_ketebalan,
-         updated_at = NOW()`,
+       VALUES ($1,$2,$3,$4,NOW())`,
       [
-        Number(id),
+        id,
         Number(total_jumlah) || 0,
         Number(grand_total_ketebalan) || 0,
         Number(rata_rata) || 0
@@ -1695,21 +1692,30 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json({
+    return res.json({
+      success: true,
       message: "Flakes document berhasil diperbarui",
-      success: true
+      documentId: id,
+      updatedAt: new Date().toISOString()
     });
 
   } catch (err) {
+
     await client.query("ROLLBACK");
+
     console.error("❌ ERROR UPDATE FLAKES:", err);
 
-    res.status(500).json({
-      error: "Gagal memperbarui Flakes document: " + err.message
+    return res.status(500).json({
+      error: "Gagal memperbarui Flakes document",
+      message: err.message
     });
+
   } finally {
+
     client.release();
+
   }
+
 });
 
 // ✅ DELETE Flakes document (sudah benar, tetap sama)
