@@ -971,8 +971,14 @@ app.post("/api/flakes-documents", async (req, res) => {
 
     // 1️⃣ Global Running Number
     const countResult = await client.query(
-      `SELECT COUNT(*) FROM flakes_documents`
+      `
+      SELECT COUNT(*) 
+      FROM flakes_header
+      WHERE tanggal = $1
+      `,
+      [header.tanggal]
     );
+
     const runningNumber = String(
       Number(countResult.rows[0].count) + 1
     ).padStart(4, "0");
