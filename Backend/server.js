@@ -1347,14 +1347,26 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
       });
     }
 
-    const documentShift = String(docCheck.rows[0].shift).trim();
-    const documentGroup = String(docCheck.rows[0].group).trim();
+    const documentShift = String(docCheck.rows[0].shift).trim().toUpperCase();
+    const documentGroup = String(docCheck.rows[0].group).trim().toUpperCase();
 
-    const userShift = String(req.user.shift).trim();
-    const userGroup = String(req.user.group).trim();
+    const shiftGroup = String(req.user.shift_group || "")
+      .replace(/\s/g, "")
+      .toUpperCase();
+
+    const userShift = shiftGroup.charAt(0);
+    const userGroup = shiftGroup.charAt(1);
 
     console.log("DOC:", documentShift + documentGroup);
     console.log("USER:", userShift + userGroup);
+
+    if (documentShift !== userShift || documentGroup !== userGroup) {
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        error: "Dokumen hanya bisa diedit oleh shift yang membuatnya"
+      });
+    }
 
     /* ==============================
        VALIDASI SHIFT USER
