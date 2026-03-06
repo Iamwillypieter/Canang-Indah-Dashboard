@@ -940,7 +940,6 @@ app.get("/api/resin-inspection/:id", async (req, res) => {
 app.put("/api/resin-inspection/:id", authenticateToken, async (req, res) => {
 
   const client = await pool.connect();
-
   const { id } = req.params;
 
   const {
@@ -952,6 +951,17 @@ app.put("/api/resin-inspection/:id", authenticateToken, async (req, res) => {
   const user = req.user;
 
   try {
+
+    const shiftGroup = user.shift_group;
+
+    if (!shiftGroup) {
+      return res.status(400).json({
+        error: "User shift_group tidak ditemukan"
+      });
+    }
+
+    const userShift = shiftGroup.charAt(0);
+    const userGroup = shiftGroup.charAt(1);
 
     await client.query("BEGIN");
 
@@ -983,20 +993,20 @@ app.put("/api/resin-inspection/:id", authenticateToken, async (req, res) => {
     // =========================================
 
     if (
-      document.shift !== user.shift ||
-      document.group_name !== user.group
+      document.shift !== userShift ||
+      document.group_name !== userGroup
     ) {
 
       await client.query("ROLLBACK");
 
       return res.status(403).json({
-        error: `Shift ${user.shift}${user.group} tidak boleh mengedit dokumen ${document.tag_name}`
+        error: `Shift ${userShift}${userGroup} tidak boleh mengedit dokumen ${document.tag_name}`
       });
 
     }
 
     // =========================================
-    // UPDATE DOCUMENT (TIDAK UBAH TAG NAME)
+    // UPDATE DOCUMENT
     // =========================================
 
     await client.query(
@@ -1012,7 +1022,7 @@ app.put("/api/resin-inspection/:id", authenticateToken, async (req, res) => {
 
 
     // =========================================
-    // DELETE CHILD DATA
+    // DELETE CHILD TABLES
     // =========================================
 
     await client.query(
