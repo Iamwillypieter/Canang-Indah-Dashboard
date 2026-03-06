@@ -966,45 +966,73 @@ app.post("/api/flakes-documents", async (req, res) => {
     await client.query("BEGIN");
 
     /* ==============================
-       AUTO GENERATE TAG NAME
+       PREPARE DATA
     ============================== */
 
-    // 1️⃣ Global Running Number
+    const shift = header.shift || null;
+    const group = header.group || null;
+
+    /* ==============================
+       AUTO GENERATE RUNNING NUMBER
+       RESET PER:
+       - tanggal
+       - shift
+       - group
+    ============================== */
+
     const countResult = await client.query(
       `
       SELECT COUNT(*) 
       FROM flakes_header
       WHERE tanggal = $1
+      AND shift = $2
+      AND "group" = $3
       `,
-      [header.tanggal]
+      [header.tanggal, shift, group]
     );
 
     const runningNumber = String(
       Number(countResult.rows[0].count) + 1
     ).padStart(4, "0");
 
-    // 2️⃣ Format Tanggal DDMMYYYY (dari input user)
+    /* ==============================
+       FORMAT TANGGAL
+    ============================== */
+
     const tanggalObj = new Date(header.tanggal);
+
     const dd = String(tanggalObj.getDate()).padStart(2, "0");
     const mm = String(tanggalObj.getMonth() + 1).padStart(2, "0");
     const yyyy = tanggalObj.getFullYear();
+
     const formattedDate = `${dd}${mm}${yyyy}`;
 
-    // 3️⃣ Shift + Group
+    /* ==============================
+       SHIFT GROUP
+    ============================== */
+
     const shiftGroup = `${header.shift || ""}${header.group || ""}`;
 
-    // 4️⃣ 🕐 Jam Generate (REALTIME SERVER - WIB) - DIRECT EXTRACTION
-    const now = new Date();
-    const timeWIB = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-    
-    const hh = String(timeWIB.getHours()).padStart(2, '0');
-    const min = String(timeWIB.getMinutes()).padStart(2, '0');
-    const sec = String(timeWIB.getSeconds()).padStart(2, '0');
-    
-    const jamForTag = `${hh}.${min}`;      // Untuk tag: 08.23
-    const jamForDb = `${hh}:${min}:${sec}`; // Untuk DB: 08:23:45
+    /* ==============================
+       JAM SERVER WIB
+    ============================== */
 
-    // 🎯 FINAL TAG NAME
+    const now = new Date();
+    const timeWIB = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
+    );
+
+    const hh = String(timeWIB.getHours()).padStart(2, "0");
+    const min = String(timeWIB.getMinutes()).padStart(2, "0");
+    const sec = String(timeWIB.getSeconds()).padStart(2, "0");
+
+    const jamForTag = `${hh}.${min}`;
+    const jamForDb = `${hh}:${min}:${sec}`;
+
+    /* ==============================
+       FINAL TAG
+    ============================== */
+
     const generatedTag = `FLAKES ${runningNumber} ${shiftGroup} ${formattedDate} ${jamForTag}`;
 
     /* ==============================
@@ -1032,14 +1060,14 @@ app.post("/api/flakes-documents", async (req, res) => {
       `INSERT INTO flakes_header (
         document_id, tanggal, jam, shift, ukuran_papan, 
         "group", jarak_pisau, keterangan, pemeriksa, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())`,
       [
         documentId,
         header.tanggal,
         jamForDb,
-        header.shift || null,
+        shift,
         header.ukuranPapan || null,
-        header.group || null,
+        group,
         header.jarakPisau || null,
         header.keterangan || null,
         header.pemeriksa || null
@@ -1051,13 +1079,14 @@ app.post("/api/flakes-documents", async (req, res) => {
     ============================== */
 
     for (const row of detail) {
+
       const tebal = Number(row.tebal) || 0;
       const jumlah = Number(row.jumlah) || 0;
 
       await client.query(
-        `INSERT INTO flakes_detail 
-         (document_id, tebal, jumlah, total_ketebalan, created_at)
-         VALUES ($1, $2, $3, $4, NOW())`,
+        `INSERT INTO flakes_detail
+        (document_id, tebal, jumlah, total_ketebalan, created_at)
+        VALUES ($1,$2,$3,$4,NOW())`,
         [
           documentId,
           tebal,
@@ -1073,8 +1102,13 @@ app.post("/api/flakes-documents", async (req, res) => {
 
     await client.query(
       `INSERT INTO flakes_summary (
-        document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at
-      ) VALUES ($1, $2, $3, $4, NOW())`,
+        document_id,
+        total_jumlah,
+        grand_total_ketebalan,
+        rata_rata_ketebalan,
+        created_at
+      )
+      VALUES ($1,$2,$3,$4,NOW())`,
       [
         documentId,
         Number(total_jumlah) || 0,
@@ -1093,12 +1127,15 @@ app.post("/api/flakes-documents", async (req, res) => {
     });
 
   } catch (err) {
+
     await client.query("ROLLBACK");
+
     console.error("❌ ERROR CREATE FLAKES:", err);
 
     res.status(500).json({
       error: "Gagal menyimpan Flakes document: " + err.message
     });
+
   } finally {
     client.release();
   }
@@ -1408,11 +1445,11 @@ app.delete("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     await client.query("BEGIN");
 
-    // 🔐 Cek shift & group dokumen
+    // 🔍 Ambil shift & group pembuat dokumen
     const docCheck = await client.query(
-      `SELECT fh.shift, fh."group"
-       FROM flakes_header fh
-       WHERE fh.document_id = $1`,
+      `SELECT shift, "group"
+       FROM flakes_header
+       WHERE document_id = $1`,
       [Number(id)]
     );
 
@@ -1426,17 +1463,16 @@ app.delete("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     const userShift = req.user.shift;
     const userGroup = req.user.group;
-    const userRole = req.user.role;
 
-    // ❌ Operator hanya bisa hapus shift sendiri
-    if (userRole !== "admin" && userShift !== "1D") {
+    // 🚫 Jika beda shift / group → tidak boleh hapus
+    if (documentShift !== userShift || documentGroup !== userGroup) {
       await client.query("ROLLBACK");
       return res.status(403).json({
-        error: "Hanya shift 1D yang boleh menghapus document"
+        error: "Dokumen hanya bisa dihapus oleh shift yang membuatnya"
       });
     }
 
-    // Hapus semua data terkait
+    // 🧹 Hapus semua data terkait
     await client.query(`DELETE FROM flakes_summary WHERE document_id = $1`, [Number(id)]);
     await client.query(`DELETE FROM flakes_detail WHERE document_id = $1`, [Number(id)]);
     await client.query(`DELETE FROM flakes_header WHERE document_id = $1`, [Number(id)]);
@@ -1453,15 +1489,15 @@ app.delete("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json({ 
-      message: "Flakes document berhasil dihapus",
-      success: true 
+    res.json({
+      success: true,
+      message: "Flakes document berhasil dihapus"
     });
 
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("❌ ERROR DELETE FLAKES:", err);
-    res.status(500).json({ error: "Gagal menghapus Flakes document: " + err.message });
+    res.status(500).json({ error: "Gagal menghapus Flakes document" });
   } finally {
     client.release();
   }
