@@ -1277,10 +1277,6 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     await client.query("BEGIN");
 
-    /* ==============================
-       🔐 CEK SHIFT & GROUP DOKUMEN
-    ============================== */
-
     const docCheck = await client.query(
       `SELECT shift, "group"
        FROM flakes_header
@@ -1299,24 +1295,28 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
     const userShift = req.user.shift;
     const userGroup = req.user.group;
 
-    /* ==============================
-       🚫 CEGAH EDIT DARI SHIFT LAIN
-    ============================== */
+    // NORMALIZE DATA
+    const docShift = String(documentShift).trim().toUpperCase();
+    const docGroup = String(documentGroup).trim().toUpperCase();
 
-    if (documentShift !== userShift || documentGroup !== userGroup) {
+    const usrShift = String(userShift).trim().toUpperCase();
+    const usrGroup = String(userGroup).trim().toUpperCase();
+
+    console.log("DOC:", docShift, docGroup);
+    console.log("USER:", usrShift, usrGroup);
+
+    // VALIDASI SHIFT
+    if (docShift !== usrShift || docGroup !== usrGroup) {
       await client.query("ROLLBACK");
       return res.status(403).json({
         error: "Dokumen hanya bisa diedit oleh shift yang membuatnya"
       });
     }
 
-    /* ==============================
-       🚫 CEGAH PINDAH SHIFT
-    ============================== */
-
+    // CEGAH PINDAH SHIFT
     if (
-      header.shift !== documentShift ||
-      header.group !== documentGroup
+      String(header.shift).trim().toUpperCase() !== docShift ||
+      String(header.group).trim().toUpperCase() !== docGroup
     ) {
       await client.query("ROLLBACK");
       return res.status(403).json({
@@ -1324,24 +1324,13 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
       });
     }
 
-    /* ==============================
-       UPDATE DOCUMENT
-    ============================== */
-
     await client.query(
       `UPDATE flakes_documents SET
         title = $1,
         updated_at = NOW()
        WHERE id = $2`,
-      [
-        `Flakes ${header.tanggal}`,
-        Number(id)
-      ]
+      [`Flakes ${header.tanggal}`, Number(id)]
     );
-
-    /* ==============================
-       UPDATE HEADER
-    ============================== */
 
     await client.query(
       `UPDATE flakes_header SET
@@ -1364,10 +1353,6 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
       ]
     );
 
-    /* ==============================
-       REFRESH DETAIL
-    ============================== */
-
     await client.query(
       `DELETE FROM flakes_detail WHERE document_id = $1`,
       [Number(id)]
@@ -1389,10 +1374,6 @@ app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
         ]
       );
     }
-
-    /* ==============================
-       UPSERT SUMMARY
-    ============================== */
 
     await client.query(
       `INSERT INTO flakes_summary
@@ -1444,7 +1425,6 @@ app.delete("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
 
     await client.query("BEGIN");
 
-    // 🔍 Ambil shift & group pembuat dokumen
     const docCheck = await client.query(
       `SELECT shift, "group"
        FROM flakes_header
@@ -1463,28 +1443,30 @@ app.delete("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
     const userShift = req.user.shift;
     const userGroup = req.user.group;
 
-    // 🚫 Jika beda shift / group → tidak boleh hapus
-    if (documentShift !== userShift || documentGroup !== userGroup) {
+    const docShift = String(documentShift).trim();
+    const docGroup = String(documentGroup).trim();
+
+    const usrShift = String(userShift).trim();
+    const usrGroup = String(userGroup).trim();
+
+    console.log("DOC:", docShift, docGroup);
+    console.log("USER:", usrShift, usrGroup);
+
+    if (docShift !== usrShift || docGroup !== usrGroup) {
       await client.query("ROLLBACK");
       return res.status(403).json({
         error: "Dokumen hanya bisa dihapus oleh shift yang membuatnya"
       });
     }
 
-    // 🧹 Hapus semua data terkait
     await client.query(`DELETE FROM flakes_summary WHERE document_id = $1`, [Number(id)]);
     await client.query(`DELETE FROM flakes_detail WHERE document_id = $1`, [Number(id)]);
     await client.query(`DELETE FROM flakes_header WHERE document_id = $1`, [Number(id)]);
 
-    const result = await client.query(
-      `DELETE FROM flakes_documents WHERE id = $1 RETURNING id`,
+    await client.query(
+      `DELETE FROM flakes_documents WHERE id = $1`,
       [Number(id)]
     );
-
-    if (result.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
-    }
 
     await client.query("COMMIT");
 
@@ -1501,7 +1483,6 @@ app.delete("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
     client.release();
   }
 });
-
 
 
 
