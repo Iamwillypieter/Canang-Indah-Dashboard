@@ -1397,7 +1397,7 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
 });
 
 // ✅ DELETE Flakes document (sudah benar, tetap sama)
-app.delete("/api/flakes-documents/:id", async (req, res) => {
+app.delete("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const client = await pool.connect();
 
@@ -1429,10 +1429,10 @@ app.delete("/api/flakes-documents/:id", async (req, res) => {
     const userRole = req.user.role;
 
     // ❌ Operator hanya bisa hapus shift sendiri
-    if (userRole !== "admin" && (documentShift !== userShift || documentGroup !== userGroup)) {
+    if (userRole !== "admin" && userShift !== "1D") {
       await client.query("ROLLBACK");
       return res.status(403).json({
-        error: "Anda hanya bisa menghapus dokumen shift Anda sendiri"
+        error: "Hanya shift 1D yang boleh menghapus document"
       });
     }
 

@@ -129,10 +129,10 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
 
   /* ================= VALIDATION ================= */
   const validateForm = () => {
-    if (!header.tagName.trim()) {
-      alert("⚠ Tag Name wajib diisi");
-      return false;
-    }
+    // if (!header.tagName.trim()) {
+    //   alert("⚠ Tag Name wajib diisi");
+    //   return false;
+    // }
 
     if (!header.tanggal) {
       alert("⚠ Tanggal wajib diisi");
@@ -154,7 +154,7 @@ export const useFlakesForm = ({ mode, documentId, navigate }) => {
     setIsSubmitting(true);
 
     const payload = {
-      tag_name: header.tagName, // snake_case → backend
+      // tag_name: header.tagName, // snake_case → backend
       header: {
         tanggal: header.tanggal,
         jam: header.jam,

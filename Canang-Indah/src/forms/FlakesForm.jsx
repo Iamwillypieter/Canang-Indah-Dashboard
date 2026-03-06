@@ -70,10 +70,8 @@ const FlakesForm = ({ isEditMode = false }) => {
               <input
                 type="text"
                 name="tagName"
-                value={header.tagName || ""}
-                onChange={handleHeaderChange}
-                disabled={mode === "view"}
-                placeholder="Contoh: 1A, 1B, 0001"
+                value={header.tagName || "Auto Generate"}
+                disabled
                 style={{ fontWeight: 'bold', borderColor: '#0ea5e9' }}
               />
             </div>
