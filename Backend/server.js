@@ -149,24 +149,58 @@ app.use((req, res, next) => {
 
 // Middleware untuk verifikasi token
 const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ error: 'Token tidak ditemukan' });
-  }
-  
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ 
-        error: err.name === 'TokenExpiredError' 
-          ? 'Token telah kadaluarsa' 
-          : 'Token tidak valid' 
-      });
+  try {
+    const authHeader = req.headers['authorization'];
+    
+    // ✨ Validasi format: "Bearer <token>"
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.warn("⚠️ Auth header invalid:", authHeader);
+      return res.status(401).json({ error: 'Token tidak ditemukan. Gunakan format: Bearer <token>' });
     }
-    req.user = user;
-    next();
-  });
+    
+    const token = authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Token tidak ditemukan' });
+    }
+    
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+      if (err) {
+        console.warn("❌ JWT verify error:", err.name, err.message);
+        
+        if (err.name === 'TokenExpiredError') {
+          return res.status(401).json({ 
+            error: 'Token telah kadaluarsa',
+            code: 'TOKEN_EXPIRED'
+          });
+        }
+        if (err.name === 'JsonWebTokenError') {
+          return res.status(403).json({ 
+            error: 'Token tidak valid',
+            code: 'INVALID_TOKEN'
+          });
+        }
+        return res.status(403).json({ error: 'Akses ditolak', code: 'AUTH_FAILED' });
+      }
+      
+      // ✅ Debug info (hanya di development)
+      if (process.env.NODE_ENV === 'development') {
+        console.log("🔐 User authenticated:", { 
+          id: user.id, 
+          role: user.role,
+          shift: user.shift,
+          group: user.group 
+        });
+      }
+      
+      req.user = user;
+      next();
+    });
+    
+  } catch (error) {
+    console.error("💥 Auth middleware crash:", error);
+    return res.status(500).json({ error: 'Internal server error - autentikasi' });
+  }
 };
 
 // Helper function untuk validasi password 
@@ -1260,19 +1294,27 @@ app.get("/api/flakes-documents/:id", async (req, res) => {
 });
 
 // ✅ UPDATE Flakes document
-app.put("/api/flakes-documents/:id", async (req, res) => {
-  const { id } = req.params;
-  const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
+app.put("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
+  // ✨ Trim ID untuk handle trailing spaces dari frontend
+  const rawId = req.params.id?.toString().trim();
+  const id = parseInt(rawId, 10);
+  
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "ID dokumen tidak valid" });
+  }
 
+  const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
   const client = await pool.connect();
 
   try {
-    if (!header || !detail || detail.length === 0) {
-      return res.status(400).json({ error: "Data tidak lengkap" });
+    // 🔐 Validasi user sudah login
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: "Unauthorized: Silakan login kembali" });
     }
 
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
+    // 📋 Validasi data wajib
+    if (!header || !Array.isArray(detail) || detail.length === 0) {
+      return res.status(400).json({ error: "Data tidak lengkap: header dan detail wajib diisi" });
     }
 
     await client.query("BEGIN");
@@ -1280,12 +1322,9 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     /* ==============================
        🔐 VALIDASI SHIFT + GROUP
     ============================== */
-
     const docCheck = await client.query(
-      `SELECT shift, "group"
-       FROM flakes_header
-       WHERE document_id = $1`,
-      [Number(id)]
+      `SELECT shift, "group" FROM flakes_header WHERE document_id = $1`,
+      [id]
     );
 
     if (docCheck.rows.length === 0) {
@@ -1295,27 +1334,24 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
 
     const documentShift = docCheck.rows[0].shift;
     const documentGroup = docCheck.rows[0].group;
-
     const userShift = req.user.shift;
     const userGroup = req.user.group;
     const userRole = req.user.role;
 
-    // Jika bukan admin dan beda shift/group → tolak
+    // 🔒 Non-admin hanya bisa edit dokumen shift/group sendiri
     if (
       userRole !== "admin" &&
       (documentShift !== userShift || documentGroup !== userGroup)
     ) {
       await client.query("ROLLBACK");
       return res.status(403).json({
-        error: "Anda hanya bisa mengedit dokumen shift Anda sendiri"
+        error: "Anda hanya bisa mengedit dokumen shift & group Anda sendiri"
       });
     }
 
     /* ==============================
-       🚫 CEGAH PINDAH SHIFT
-       (Shift & group tidak boleh diganti)
+       🚫 CEGAH PINDAH SHIFT/GROUP
     ============================== */
-
     if (
       userRole !== "admin" &&
       (header.shift !== documentShift || header.group !== documentGroup)
@@ -1327,24 +1363,19 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
     }
 
     /* ==============================
-       UPDATE DOCUMENT (TAG TETAP)
+       📄 UPDATE DOCUMENT (TAG TETAP)
     ============================== */
-
     await client.query(
       `UPDATE flakes_documents SET
         title = $1,
         updated_at = NOW()
        WHERE id = $2`,
-      [
-        `Flakes ${header.tanggal}`,
-        Number(id)
-      ]
+      [`Flakes ${header.tanggal}`, id]
     );
 
     /* ==============================
-       UPDATE HEADER
+       📋 UPDATE HEADER
     ============================== */
-
     await client.query(
       `UPDATE flakes_header SET
         tanggal = $1,
@@ -1362,40 +1393,35 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
         header.jarakPisau || null,
         header.keterangan || null,
         header.pemeriksa || null,
-        Number(id)
+        id
       ]
     );
 
     /* ==============================
-       REFRESH DETAIL
+       🔄 REFRESH DETAIL (Delete + Insert)
     ============================== */
-
-    await client.query(
-      `DELETE FROM flakes_detail WHERE document_id = $1`,
-      [Number(id)]
-    );
+    await client.query(`DELETE FROM flakes_detail WHERE document_id = $1`, [id]);
 
     for (const row of detail) {
       const tebal = Number(row.tebal) || 0;
       const jumlah = Number(row.jumlah) || 0;
+      
+      // Validasi data detail
+      if (tebal < 0 || jumlah < 0) {
+        throw new Error(`Data detail tidak valid: tebal=${tebal}, jumlah=${jumlah}`);
+      }
 
       await client.query(
         `INSERT INTO flakes_detail 
          (document_id, tebal, jumlah, total_ketebalan, created_at)
          VALUES ($1, $2, $3, $4, NOW())`,
-        [
-          Number(id),
-          tebal,
-          jumlah,
-          tebal * jumlah
-        ]
+        [id, tebal, jumlah, tebal * jumlah]
       );
     }
 
     /* ==============================
-       UPSERT SUMMARY
+       📊 UPSERT SUMMARY
     ============================== */
-
     await client.query(
       `INSERT INTO flakes_summary
        (document_id, total_jumlah, grand_total_ketebalan, rata_rata_ketebalan, created_at)
@@ -1407,7 +1433,7 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
          rata_rata_ketebalan = EXCLUDED.rata_rata_ketebalan,
          updated_at = NOW()`,
       [
-        Number(id),
+        id,
         Number(total_jumlah) || 0,
         Number(grand_total_ketebalan) || 0,
         Number(rata_rata) || 0
@@ -1416,18 +1442,35 @@ app.put("/api/flakes-documents/:id", async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json({
+    // ✅ Response sukses
+    return res.json({
       message: "Flakes document berhasil diperbarui",
-      success: true
+      success: true,
+      data: { documentId: id, updatedAt: new Date().toISOString() }
     });
 
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("❌ ERROR UPDATE FLAKES:", err);
-
-    res.status(500).json({
-      error: "Gagal memperbarui Flakes document: " + err.message
+    console.error("❌ ERROR UPDATE FLAKES:", {
+      message: err.message,
+      stack: err.stack,
+      userId: req.user?.id,
+      documentId: id
     });
+
+    // 🔍 Bedakan error untuk client
+    if (err.message.includes("Unauthorized")) {
+      return res.status(401).json({ error: "Sesi expired, silakan login kembali" });
+    }
+    if (err.message.includes("validasi") || err.message.includes("tidak valid")) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    return res.status(500).json({
+      error: "Gagal memperbarui Flakes document",
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+
   } finally {
     client.release();
   }
