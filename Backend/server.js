@@ -691,12 +691,7 @@ app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
   try {
 
     const { inspection, solidContent, comment_by } = req.body;
-
     const user = req.user;
-
-    // ========================================
-    // GET SHIFT & GROUP FROM USER
-    // ========================================
 
     const shiftGroup = user.shift_group;
 
@@ -706,36 +701,19 @@ app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
       });
     }
 
-    const shift = shiftGroup.charAt(0);   // 1
-    const group = shiftGroup.charAt(1);   // A
-
+    const shift = shiftGroup.charAt(0);
+    const group = shiftGroup.charAt(1);
     const createdBy = user.id;
 
     await client.query("BEGIN");
 
     // ========================================
-    // Generate Running Number
+    // TIMEZONE ASIA JAKARTA
     // ========================================
 
-    const countResult = await client.query(
-      `SELECT COUNT(*) 
-       FROM resin_inspection_documents
-       WHERE DATE(created_at) = CURRENT_DATE
-       AND shift = $1
-       AND group_name = $2`,
-      [shift, group]
+    const now = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
     );
-
-    const runningNumber = String(
-      parseInt(countResult.rows[0].count) + 1
-    ).padStart(4, "0");
-
-
-    // ========================================
-    // Generate Date & Time
-    // ========================================
-
-    const now = new Date();
 
     const day = String(now.getDate()).padStart(2, "0");
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -747,19 +725,31 @@ app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
     const date = `${day}${month}${year}`;
     const time = `${hours}.${minutes}`;
 
+    // ========================================
+    // RUNNING NUMBER
+    // ========================================
+
+    const countResult = await client.query(
+      `SELECT COUNT(*) 
+       FROM resin_inspection_documents
+       WHERE DATE(created_at AT TIME ZONE 'Asia/Jakarta') =
+       DATE(NOW() AT TIME ZONE 'Asia/Jakarta')
+       AND shift = $1
+       AND group_name = $2`,
+      [shift, group]
+    );
+
+    const runningNumber = String(
+      parseInt(countResult.rows[0].count) + 1
+    ).padStart(4, "0");
 
     // ========================================
-    // Generate Tag Name
+    // TAG NAME
     // ========================================
 
     const tag_name = `Resin Inspection ${runningNumber} ${shift}${group} ${date} ${time}`;
 
     const title = "Resin Inspection";
-
-
-    // ========================================
-    // Insert Document
-    // ========================================
 
     const doc = await client.query(
       `INSERT INTO resin_inspection_documents
@@ -778,9 +768,8 @@ app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
 
     const documentId = doc.rows[0].id;
 
-
     // ========================================
-    // Insert Inspection Rows
+    // INSERT INSPECTION
     // ========================================
 
     for (const [i, row] of inspection.entries()) {
@@ -808,9 +797,8 @@ app.post("/api/resin-inspection", authenticateToken, async (req, res) => {
 
     }
 
-
     // ========================================
-    // Insert Solid Content
+    // INSERT SOLIDS
     // ========================================
 
     for (const sample of solidContent || []) {
@@ -1135,14 +1123,19 @@ app.delete("/api/resin-inspection-documents/:id", authenticateToken, async (req,
   try {
 
     const user = req.user;
-    const userShift = user.shift;
-    const userGroup = user.group;
+
+    const shiftGroup = user.shift_group;
+
+    if (!shiftGroup) {
+      return res.status(400).json({
+        error: "User shift_group tidak ditemukan"
+      });
+    }
+
+    const userShift = shiftGroup.charAt(0);
+    const userGroup = shiftGroup.charAt(1);
 
     await client.query("BEGIN");
-
-    // =========================================
-    // CEK DOKUMEN DULU
-    // =========================================
 
     const docCheck = await client.query(
       `SELECT id, shift, group_name, tag_name
@@ -1152,17 +1145,18 @@ app.delete("/api/resin-inspection-documents/:id", authenticateToken, async (req,
     );
 
     if (docCheck.rows.length === 0) {
+
       await client.query("ROLLBACK");
+
       return res.status(404).json({
         error: "Dokumen tidak ditemukan"
       });
+
     }
 
     const document = docCheck.rows[0];
 
-    // =========================================
-    // VALIDASI SHIFT & GROUP
-    // =========================================
+    // VALIDASI SHIFT
 
     if (document.shift !== userShift || document.group_name !== userGroup) {
 
@@ -1173,10 +1167,6 @@ app.delete("/api/resin-inspection-documents/:id", authenticateToken, async (req,
       });
 
     }
-
-    // =========================================
-    // DELETE CHILD TABLES
-    // =========================================
 
     await client.query(
       `DELETE FROM resin_inspection_inspection
@@ -1189,10 +1179,6 @@ app.delete("/api/resin-inspection-documents/:id", authenticateToken, async (req,
        WHERE document_id = $1`,
       [id]
     );
-
-    // =========================================
-    // DELETE DOCUMENT
-    // =========================================
 
     await client.query(
       `DELETE FROM resin_inspection_documents
@@ -1210,16 +1196,10 @@ app.delete("/api/resin-inspection-documents/:id", authenticateToken, async (req,
 
     await client.query("ROLLBACK");
 
-    console.error("💥 DELETE RESIN ERROR:", {
-      message: err.message,
-      code: err.code,
-      detail: err.detail,
-      table: err.table
-    });
+    console.error("DELETE ERROR:", err);
 
     res.status(500).json({
-      error: "Gagal menghapus dokumen: " + err.message,
-      code: err.code
+      error: "Gagal menghapus dokumen: " + err.message
     });
 
   } finally {
