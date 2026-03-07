@@ -2110,6 +2110,7 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     const formatted = jakartaFormatter.format(new Date());
     const [datePart, timePart] = formatted.split(", ");
+
     const formattedDate = datePart.replace(/\//g, "");
     const formattedTime = timePart.replace(":", ".");
 
@@ -2164,7 +2165,9 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     const documentId = docResult.rows[0].id;
 
-    const positions = ['le','ml','md','mr','ri'];
+    /* ================= POSITIONS ================= */
+
+    const positions = ['LE','ML','MD','MR','RI'];
 
     /* ================= SAMPLES ================= */
 
@@ -2192,6 +2195,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     for (const pos of positions) {
 
+      const key = pos.toLowerCase();
+
       await client.query(
         `
         INSERT INTO lab_pb_internal_bonding
@@ -2201,8 +2206,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
         [
           documentId,
           pos,
-          ibData[`ib_${pos}`] || null,
-          ibData[`density_${pos}`] || null,
+          ibData[`ib_${key}`] || null,
+          ibData[`density_${key}`] || null,
           ibData.ib_avg || null,
           ibData.density_avg || null
         ]
@@ -2214,6 +2219,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     for (const pos of positions) {
 
+      const key = pos.toLowerCase();
+
       await client.query(
         `
         INSERT INTO lab_pb_bending_strength
@@ -2223,8 +2230,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
         [
           documentId,
           pos,
-          bsData[`mor_${pos}`] || null,
-          bsData[`density_${pos}`] || null,
+          bsData[`mor_${key}`] || null,
+          bsData[`density_${key}`] || null,
           bsData.mor_avg || null,
           bsData.bs_density_avg || null
         ]
@@ -2236,6 +2243,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     for (const pos of positions) {
 
+      const key = pos.toLowerCase();
+
       await client.query(
         `
         INSERT INTO lab_pb_screw_test
@@ -2245,8 +2254,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
         [
           documentId,
           pos,
-          screwData[`face_${pos}`] || null,
-          screwData[`edge_${pos}`] || null,
+          screwData[`face_${key}`] || null,
+          screwData[`edge_${key}`] || null,
           screwData.face_avg || null,
           screwData.edge_avg || null
         ]
@@ -2258,6 +2267,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     for (const pos of positions) {
 
+      const key = pos.toLowerCase();
+
       await client.query(
         `
         INSERT INTO lab_pb_density_profile
@@ -2267,11 +2278,11 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
         [
           documentId,
           pos,
-          densityProfileData[`max_top_${pos}`] || null,
-          densityProfileData[`max_bot_${pos}`] || null,
-          densityProfileData[`min_${pos}`] || null,
-          densityProfileData[`mean_${pos}`] || null,
-          densityProfileData[`ratio_${pos}`] || null
+          densityProfileData[`max_top_${key}`] || null,
+          densityProfileData[`max_bot_${key}`] || null,
+          densityProfileData[`min_${key}`] || null,
+          densityProfileData[`mean_${key}`] || null,
+          densityProfileData[`ratio_${key}`] || null
         ]
       );
 
@@ -2280,6 +2291,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
     /* ================= MC BOARD ================= */
 
     for (const pos of positions) {
+
+      const key = pos.toLowerCase();
 
       await client.query(
         `
@@ -2290,9 +2303,9 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
         [
           documentId,
           pos,
-          mcBoardData[`w1_${pos}`] || null,
-          mcBoardData[`w2_${pos}`] || null,
-          mcBoardData[`mc_${pos}`] || null,
+          mcBoardData[`w1_${key}`] || null,
+          mcBoardData[`w2_${key}`] || null,
+          mcBoardData[`mc_${key}`] || null,
           mcBoardData.avg_w1 || null,
           mcBoardData.avg_w2 || null,
           mcBoardData.avg_mc || null
@@ -2301,9 +2314,11 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     }
 
-    /* ================= SWELLING 2H ================= */
+    /* ================= SWELLING ================= */
 
     for (const pos of positions) {
+
+      const key = pos.toLowerCase();
 
       await client.query(
         `
@@ -2314,9 +2329,9 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
         [
           documentId,
           pos,
-          swellingData[`t1_${pos}`] || null,
-          swellingData[`t2_${pos}`] || null,
-          swellingData[`ts_${pos}`] || null,
+          swellingData[`t1_${key}`] || null,
+          swellingData[`t2_${key}`] || null,
+          swellingData[`ts_${key}`] || null,
           swellingData.avg_t1 || null,
           swellingData.avg_t2 || null,
           swellingData.avg_ts || null
@@ -2329,6 +2344,8 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     for (const pos of positions) {
 
+      const key = pos.toLowerCase();
+
       await client.query(
         `
         INSERT INTO lab_pb_surface_soundness
@@ -2338,7 +2355,7 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
         [
           documentId,
           pos,
-          surfaceSoundnessData[`t1_${pos}`] || null,
+          surfaceSoundnessData[`t1_${key}`] || null,
           surfaceSoundnessData.avg_surface || null
         ]
       );
