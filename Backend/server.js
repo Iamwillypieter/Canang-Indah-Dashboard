@@ -2047,27 +2047,20 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     /* ================= GENERATE TAG OTOMATIS ================= */
 
-    const lastTagResult = await client.query(
+    const countResult = await client.query(
       `
-      SELECT tag_name
+      SELECT COUNT(*) 
       FROM lab_pb_documents
-      WHERE shift_group = $1
-      ORDER BY id DESC
-      LIMIT 1
-      FOR UPDATE
+      WHERE DATE(created_at) = CURRENT_DATE
+      AND shift_group = $1
       `,
       [shift_group]
     );
 
-    let nextNumber = 1;
-
-    if (lastTagResult.rows.length > 0) {
-      const lastTag = lastTagResult.rows[0].tag_name; // contoh: 0004 1A
-      const lastNumber = parseInt(lastTag.split(" ")[0]);
-      nextNumber = lastNumber + 1;
-    }
+    const nextNumber = parseInt(countResult.rows[0].count) + 1;
 
     const formattedNumber = String(nextNumber).padStart(4, "0");
+
     const tag_name = `${formattedNumber} ${shift_group}`;
 
     /* ================= AMBIL DATA FORM ================= */
@@ -2516,23 +2509,48 @@ app.put('/api/lab-pb/:id', authenticateToken, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const userShift = req.user.shift_group;
+    /* ================= AMBIL USER DARI DATABASE ================= */
+
+    const userId = req.user.id;
+
+    const userResult = await client.query(
+      `SELECT role, shift_group 
+       FROM users 
+       WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(401).json({ error: "User tidak valid" });
+    }
+
+    const userRole = userResult.rows[0].role;
+    const userShift = userResult.rows[0].shift_group;
 
     /* ================= CEK DOKUMEN ================= */
 
     const docCheck = await client.query(
-      `SELECT shift_group FROM lab_pb_documents WHERE id = $1`,
+      `SELECT shift_group 
+       FROM lab_pb_documents 
+       WHERE id = $1
+       FOR UPDATE`,
       [id]
     );
 
     if (docCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: "Dokumen tidak ditemukan" });
     }
 
     const docShift = docCheck.rows[0].shift_group;
 
-    // 🔒 PROTEKSI SHIFT
-    if (docShift !== userShift) {
+    /* ================= PROTEKSI SHIFT ================= */
+
+    const isSupervisor = userRole === 'supervisor';
+
+    if (!isSupervisor && docShift !== userShift) {
+      await client.query('ROLLBACK');
       return res.status(403).json({
         error: "Tidak boleh edit dokumen shift lain"
       });
@@ -2565,14 +2583,15 @@ app.put('/api/lab-pb/:id', authenticateToken, async (req, res) => {
     } = req.body;
 
     if (!board_no) {
+      await client.query('ROLLBACK');
       return res.status(400).json({
         error: "Board No wajib diisi"
       });
     }
 
-    /* ================= UPDATE DOCUMENT (TIDAK BOLEH UBAH TAG / SHIFT) ================= */
+    /* ================= UPDATE DOCUMENT ================= */
 
-    await client.query(
+    const updateDoc = await client.query(
       `
       UPDATE lab_pb_documents SET
         timestamp = $1,
@@ -2587,6 +2606,7 @@ app.put('/api/lab-pb/:id', authenticateToken, async (req, res) => {
         thick_max = $10,
         updated_at = NOW()
       WHERE id = $11
+      RETURNING id
       `,
       [
         timestamp || null,
@@ -2603,21 +2623,26 @@ app.put('/api/lab-pb/:id', authenticateToken, async (req, res) => {
       ]
     );
 
-    /* ================= HAPUS DATA CHILD LAMA ================= */
+    if (updateDoc.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        error: "Dokumen gagal diupdate"
+      });
+    }
 
-    await Promise.all([
-      client.query('DELETE FROM lab_pb_samples WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_internal_bonding WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_bending_strength WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_screw_test WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_density_profile WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_mc_board WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_swelling WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_surface_soundness WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_additional_tests WHERE document_id = $1', [id])
-    ]);
+    /* ================= HAPUS CHILD LAMA ================= */
 
-    /* ================= INSERT ULANG CHILD DATA ================= */
+    await client.query('DELETE FROM lab_pb_samples WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_internal_bonding WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_bending_strength WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_screw_test WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_density_profile WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_mc_board WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_swelling WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_surface_soundness WHERE document_id = $1', [id]);
+    await client.query('DELETE FROM lab_pb_additional_tests WHERE document_id = $1', [id]);
+
+    /* ================= INSERT ULANG DATA ================= */
 
     const positions = ['le', 'ml', 'md', 'mr', 'ri'];
 
@@ -2655,7 +2680,39 @@ app.put('/api/lab-pb/:id', authenticateToken, async (req, res) => {
       );
     }
 
-    // (Bagian child lainnya tetap sama seperti punyamu, tidak berubah logic)
+    // Bending Strength
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_bending_strength
+        (document_id, position, mor_value, density_value, avg_mor, avg_density)
+        VALUES ($1,$2,$3,$4,$5,$6)`,
+        [
+          id,
+          pos,
+          bsData[`mor_${pos}`] || null,
+          bsData[`density_${pos}`] || null,
+          bsData.mor_avg || null,
+          bsData.bs_density_avg || null
+        ]
+      );
+    }
+
+    // Screw Test
+    for (const pos of positions) {
+      await client.query(
+        `INSERT INTO lab_pb_screw_test
+        (document_id, position, face_value, edge_value, avg_face, avg_edge)
+        VALUES ($1,$2,$3,$4,$5,$6)`,
+        [
+          id,
+          pos,
+          screwData[`face_${pos}`] || null,
+          screwData[`edge_${pos}`] || null,
+          screwData.face_avg || null,
+          screwData.edge_avg || null
+        ]
+      );
+    }
 
     await client.query('COMMIT');
 
@@ -2666,10 +2723,13 @@ app.put('/api/lab-pb/:id', authenticateToken, async (req, res) => {
 
   } catch (err) {
     await client.query('ROLLBACK');
+
     console.error("❌ ERROR UPDATE LAB PB:", err);
+
     res.status(500).json({
       error: "Gagal memperbarui laporan Lab PB: " + err.message
     });
+
   } finally {
     client.release();
   }
@@ -2685,15 +2745,34 @@ app.delete('/api/lab-pb-documents/:id', authenticateToken, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const userShift = req.user.shift_group;
-    const userRole = req.user.role;
+    /* ================= AMBIL USER DARI DATABASE ================= */
+
+    const userId = req.user.id;
+
+    const userResult = await client.query(
+      `SELECT role, shift_group 
+       FROM users 
+       WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(401).json({ error: "User tidak valid" });
+    }
+
+    const userRole = userResult.rows[0].role;
+    const userShift = userResult.rows[0].shift_group;
 
     /* ================= CEK DOKUMEN ================= */
 
     const docCheck = await client.query(
-      `SELECT shift_group, board_no, tag_name
-       FROM lab_pb_documents
-       WHERE id = $1`,
+      `
+      SELECT shift_group, tag_name
+      FROM lab_pb_documents
+      WHERE id = $1
+      FOR UPDATE
+      `,
       [id]
     );
 
@@ -2703,6 +2782,7 @@ app.delete('/api/lab-pb-documents/:id', authenticateToken, async (req, res) => {
     }
 
     const docShift = docCheck.rows[0].shift_group;
+    const tagName = docCheck.rows[0].tag_name;
 
     /* ================= PROTEKSI SHIFT ================= */
 
@@ -2715,41 +2795,49 @@ app.delete('/api/lab-pb-documents/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    /* ================= HAPUS CHILD TABLES ================= */
+    /* ================= HAPUS CHILD TABLE ================= */
 
-    await Promise.all([
-      client.query('DELETE FROM lab_pb_samples WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_internal_bonding WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_bending_strength WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_screw_test WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_density_profile WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_mc_board WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_swelling WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_surface_soundness WHERE document_id = $1', [id]),
-      client.query('DELETE FROM lab_pb_additional_tests WHERE document_id = $1', [id])
-    ]);
+    await client.query(`DELETE FROM lab_pb_samples WHERE document_id = $1`, [id]);
+    await client.query(`DELETE FROM lab_pb_internal_bonding WHERE document_id = $1`, [id]);
+    await client.query(`DELETE FROM lab_pb_bending_strength WHERE document_id = $1`, [id]);
+    await client.query(`DELETE FROM lab_pb_screw_test WHERE document_id = $1`, [id]);
+    await client.query(`DELETE FROM lab_pb_density_profile WHERE document_id = $1`, [id]);
+    await client.query(`DELETE FROM lab_pb_mc_board WHERE document_id = $1`, [id]);
+    await client.query(`DELETE FROM lab_pb_swelling WHERE document_id = $1`, [id]);
+    await client.query(`DELETE FROM lab_pb_surface_soundness WHERE document_id = $1`, [id]);
+    await client.query(`DELETE FROM lab_pb_additional_tests WHERE document_id = $1`, [id]);
 
-    /* ================= HAPUS DOKUMEN UTAMA ================= */
+    /* ================= HAPUS DOKUMEN ================= */
 
-    await client.query(
-      `DELETE FROM lab_pb_documents WHERE id = $1`,
+    const deleteResult = await client.query(
+      `
+      DELETE FROM lab_pb_documents 
+      WHERE id = $1 
+      RETURNING id
+      `,
       [id]
     );
+
+    if (deleteResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: "Dokumen gagal dihapus" });
+    }
 
     await client.query('COMMIT');
 
     res.json({
-      message: `Dokumen Lab PB ${docCheck.rows[0].tag_name} berhasil dihapus`,
-      documentId: id,
-      tagName: docCheck.rows[0].tag_name
+      message: `Dokumen Lab PB ${tagName} berhasil dihapus`,
+      documentId: id
     });
 
   } catch (err) {
     await client.query('ROLLBACK');
     console.error("❌ ERROR HAPUS DOKUMEN:", err);
+
     res.status(500).json({
       error: "Gagal menghapus dokumen: " + err.message
     });
+
   } finally {
     client.release();
   }
