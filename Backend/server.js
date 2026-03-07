@@ -2265,101 +2265,82 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     /* ================= DENSITY PROFILE ================= */
 
-    for (const pos of positions) {
+    for (let i = 0; i < densityProfile.length; i++) {
+      const row = densityProfile[i]
+      const position = i + 1
 
-      const key = pos.toLowerCase();
-
-      await client.query(
-        `
-        INSERT INTO lab_pb_density_profile
+      await pool.query(
+        `INSERT INTO lab_pb_density_profile
         (document_id, position, max_top, max_bot, min_value, mean_value, min_mean_ratio)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
-        `,
+        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
         [
           documentId,
-          pos,
-          densityProfileData[`max_top_${key}`] || null,
-          densityProfileData[`max_bot_${key}`] || null,
-          densityProfileData[`min_${key}`] || null,
-          densityProfileData[`mean_${key}`] || null,
-          densityProfileData[`ratio_${key}`] || null
+          position,
+          row.max_top,
+          row.max_bot,
+          row.min_value,
+          row.mean_value,
+          row.min_mean_ratio
         ]
-      );
-
+      )
     }
 
     /* ================= MC BOARD ================= */
 
-    for (const pos of positions) {
+    for (let i = 0; i < mcBoard.length; i++) {
+      const row = mcBoard[i]
+      const position = i + 1
 
-      const key = pos.toLowerCase();
-
-      await client.query(
-        `
-        INSERT INTO lab_pb_mc_board
-        (document_id, position, w1, w2, mc_value, avg_w1, avg_w2, avg_mc)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-        `,
+      await pool.query(
+        `INSERT INTO lab_pb_mc_board
+        (document_id, position, w1, w2, mc_value)
+        VALUES ($1,$2,$3,$4,$5)`,
         [
           documentId,
-          pos,
-          mcBoardData[`w1_${key}`] || null,
-          mcBoardData[`w2_${key}`] || null,
-          mcBoardData[`mc_${key}`] || null,
-          mcBoardData.avg_w1 || null,
-          mcBoardData.avg_w2 || null,
-          mcBoardData.avg_mc || null
+          position,
+          row.w1,
+          row.w2,
+          row.mc_value
         ]
-      );
-
+      )
     }
 
     /* ================= SWELLING ================= */
 
-    for (const pos of positions) {
+    for (let i = 0; i < swelling2h.length; i++) {
+      const row = swelling2h[i]
+      const position = i + 1
 
-      const key = pos.toLowerCase();
-
-      await client.query(
-        `
-        INSERT INTO lab_pb_swelling
-        (document_id, position, t1, t2, ts_value, avg_t1, avg_t2, avg_ts)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-        `,
+      await pool.query(
+        `INSERT INTO lab_pb_sweeling
+        (document_id, position, t1, t2, ts_value)
+        VALUES ($1,$2,$3,$4,$5)`,
         [
           documentId,
-          pos,
-          swellingData[`t1_${key}`] || null,
-          swellingData[`t2_${key}`] || null,
-          swellingData[`ts_${key}`] || null,
-          swellingData.avg_t1 || null,
-          swellingData.avg_t2 || null,
-          swellingData.avg_ts || null
+          position,
+          row.t1,
+          row.t2,
+          row.ts_value
         ]
-      );
-
+      )
     }
 
     /* ================= SURFACE SOUNDNESS ================= */
 
-    for (const pos of positions) {
+    for (let i = 0; i < surfaceSoundness.length; i++) {
+      const row = surfaceSoundness[i]
+      const position = i + 1
 
-      const key = pos.toLowerCase();
-
-      await client.query(
-        `
-        INSERT INTO lab_pb_surface_soundness
-        (document_id, position, t1_value, avg_surface)
-        VALUES ($1,$2,$3,$4)
-        `,
+      await pool.query(
+        `INSERT INTO lab_pb_surface_soundness
+        (document_id, position, t1_value)
+        VALUES ($1,$2,$3)`,
         [
           documentId,
-          pos,
-          surfaceSoundnessData[`t1_${key}`] || null,
-          surfaceSoundnessData.avg_surface || null
+          position,
+          row.t1_value
         ]
-      );
-
+      )
     }
 
     /* ================= ADDITIONAL TESTS ================= */
