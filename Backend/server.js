@@ -478,12 +478,23 @@ app.post("/api/qc-analisa", authenticateToken, async (req, res) => {
 
     const now = new Date();
 
-    const day = String(now.getDate()).padStart(2, "0");
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const year = now.getFullYear();
+    const jakartaTime = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).formatToParts(now);
 
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const get = type => jakartaTime.find(x => x.type === type).value;
+
+    const day = get("day");
+    const month = get("month");
+    const year = get("year");
+    const hours = get("hour");
+    const minutes = get("minute");
 
     const date = `${day}${month}${year}`;
     const time = `${hours}.${minutes}`;
