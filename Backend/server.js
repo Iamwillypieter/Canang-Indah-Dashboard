@@ -2307,7 +2307,7 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
       await client.query(
         `
-        INSERT INTO lab_pb_sweeling_2h
+        INSERT INTO lab_pb_swelling
         (document_id, position, t1, t2, ts_value, avg_t1, avg_t2, avg_ts)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
         `,
