@@ -2020,17 +2020,21 @@ app.delete("/api/flakes-documents/:id", authenticateToken, async (req, res) => {
    SIMPAN LAPORAN LAB PB BARU (POST)
 ========================= */
 app.post('/api/lab-pb', authenticateToken, async (req, res) => {
+
   const client = await pool.connect();
 
   try {
+
     await client.query('BEGIN');
 
-    /* ================= AMBIL USER ================= */
+    /* ================= USER ================= */
 
     const userId = req.user.id;
 
     const userResult = await client.query(
-      `SELECT username, shift_group FROM users WHERE id = $1`,
+      `SELECT username, shift_group 
+       FROM users 
+       WHERE id = $1`,
       [userId]
     );
 
@@ -2045,13 +2049,14 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
       throw new Error("User tidak memiliki shift_group");
     }
 
-    /* ================= GENERATE TAG OTOMATIS ================= */
+    /* ================= GENERATE TAG ================= */
 
     const countResult = await client.query(
       `
       SELECT COUNT(*) 
       FROM lab_pb_documents
-      WHERE DATE(created_at) = CURRENT_DATE
+      WHERE DATE(created_at AT TIME ZONE 'Asia/Jakarta') =
+            DATE(NOW() AT TIME ZONE 'Asia/Jakarta')
       AND shift_group = $1
       `,
       [shift_group]
@@ -2063,9 +2068,10 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
 
     const tag_name = `${formattedNumber} ${shift_group}`;
 
-    /* ================= AMBIL DATA FORM ================= */
+    /* ================= BODY ================= */
 
     const {
+
       timestamp,
       board_no,
       set_weight,
@@ -2076,21 +2082,28 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
       glue_cl,
       thick_min,
       thick_max,
+
       samples = [],
       ibData = {},
       bsData = {},
-      screwData = {}
+      screwData = {},
+
+      densityProfileData = {},
+      mcBoardData = {},
+      swellingData = {},
+      surfaceSoundnessData = {},
+      tebalFlakesData = {},
+      consHardenerData = {},
+      geltimeData = {}
+
     } = req.body;
 
     if (!board_no) {
       throw new Error("Board No wajib diisi");
     }
 
-    /* ================= GENERATE DOCUMENT NAME ================= */
+    /* ================= DOCUMENT NAME ================= */
 
-    const now = new Date();
-
-    // format langsung ke Asia/Jakarta
     const jakartaFormatter = new Intl.DateTimeFormat("en-GB", {
       timeZone: "Asia/Jakarta",
       day: "2-digit",
@@ -2101,15 +2114,15 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
       hour12: false
     });
 
-    const formatted = jakartaFormatter.format(now);
-    // contoh hasil: 04/03/2026, 13:38
+    const formatted = jakartaFormatter.format(new Date());
 
     const [datePart, timePart] = formatted.split(", ");
 
-    const formattedDate = datePart.replace(/\//g, ""); // 04032026
-    const formattedTime = timePart.replace(":", ".");  // 13.38
+    const formattedDate = datePart.replace(/\//g, "");
+    const formattedTime = timePart.replace(":", ".");
 
-    const document_name = `LAB PB FORM ${tag_name} ${formattedDate} ${formattedTime}`;
+    const document_name =
+      `LAB PB FORM ${tag_name} ${formattedDate} ${formattedTime}`;
 
     /* ================= INSERT DOCUMENT ================= */
 
@@ -2137,7 +2150,7 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
         NOW(),NOW()
       )
-      RETURNING id, tag_name, document_name
+      RETURNING id
       `,
       [
         tag_name,
@@ -2166,6 +2179,7 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
     /* ================= SAMPLES ================= */
 
     for (const sample of samples) {
+
       await client.query(
         `
         INSERT INTO lab_pb_samples
@@ -2181,11 +2195,13 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
           sample.width_mm || null
         ]
       );
+
     }
 
     /* ================= INTERNAL BONDING ================= */
 
     for (const pos of positions) {
+
       await client.query(
         `
         INSERT INTO lab_pb_internal_bonding
@@ -2201,11 +2217,13 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
           ibData.density_avg || null
         ]
       );
+
     }
 
     /* ================= BENDING STRENGTH ================= */
 
     for (const pos of positions) {
+
       await client.query(
         `
         INSERT INTO lab_pb_bending_strength
@@ -2221,11 +2239,13 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
           bsData.bs_density_avg || null
         ]
       );
+
     }
 
     /* ================= SCREW TEST ================= */
 
     for (const pos of positions) {
+
       await client.query(
         `
         INSERT INTO lab_pb_screw_test
@@ -2241,6 +2261,131 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
           screwData.edge_avg || null
         ]
       );
+
+    }
+
+    /* ================= DENSITY PROFILE ================= */
+
+    if (Object.keys(densityProfileData).length) {
+
+      await client.query(
+        `
+        INSERT INTO lab_pb_density_profile
+        (document_id, core_value, face_value, average_value)
+        VALUES ($1,$2,$3,$4)
+        `,
+        [
+          documentId,
+          densityProfileData.core || null,
+          densityProfileData.face || null,
+          densityProfileData.average || null
+        ]
+      );
+
+    }
+
+    /* ================= MC BOARD ================= */
+
+    if (Object.keys(mcBoardData).length) {
+
+      await client.query(
+        `
+        INSERT INTO lab_pb_mc_board
+        (document_id, mc_value)
+        VALUES ($1,$2)
+        `,
+        [
+          documentId,
+          mcBoardData.mc_value || null
+        ]
+      );
+
+    }
+
+    /* ================= SWELLING ================= */
+
+    if (Object.keys(swellingData).length) {
+
+      await client.query(
+        `
+        INSERT INTO lab_pb_swelling
+        (document_id, swelling_value)
+        VALUES ($1,$2)
+        `,
+        [
+          documentId,
+          swellingData.swelling_value || null
+        ]
+      );
+
+    }
+
+    /* ================= SURFACE SOUNDNESS ================= */
+
+    if (Object.keys(surfaceSoundnessData).length) {
+
+      await client.query(
+        `
+        INSERT INTO lab_pb_surface_soundness
+        (document_id, soundness_value)
+        VALUES ($1,$2)
+        `,
+        [
+          documentId,
+          surfaceSoundnessData.value || null
+        ]
+      );
+
+    }
+
+    /* ================= ADDITIONAL TESTS ================= */
+
+    if (tebalFlakesData.value) {
+
+      await client.query(
+        `
+        INSERT INTO lab_pb_additional_tests
+        (document_id, test_type, value)
+        VALUES ($1,'tebal_flakes',$2)
+        `,
+        [
+          documentId,
+          tebalFlakesData.value
+        ]
+      );
+
+    }
+
+    if (consHardenerData.value) {
+
+      await client.query(
+        `
+        INSERT INTO lab_pb_additional_tests
+        (document_id, test_type, value)
+        VALUES ($1,'cons_hardener',$2)
+        `,
+        [
+          documentId,
+          consHardenerData.value
+        ]
+      );
+
+    }
+
+    if (geltimeData.value) {
+
+      await client.query(
+        `
+        INSERT INTO lab_pb_additional_tests
+        (document_id, test_type, value)
+        VALUES ($1,'geltime_glue_mix',$2)
+        `,
+        [
+          documentId,
+          geltimeData.value
+        ]
+      );
+
     }
 
     /* ================= COMMIT ================= */
@@ -2255,12 +2400,21 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
     });
 
   } catch (err) {
+
     await client.query('ROLLBACK');
+
     console.error("❌ ERROR SIMPAN LAB PB:", err);
-    res.status(500).json({ error: err.message });
+
+    res.status(500).json({
+      error: err.message
+    });
+
   } finally {
+
     client.release();
+
   }
+
 });
 
 /* =========================
