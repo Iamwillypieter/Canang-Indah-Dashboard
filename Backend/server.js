@@ -409,14 +409,38 @@ app.get('/api/dashboard', authenticateToken, (req, res) => {
 /* =========================
    SIMPAN QC ANALISA (POST)
 ========================= */
-app.post("/api/qc-analisa", async (req, res) => {
+app.post("/api/qc-analisa", authenticateToken, async (req, res) => {
+
   const client = await pool.connect();
 
   try {
-    const { tag_name, tanggal, shift_group, rows } = req.body;
 
-    if (!tanggal || !shift_group || !rows || rows.length === 0) {
-      return res.status(400).json({ error: "Data tidak lengkap" });
+    const { rows } = req.body;
+    const user = req.user;
+
+    // =========================================
+    // GET SHIFT FROM USER
+    // =========================================
+
+    const shiftGroup = user.shift_group;
+
+    if (!shiftGroup) {
+      return res.status(400).json({
+        error: "User shift_group tidak ditemukan"
+      });
+    }
+
+    const shift = shiftGroup.charAt(0);
+    const group = shiftGroup.charAt(1);
+
+    // =========================================
+    // VALIDASI ROWS
+    // =========================================
+
+    if (!rows || rows.length === 0) {
+      return res.status(400).json({
+        error: "Rows tidak boleh kosong"
+      });
     }
 
     const validRows = rows.filter(row =>
@@ -424,29 +448,79 @@ app.post("/api/qc-analisa", async (req, res) => {
     );
 
     if (validRows.length === 0) {
-      return res.status(400).json({ error: "Semua baris kosong" });
+      return res.status(400).json({
+        error: "Semua baris kosong"
+      });
     }
 
     await client.query("BEGIN");
 
-    // INSERT dokumen dengan tag_name
+    // =========================================
+    // GENERATE RUNNING NUMBER
+    // =========================================
+
+    const countResult = await client.query(
+      `SELECT COUNT(*) 
+       FROM qc_analisa_documents
+       WHERE DATE(created_at) = CURRENT_DATE
+       AND shift_group = $1`,
+      [shiftGroup]
+    );
+
+    const runningNumber = String(
+      parseInt(countResult.rows[0].count) + 1
+    ).padStart(4, "0");
+
+
+    // =========================================
+    // DATE & TIME REALTIME
+    // =========================================
+
+    const now = new Date();
+
+    const day = String(now.getDate()).padStart(2, "0");
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const year = now.getFullYear();
+
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+
+    const date = `${day}${month}${year}`;
+    const time = `${hours}.${minutes}`;
+
+
+    // =========================================
+    // TAG NAME
+    // =========================================
+
+    const tag_name = `QC Analisa ${runningNumber} ${shift}${group} ${date} ${time}`;
+
+
+    // =========================================
+    // INSERT DOCUMENT
+    // =========================================
+
     const docResult = await client.query(
-      `INSERT INTO qc_analisa_documents 
+      `INSERT INTO qc_analisa_documents
        (title, tag_name, tanggal, shift_group, created_at)
-       VALUES ($1, $2, $3, $4, NOW())
+       VALUES ($1,$2,NOW(),$3,NOW())
        RETURNING id`,
       [
-        `QC Analisa ${tanggal} ${shift_group}`,
-        tag_name || null,
-        tanggal,
-        shift_group
+        "QC Analisa",
+        tag_name,
+        shiftGroup
       ]
     );
 
     const documentId = docResult.rows[0].id;
 
-    // Insert detail rows
+
+    // =========================================
+    // INSERT ROWS
+    // =========================================
+
     for (const row of validRows) {
+
       await client.query(
         `INSERT INTO qc_analisa_screen (
           document_id, tanggal, shift_group, jam, material,
@@ -454,11 +528,13 @@ app.post("/api/qc-analisa", async (req, res) => {
           fraction_gt_2, fraction_gt_1, fraction_0_5,
           fraction_0_25, fraction_lt_0_25,
           jumlah_gr, keterangan, diperiksa_oleh
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16
+        )`,
         [
           documentId,
           row.tanggal || null,
-          row.shift_group || null,
+          shiftGroup,
           row.jam || null,
           row.material || null,
           row.fraction_gt_8 || null,
@@ -474,23 +550,34 @@ app.post("/api/qc-analisa", async (req, res) => {
           row.diperiksa_oleh || null
         ]
       );
+
     }
 
     await client.query("COMMIT");
 
     res.status(201).json({
       message: "QC Analisa berhasil disimpan",
+      tag_name,
       documentId,
-      count: validRows.length
+      rows: validRows.length
     });
 
   } catch (err) {
+
     await client.query("ROLLBACK");
-    console.error("ERROR SIMPAN QC:", err);
-    res.status(500).json({ error: "Gagal simpan QC Analisa: " + err.message });
+
+    console.error("❌ ERROR SIMPAN QC ANALISA:", err);
+
+    res.status(500).json({
+      error: "Gagal simpan QC Analisa: " + err.message
+    });
+
   } finally {
+
     client.release();
+
   }
+
 });
 
 /* =========================
@@ -549,50 +636,104 @@ app.get("/api/qc-analisa/:id", async (req, res) => {
 });
 
 /* =========================
-   UPDATE QC ANALISA (PUT)
+   UPDATE QC ANALISA
 ========================= */
-app.put("/api/qc-analisa/:id", async (req, res) => {
-  const { id } = req.params;
-  const { tag_name, tanggal, shift_group, rows } = req.body;
-  const client = await pool.connect();
+app.put("/api/qc-analisa/:id", authenticateToken, async (req, res) => {
+
+  const { id } = req.params
+  const { tanggal, rows } = req.body
+
+  const user = req.user
+  const userShiftGroup = user.shift_group
+
+  const client = await pool.connect()
 
   try {
-    if (!tanggal || !shift_group || !rows || rows.length === 0) {
-      return res.status(400).json({ error: "Data tidak lengkap" });
+
+    if (!tanggal || !rows || rows.length === 0) {
+      return res.status(400).json({ error: "Data tidak lengkap" })
     }
 
     const validRows = rows.filter(row =>
       row.jam || row.material || row.jumlah_gr
-    );
+    )
 
     if (validRows.length === 0) {
-      return res.status(400).json({ error: "Semua baris kosong" });
+      return res.status(400).json({ error: "Semua baris kosong" })
     }
 
-    await client.query("BEGIN");
+    await client.query("BEGIN")
 
-    // UPDATE dokumen dengan tag_name
+    /* =========================
+       CEK DOKUMEN
+    ========================= */
+
+    const docCheck = await client.query(
+      `SELECT id, shift_group, tag_name
+       FROM qc_analisa_documents
+       WHERE id = $1`,
+      [id]
+    )
+
+    if (docCheck.rowCount === 0) {
+
+      await client.query("ROLLBACK")
+
+      return res.status(404).json({
+        error: "Dokumen tidak ditemukan"
+      })
+
+    }
+
+    const document = docCheck.rows[0]
+
+    /* =========================
+       VALIDASI SHIFT
+    ========================= */
+
+    if (document.shift_group !== userShiftGroup) {
+
+      await client.query("ROLLBACK")
+
+      return res.status(403).json({
+        error: `Shift ${userShiftGroup} tidak boleh mengedit dokumen ${document.tag_name}`
+      })
+
+    }
+
+    /* =========================
+       UPDATE DOCUMENT
+    ========================= */
+
     await client.query(
-      `UPDATE qc_analisa_documents 
-       SET title = $1, tag_name = $2, tanggal = $3, shift_group = $4, updated_at = NOW()
-       WHERE id = $5`,
+      `UPDATE qc_analisa_documents
+       SET title = $1,
+           tanggal = $2,
+           updated_at = NOW()
+       WHERE id = $3`,
       [
-        `QC Analisa ${tanggal} ${shift_group}`,
-        tag_name || null,
+        `QC Analisa ${tanggal} ${userShiftGroup}`,
         tanggal,
-        shift_group,
         id
       ]
-    );
+    )
 
-    // Hapus data lama di child table
+    /* =========================
+       DELETE CHILD DATA
+    ========================= */
+
     await client.query(
-      "DELETE FROM qc_analisa_screen WHERE document_id = $1",
+      `DELETE FROM qc_analisa_screen
+       WHERE document_id = $1`,
       [id]
-    );
+    )
 
-    // Insert data baru
+    /* =========================
+       INSERT ROW BARU
+    ========================= */
+
     for (const row of validRows) {
+
       await client.query(
         `INSERT INTO qc_analisa_screen (
           document_id, tanggal, shift_group, jam, material,
@@ -603,8 +744,8 @@ app.put("/api/qc-analisa/:id", async (req, res) => {
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [
           id,
-          row.tanggal || null,
-          row.shift_group || null,
+          tanggal,
+          userShiftGroup,
           row.jam || null,
           row.material || null,
           row.fraction_gt_8 || null,
@@ -617,65 +758,136 @@ app.put("/api/qc-analisa/:id", async (req, res) => {
           row.fraction_lt_0_25 || null,
           row.jumlah_gr || null,
           row.keterangan || null,
-          row.diperiksa_oleh || null
+          user.username
         ]
-      );
+      )
+
     }
 
-    await client.query("COMMIT");
+    await client.query("COMMIT")
 
     res.json({
-      message: "QC Analisa berhasil diperbarui",
-      count: validRows.length
-    });
+      message: `Dokumen ${document.tag_name} berhasil diperbarui`,
+      rows: validRows.length
+    })
 
   } catch (err) {
-    await client.query("ROLLBACK");
-    console.error("ERROR UPDATE QC:", err);
-    res.status(500).json({ error: "Gagal memperbarui QC Analisa: " + err.message });
+
+    await client.query("ROLLBACK")
+
+    console.error("UPDATE QC ERROR:", err)
+
+    res.status(500).json({
+      error: "Gagal update QC Analisa",
+      detail: err.message
+    })
+
   } finally {
-    client.release();
+
+    client.release()
+
   }
-});
+
+})
 
 /* =========================
-   HAPUS DOKUMEN (DELETE) - ⚠️ FIX: pakai client.query di dalam transaction!
+   DELETE QC ANALISA
 ========================= */
-app.delete("/api/qc-analisa-documents/:id", async (req, res) => {
-  const { id } = req.params;
-  const client = await pool.connect();  // 👈 Pakai client untuk transaction
+app.delete("/api/qc-analisa-documents/:id", authenticateToken, async (req, res) => {
+
+  const { id } = req.params
+  const user = req.user
+  const userShiftGroup = user.shift_group
+
+  const client = await pool.connect()
 
   try {
-    await client.query("BEGIN");
 
-    // Hapus child records dulu (foreign key constraint) - 👈 PAKAI client.query!
-    await client.query(
-      "DELETE FROM qc_analisa_screen WHERE document_id = $1",
+    await client.query("BEGIN")
+
+    /* =========================
+       CEK DOKUMEN
+    ========================= */
+
+    const docCheck = await client.query(
+      `SELECT id, shift_group, tag_name
+       FROM qc_analisa_documents
+       WHERE id = $1`,
       [id]
-    );
+    )
 
-    // Hapus dokumen utama - 👈 PAKAI client.query!
-    const result = await client.query(
-      "DELETE FROM qc_analisa_documents WHERE id = $1 RETURNING id",
-      [id]
-    );
+    if (docCheck.rowCount === 0) {
 
-    if (result.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+      await client.query("ROLLBACK")
+
+      return res.status(404).json({
+        error: "Dokumen tidak ditemukan"
+      })
+
     }
 
-    await client.query("COMMIT");
-    res.json({ message: "Dokumen berhasil dihapus" });
+    const document = docCheck.rows[0]
 
-  } catch (err) {
-    await client.query("ROLLBACK");
-    console.error("ERROR HAPUS QC:", err);
-    res.status(500).json({ error: "Gagal menghapus dokumen: " + err.message });
+    /* =========================
+       VALIDASI SHIFT
+    ========================= */
+
+    if (document.shift_group !== userShiftGroup) {
+
+      await client.query("ROLLBACK")
+
+      return res.status(403).json({
+        error: `Shift ${userShiftGroup} tidak boleh menghapus dokumen ${document.tag_name}`
+      })
+
+    }
+
+    /* =========================
+       DELETE CHILD
+    ========================= */
+
+    await client.query(
+      `DELETE FROM qc_analisa_screen
+       WHERE document_id = $1`,
+      [id]
+    )
+
+    /* =========================
+       DELETE DOCUMENT
+    ========================= */
+
+    await client.query(
+      `DELETE FROM qc_analisa_documents
+       WHERE id = $1`,
+      [id]
+    )
+
+    await client.query("COMMIT")
+
+    res.json({
+      success: true,
+      message: `Dokumen ${document.tag_name} berhasil dihapus`
+    })
+
+  } catch (error) {
+
+    await client.query("ROLLBACK")
+
+    console.error("DELETE QC ERROR:", error)
+
+    res.status(500).json({
+      success: false,
+      message: "Gagal menghapus dokumen",
+      error: error.message
+    })
+
   } finally {
-    client.release();  // 👈 Release client, bukan pool
+
+    client.release()
+
   }
-});
+
+})
 
 
 
