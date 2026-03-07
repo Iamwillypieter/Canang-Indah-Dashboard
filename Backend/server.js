@@ -2057,7 +2057,6 @@ app.post('/api/lab-pb', authenticateToken, async (req, res) => {
       FROM lab_pb_documents
       WHERE DATE(created_at) = CURRENT_DATE
       AND shift_group = $1
-      FOR UPDATE
       `,
       [shift_group]
     );
