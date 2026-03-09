@@ -1,5 +1,5 @@
 export default function ResinInspectionHeader({ 
-  tagName,    // 👈 Tambahkan prop tagName
+  tagName,
   date, 
   shift, 
   group, 
@@ -8,60 +8,69 @@ export default function ResinInspectionHeader({
   return (
     <table style={styles.table}>
       <tbody>
+
+        {/* TAG NAME AUTO */}
         <tr>
-          <td className="label" style={styles.label}>
+          <td style={styles.label}>
             <strong>Tag Name</strong>
           </td>
+
           <td colSpan="4">
             <input 
-              type="text" 
-              name="tagName" 
-              value={tagName || ""} 
-              onChange={onChange} 
-              placeholder="ex: 0001 1A"
+              type="text"
+              value={tagName || ""}
+              readOnly
+              placeholder="Auto generated"
               style={styles.tagNameInput}
             />
           </td>
         </tr>
 
+        {/* DATE */}
         <tr>
-          <td className="label" style={styles.label}>Date</td>
+          <td style={styles.label}>Date</td>
+
           <td colSpan="4">
             <input 
-              type="date" 
-              name="date" 
-              value={date || ""} 
-              onChange={onChange} 
+              type="date"
+              name="date"
+              value={date || ""}
+              onChange={onChange}
               style={styles.input}
             />
           </td>
         </tr>
 
+        {/* SHIFT */}
         <tr>
-          <td className="label" style={styles.label}>Shift</td>
+          <td style={styles.label}>Shift</td>
+
           <td colSpan="4">
             <input 
-              name="shift" 
-              value={shift || ""} 
-              onChange={onChange} 
+              name="shift"
+              value={shift || ""}
+              onChange={onChange}
               placeholder="1 / 2 / 3"
               style={styles.input}
             />
           </td>
         </tr>
 
+        {/* GROUP */}
         <tr>
-          <td className="label" style={styles.label}>Group</td>
+          <td style={styles.label}>Group</td>
+
           <td colSpan="4">
             <input 
-              name="group" 
-              value={group || ""} 
-              onChange={onChange} 
-              placeholder="Group A / B / C / D"
+              name="group"
+              value={group || ""}
+              onChange={onChange}
+              placeholder="A / B / C / D"
               style={styles.input}
             />
           </td>
         </tr>
+
       </tbody>
     </table>
   );
@@ -94,9 +103,10 @@ const styles = {
     border: '2px solid #0ea5e9',
     borderRadius: '6px',
     fontSize: '15px',
-    fontWeight: '500',
-    backgroundColor: '#f0f9ff',
-    boxSizing: 'border-box',
-    transition: 'border-color 0.2s'
+    fontWeight: '600',
+    backgroundColor: '#f1f5f9',
+    color: '#0f172a',
+    cursor: 'not-allowed',
+    boxSizing: 'border-box'
   }
 };

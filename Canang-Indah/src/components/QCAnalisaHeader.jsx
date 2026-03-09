@@ -1,37 +1,29 @@
-import { useState } from 'react';
-
-export default function QCAnalisaHeader({ onTagChange }) {
-  const [tagName, setTagName] = useState('');
-
-  const handleInputChange = (e) => {
-    const value = e.target.value;
-    setTagName(value);
-    
-    if (onTagChange) {
-      onTagChange(value);
-    }
-  };
+export default function QCAnalisaHeader({ tagName }) {
 
   return (
     <div style={styles.headerContainer}>
       <div style={styles.contentWrapper}>
-        {/* Bagian Judul */}
+
+        {/* Judul */}
         <div style={styles.titleSection}>
           <h2 style={styles.title}>🔍 Quality Control Particleboard</h2>
           <p style={styles.subtitle}>ANALISA SCREEN</p>
         </div>
 
-        {/* Bagian Input Tag Name */}
+        {/* Tag Name (AUTO) */}
         <div style={styles.inputSection}>
           <label style={styles.label}>Tag Name Document</label>
+
           <input
             type="text"
             style={styles.input}
-            placeholder="ex: 0001 1A"
-            value={tagName}
-            onChange={handleInputChange}
+            value={tagName || ""}
+            placeholder="Auto generated after save"
+            readOnly
           />
+
         </div>
+
       </div>
     </div>
   );
@@ -85,8 +77,11 @@ const styles = {
     border: '1px solid #cbd5e1',
     borderRadius: '6px',
     outline: 'none',
-    transition: 'border-color 0.2s',
     width: '100%',
-    boxSizing: 'border-box' // Biar padding gak ngerusak lebar
+    boxSizing: 'border-box',
+    backgroundColor: '#f1f5f9',
+    cursor: 'not-allowed',
+    fontWeight: '600',
+    color: '#0f172a'
   }
 };

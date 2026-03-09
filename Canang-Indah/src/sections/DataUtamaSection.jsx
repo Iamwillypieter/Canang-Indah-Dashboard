@@ -27,9 +27,9 @@ export default function DataUtamaSection({
           type="text" 
           name="tagName"
           value={formData.tagName || ""}  
-          onChange={handleTagNameChange}
-          placeholder="Contoh: 1A, 1B, 0001"
+          readOnly
           className="form-input"
+          placeholder="Auto generated"
         />
       </div>
 
