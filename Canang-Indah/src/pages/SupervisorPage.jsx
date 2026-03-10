@@ -41,6 +41,7 @@ export default function SupervisorPage() {
   const [viewMode, setViewMode] = useState("list");
   const [comparisonMode, setComparisonMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState([]);
+  const [labPBResult, setLabPBResult] = useState(null);
   
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -52,6 +53,7 @@ export default function SupervisorPage() {
   }, []);
 
   const getAuthToken = () => localStorage.getItem('token');
+  
 
   const fetchWithAuth = async (url) => {
     const token = getAuthToken();
@@ -327,6 +329,16 @@ export default function SupervisorPage() {
     return typeGroups;
   }, [filteredDocuments]);
 
+  const fetchLabPBResult = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/lab-pb-result/${id}`);
+      const data = await res.json();
+      setLabPBResult(data);
+    } catch (err) {
+      alert("Gagal mengambil hasil test");
+    }
+  };
+
   return (
     <div className="supervisor-container">
       <header className="supervisor-header">
@@ -338,6 +350,13 @@ export default function SupervisorPage() {
       <div className="filter-toolbar">
         <div className="search-section">
           <div className="search-wrapper">
+            <input
+              type="text"
+              placeholder="🔍 Search by Tag Name, Shift, Date..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="search-input"
+            />
             <input
               type="text"
               placeholder="🔍 Search by Tag Name, Shift, Date..."

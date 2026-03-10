@@ -2613,6 +2613,96 @@ app.get('/api/lab-pb/:id', async (req, res) => {
   }
 });
 
+
+/* =========================
+   TEST RESULT
+========================= */
+app.get("/api/lab-pb-result/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+
+    const header = await pool.query(
+      `SELECT * FROM lab_pb_header WHERE id=$1`,
+      [id]
+    );
+
+    const samples24 = await pool.query(
+      `SELECT * FROM lab_pb_24_samples WHERE document_id=$1`,
+      [id]
+    );
+
+    const internalBond = await pool.query(
+      `SELECT * FROM lab_pb_internal_bond WHERE document_id=$1`,
+      [id]
+    );
+
+    const bending = await pool.query(
+      `SELECT * FROM lab_pb_bending WHERE document_id=$1`,
+      [id]
+    );
+
+    const screw = await pool.query(
+      `SELECT * FROM lab_pb_screw WHERE document_id=$1`,
+      [id]
+    );
+
+    const densityProfile = await pool.query(
+      `SELECT * FROM lab_pb_density_profile WHERE document_id=$1`,
+      [id]
+    );
+
+    const mcBoard = await pool.query(
+      `SELECT * FROM lab_pb_mc_board WHERE document_id=$1`,
+      [id]
+    );
+
+    const swelling = await pool.query(
+      `SELECT * FROM lab_pb_swelling WHERE document_id=$1`,
+      [id]
+    );
+
+    const surface = await pool.query(
+      `SELECT * FROM lab_pb_surface_soundness WHERE document_id=$1`,
+      [id]
+    );
+
+    const flakes = await pool.query(
+      `SELECT * FROM lab_pb_tebal_flakes WHERE document_id=$1`,
+      [id]
+    );
+
+    const hardener = await pool.query(
+      `SELECT * FROM lab_pb_cons_hardener WHERE document_id=$1`,
+      [id]
+    );
+
+    const geltime = await pool.query(
+      `SELECT * FROM lab_pb_geltime_glue WHERE document_id=$1`,
+      [id]
+    );
+
+    res.json({
+      header: header.rows[0],
+      samples24: samples24.rows,
+      internalBond: internalBond.rows,
+      bending: bending.rows,
+      screw: screw.rows,
+      densityProfile: densityProfile.rows,
+      mcBoard: mcBoard.rows,
+      swelling: swelling.rows,
+      surface,
+      flakes,
+      hardener,
+      geltime
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch Lab PB Result" });
+  }
+});
+
 /* =========================
    UPDATE DOKUMEN LAB PB (PUT) - FIXED (tanpa title)
 ========================= */
