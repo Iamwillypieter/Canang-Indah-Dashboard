@@ -32,44 +32,63 @@ const FORM_TYPES = {
   }
 };
 
+/* ================= HELPER: Decode JWT ================= */
+const getUserNameFromToken = (token) => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.name || payload.username || payload.user_name || payload.email?.split("@")[0] || null;
+  } catch {
+    return null;
+  }
+};
+
 export default function DocumentList() {
   const [documents, setDocuments] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   
-  // 👇 NEW: Date Filter & Type Filter & View Mode
+  // 👇 Filters & View Mode
   const [dateFilter, setDateFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all"); // 'all' | 'qc' | 'resin' | 'flakes' | 'labPBForm'
-  const [viewMode, setViewMode] = useState("list"); // 'list' | 'grouped'
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("list");
+  
+  // 👇 User signature
   const [userName, setUserName] = useState("");
 
+  // 👇 Fetch documents on mount
   useEffect(() => {
     fetchDocuments();
   }, []);
 
+  // 👇 Load user name on mount (priority: localStorage > JWT token)
   useEffect(() => {
-    // Coba ambil dari localStorage dulu (paling simpel)
-    const storedName = localStorage.getItem("user_name"); 
-    if (storedName) {
-      setUserName(storedName.toUpperCase());
-    } else {
-      // 👇 Fallback: decode JWT token kalau nama ada di payload
+    const loadUserName = () => {
+      const storedName = localStorage.getItem("user_name");
+      if (storedName?.trim()) {
+        setUserName(storedName.trim().toUpperCase());
+        return;
+      }
+      
       const token = localStorage.getItem("token");
       if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split(".")[1]));
-          const name = payload.name || payload.username || payload.user_name || "USER";
+        const name = getUserNameFromToken(token);
+        if (name) {
           setUserName(name.toUpperCase());
-        } catch (e) {
-          setUserName("USER");
+          // Optional: simpan ke localStorage biar next load lebih cepat
+          localStorage.setItem("user_name", name);
+          return;
         }
       }
-    }
+      
+      // Fallback terakhir
+      setUserName("USER");
+    };
+    
+    loadUserName();
   }, []);
 
   const fetchDocuments = async () => {
     setLoading(true);
-
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -82,9 +101,7 @@ export default function DocumentList() {
       const requests = Object.entries(FORM_TYPES).map(
         async ([key, config]) => {
           const res = await fetch(config.endpoint, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+            headers: { Authorization: `Bearer ${token}` }
           });
 
           if (!res.ok) {
@@ -94,20 +111,12 @@ export default function DocumentList() {
 
           const data = await res.json();
           const docsArray = Array.isArray(data) ? data : data.documents || [];
-
-          return docsArray.map(doc => ({
-            ...doc,
-            type: key
-          }));
+          return docsArray.map(doc => ({ ...doc, type: key }));
         }
       );
 
       const results = await Promise.all(requests);
-
-      const mergedDocs = results
-        .flat()
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
+      const mergedDocs = results.flat().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setDocuments(mergedDocs);
 
     } catch (err) {
@@ -132,9 +141,7 @@ export default function DocumentList() {
     try {
       const res = await fetch(`${config.endpoint}/${doc.id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (!res.ok) {
@@ -144,30 +151,20 @@ export default function DocumentList() {
 
       alert("✅ Dokumen berhasil dihapus");
       fetchDocuments();
-
     } catch (err) {
       alert(`❌ ${err.message}`);
     }
   };
 
-  // 👇 Helper: Ambil judul dokumen (prioritaskan tag_name)
   const getDocumentTitle = (doc) => {
-    // 🔥 PRIORITAS PERTAMA: document_name (unique name)
-    if (doc.document_name?.trim()) {
-      return doc.document_name.trim();
-    }
-
-    // fallback lama
+    if (doc.document_name?.trim()) return doc.document_name.trim();
     const rawTag = doc.tag_name || doc.tagName || doc.tagname;
     if (rawTag?.trim()) return rawTag.trim();
-
     if (doc.title?.trim()) return doc.title.trim();
     if (doc.document_title?.trim()) return doc.document_title.trim();
-
     return `${FORM_TYPES[doc.type]?.label || "Dokumen"} #${doc.id}`;
   };
 
-  // 👇 Helper: Ambil detail header
   const getHeaderDetails = (doc) => {
     const details = [];
     
@@ -180,29 +177,19 @@ export default function DocumentList() {
     }
     
     const shiftVal = doc.shift || doc.shift_group || doc.shiftGroup;
-    if (shiftVal) {
-      details.push({ label: "Shift", value: shiftVal });
-    }
+    if (shiftVal) details.push({ label: "Shift", value: shiftVal });
     
     const groupVal = doc.group || doc.group_name || doc.groupName;
-    if (groupVal) {
-      details.push({ label: "Group", value: groupVal });
-    }
+    if (groupVal) details.push({ label: "Group", value: groupVal });
     
     const jamVal = doc.jam || doc.time;
-    if (jamVal) {
-      details.push({ label: "Jam", value: jamVal });
-    }
+    if (jamVal) details.push({ label: "Jam", value: jamVal });
     
     const boardVal = doc.board_no || doc.boardNo || doc.lot_no || doc.batch_no;
-    if (boardVal) {
-      details.push({ label: "Board", value: boardVal });
-    }
+    if (boardVal) details.push({ label: "Board", value: boardVal });
     
     const ukuranVal = doc.ukuranPapan || doc.ukuran_papan;
-    if (ukuranVal) {
-      details.push({ label: "Ukuran", value: ukuranVal });
-    }
+    if (ukuranVal) details.push({ label: "Ukuran", value: ukuranVal });
 
     if (doc.type === "resin") {
       const inspection = doc.inspection?.[0] || {};
@@ -215,11 +202,9 @@ export default function DocumentList() {
     return details;
   };
 
-  // 👇 Filter: Date + Type + Search
   const filteredDocs = useMemo(() => {
     let result = [...documents];
 
-    // Filter by Date
     if (dateFilter) {
       const filterDate = new Date(dateFilter);
       result = result.filter(doc => {
@@ -232,12 +217,10 @@ export default function DocumentList() {
       });
     }
 
-    // Filter by Type
     if (typeFilter !== "all") {
       result = result.filter(doc => doc.type === typeFilter);
     }
 
-    // Filter by Search
     if (search.trim()) {
       const term = search.toLowerCase();
       result = result.filter(doc => {
@@ -251,9 +234,7 @@ export default function DocumentList() {
         const matchesKeterangan = keterangan.includes(term);
         
         const headerDetails = getHeaderDetails(doc);
-        const matchesHeader = headerDetails.some(d => 
-          d.value?.toString().toLowerCase().includes(term)
-        );
+        const matchesHeader = headerDetails.some(d => d.value?.toString().toLowerCase().includes(term));
 
         let matchesFormFields = false;
         if (doc.type === "resin") {
@@ -276,19 +257,15 @@ export default function DocumentList() {
     return result;
   }, [documents, dateFilter, typeFilter, search]);
 
-  // 👇 Group documents by type (untuk Grouped View)
   const groupedDocs = useMemo(() => {
     const groups = {};
     filteredDocs.forEach(doc => {
-      if (!groups[doc.type]) {
-        groups[doc.type] = [];
-      }
+      if (!groups[doc.type]) groups[doc.type] = [];
       groups[doc.type].push(doc);
     });
     return groups;
   }, [filteredDocs]);
 
-  // 👇 Clear all filters
   const clearFilters = () => {
     setDateFilter("");
     setTypeFilter("all");
@@ -299,9 +276,8 @@ export default function DocumentList() {
     <div className="doc-container">
       <h2>📁 My Documents</h2>
 
-      {/* 🔥 ENHANCED TOOLBAR WITH DATE & TYPE FILTER */}
+      {/* 🔥 TOOLBAR */}
       <div className="doc-toolbar">
-        {/* Search */}
         <div className="search-section">
           <input
             type="text"
@@ -315,7 +291,6 @@ export default function DocumentList() {
           )}
         </div>
 
-        {/* Date Filter */}
         <div className="filter-section">
           <label className="filter-label">📅 Tanggal:</label>
           <input
@@ -329,7 +304,6 @@ export default function DocumentList() {
           )}
         </div>
 
-        {/* Type Filter */}
         <div className="filter-section">
           <label className="filter-label">📋 Form:</label>
           <select
@@ -345,21 +319,10 @@ export default function DocumentList() {
           </select>
         </div>
 
-        {/* View Toggle & Actions */}
         <div className="toolbar-actions">
           <div className="view-toggle">
-            <button 
-              className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
-              onClick={() => setViewMode('list')}
-            >
-              📄 List
-            </button>
-            <button 
-              className={`toggle-btn ${viewMode === 'grouped' ? 'active' : ''}`}
-              onClick={() => setViewMode('grouped')}
-            >
-              📊 Group
-            </button>
+            <button className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>📄 List</button>
+            <button className={`toggle-btn ${viewMode === 'grouped' ? 'active' : ''}`} onClick={() => setViewMode('grouped')}>📊 Group</button>
           </div>
           <button onClick={fetchDocuments} className="refresh-btn">🔄 Refresh</button>
           {(dateFilter || typeFilter !== "all" || search) && (
@@ -392,7 +355,6 @@ export default function DocumentList() {
                       <span className="type-count">({docs.length})</span>
                     </h3>
                   </div>
-
                   <div className="doc-grid">
                     {docs.map(doc => {
                       const docTitle = getDocumentTitle(doc);
@@ -407,20 +369,12 @@ export default function DocumentList() {
                               <div className="doc-title-wrapper">
                                 <div className="doc-title-main">
                                   <span className="doc-title-default">🏷️ {displayName}</span>
-
-                                  {/* 🔥 Tampilkan tag_name sebagai sub info */}
                                   {doc.tag_name && doc.document_name && (
-                                    <div className="doc-subtitle">
-                                      Tag: {doc.tag_name}
-                                    </div>
+                                    <div className="doc-subtitle">Tag: {doc.tag_name}</div>
                                   )}
                                 </div>
-
-                                <span className={`badge badge-${doc.type}`}>
-                                  {config.label}
-                                </span>
+                                <span className={`badge badge-${doc.type}`}>{config.label}</span>
                               </div>
-
                               {headerDetails.length > 0 && (
                                 <div className="doc-header-details">
                                   {headerDetails.slice(0, 3).map((detail, idx) => (
@@ -430,13 +384,9 @@ export default function DocumentList() {
                                   ))}
                                 </div>
                               )}
-
-                              <div className="doc-meta">
-                                Dibuat: {new Date(doc.created_at).toLocaleString("id-ID")}
-                              </div>
+                              <div className="doc-meta">Dibuat: {new Date(doc.created_at).toLocaleString("id-ID")}</div>
                             </div>
                           </div>
-
                           <div className="doc-actions">
                             <Link to={`${config.route}/${doc.id}`} className="action-btn view-btn" title="Lihat Detail">👁</Link>
                             <Link to={`${config.route}/${doc.id}/edit`} className="action-btn edit-btn" title="Edit Dokumen">✏️</Link>
@@ -461,11 +411,7 @@ export default function DocumentList() {
           ) : filteredDocs.length === 0 ? (
             <div className="empty">
               <div className="empty-icon">📭</div>
-              <p>
-                {dateFilter || typeFilter !== "all" || search 
-                  ? "Tidak ada dokumen yang sesuai filter" 
-                  : "📭 Belum ada dokumen"}
-              </p>
+              <p>{dateFilter || typeFilter !== "all" || search ? "Tidak ada dokumen yang sesuai filter" : "📭 Belum ada dokumen"}</p>
               {(dateFilter || typeFilter !== "all" || search) && (
                 <button onClick={clearFilters} className="reset-btn">🔄 Reset Filter</button>
               )}
@@ -474,9 +420,8 @@ export default function DocumentList() {
             <div className="doc-list">
               {filteredDocs.map(doc => {
                 const config = FORM_TYPES[doc.type];
-                const docTitle = getDocumentTitle(doc);
-                const headerDetails = getHeaderDetails(doc);
                 const displayName = getDocumentTitle(doc);
+                const headerDetails = getHeaderDetails(doc);
 
                 return (
                   <div className="doc-item" key={`${doc.type}-${doc.id}`}>
@@ -487,7 +432,6 @@ export default function DocumentList() {
                           <span className="doc-title-default">🏷️ {displayName}</span>
                           <span className={`badge badge-${doc.type}`}>{config.label}</span>
                         </div>
-
                         {headerDetails.length > 0 && (
                           <div className="doc-header-details">
                             {headerDetails.map((detail, idx) => (
@@ -497,13 +441,9 @@ export default function DocumentList() {
                             ))}
                           </div>
                         )}
-
-                        <div className="doc-meta">
-                          Dibuat: {new Date(doc.created_at).toLocaleString("id-ID")}
-                        </div>
+                        <div className="doc-meta">Dibuat: {new Date(doc.created_at).toLocaleString("id-ID")}</div>
                       </div>
                     </div>
-
                     <div className="doc-actions">
                       <Link to={`${config.route}/${doc.id}`} className="action-btn view-btn" title="Lihat Detail">👁</Link>
                       <Link to={`${config.route}/${doc.id}/edit`} className="action-btn edit-btn" title="Edit Dokumen">✏️</Link>
@@ -516,11 +456,13 @@ export default function DocumentList() {
           )}
         </>
       )}
-      {userName && (
-        <div className="doc-signature">
-          by : <strong>{userName}</strong>
-        </div>
-      )}
+
+      {/* 👇 SIGNATURE: Fixed Bottom Right - SELALU MUNCUL */}
+      <div className="doc-signature-wrapper">
+        <span className="doc-signature">
+          by : <strong>{userName || "USER"}</strong>
+        </span>
+      </div>
     </div>
   );
 }
