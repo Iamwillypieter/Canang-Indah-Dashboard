@@ -32,6 +32,14 @@ const FORM_TYPES = {
   }
 };
 
+const LAB_TESTS = [
+  { key: "density_avg", label: "Density Profile" },
+  { key: "moisture_avg", label: "MC Board" },
+  { key: "ib_avg", label: "Internal Bonding" },
+  { key: "mor_avg", label: "Bending Strength" },
+  { key: "swelling_avg", label: "Swelling 2H" }
+];
+
 export default function SupervisorPage() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +49,8 @@ export default function SupervisorPage() {
   const [viewMode, setViewMode] = useState("list");
   const [comparisonMode, setComparisonMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState([]);
+  const [analysisMode, setAnalysisMode] = useState(false);
+  const [analysisTest, setAnalysisTest] = useState(null);
   
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -253,6 +263,38 @@ export default function SupervisorPage() {
     });
   }, [filteredDocuments]);
 
+  const analysisByShift = useMemo(() => {
+    if (!analysisTest) return [];
+
+    const labDocs = filteredDocuments.filter(d => d.type === "labPBForm");
+
+    const shiftMap = {};
+
+    labDocs.forEach(doc => {
+      const shift = doc.parsed_shift || doc.shift_group || doc.shift || "Unknown";
+      const value = Number(doc[analysisTest]);
+
+      if (!value) return;
+
+      if (!shiftMap[shift]) {
+        shiftMap[shift] = [];
+      }
+
+      shiftMap[shift].push(value);
+    });
+
+    return Object.entries(shiftMap).map(([shift, values]) => {
+      const avg =
+        values.reduce((sum, v) => sum + v, 0) / values.length;
+
+      return {
+        shift,
+        avg: avg.toFixed(2),
+        count: values.length
+      };
+    });
+  }, [analysisTest, filteredDocuments]);
+
   const toggleSelectForCompare = (doc) => {
     setSelectedForCompare(prev => {
       const exists = prev.find(d => d.id === doc.id && d.type === doc.type);
@@ -389,6 +431,34 @@ export default function SupervisorPage() {
         </div>
       </div>
 
+      <div className="analysis-toolbar">
+        <button
+          className={`analysis-toggle ${analysisMode ? "active" : ""}`}
+          onClick={() => {
+            setAnalysisMode(!analysisMode);
+            setAnalysisTest(null);
+          }}
+        >
+          📊 Test Analysis
+        </button>
+
+        {analysisMode && (
+          <div className="analysis-tests">
+            {LAB_TESTS.map(test => (
+              <button
+                key={test.key}
+                className={`analysis-test-btn ${
+                  analysisTest === test.key ? "active" : ""
+                }`}
+                onClick={() => setAnalysisTest(test.key)}
+              >
+                {test.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Comparison Mode Toggle */}
       {documents.length > 0 && (
         <div className="comparison-toggle">
@@ -516,6 +586,35 @@ export default function SupervisorPage() {
                 </div>
               );
             })
+          )}
+        </div>
+      )}
+
+      {analysisMode && analysisTest && (
+        <div className="analysis-panel">
+          <h3>📊 Result by Shift</h3>
+
+          {analysisByShift.length === 0 ? (
+            <p>Tidak ada data test.</p>
+          ) : (
+            <table className="analysis-table">
+              <thead>
+                <tr>
+                  <th>Shift</th>
+                  <th>Average</th>
+                  <th>Total Test</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analysisByShift.map(row => (
+                  <tr key={row.shift}>
+                    <td>Shift {row.shift}</td>
+                    <td>{row.avg}</td>
+                    <td>{row.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       )}
