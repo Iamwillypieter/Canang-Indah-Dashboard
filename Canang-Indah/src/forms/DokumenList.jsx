@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import "./DokumenList.css";
 
 const API_BASE = import.meta.env.VITE_API_URL + "/api";
@@ -10,38 +10,26 @@ const FORM_TYPES = {
     label: "QC Analisa",
     icon: "🧪",
     route: "/lab/pb/admin1/analisa",
-    endpoint: `${API_BASE}/qc-analisa-documents`,
-    color: "qc"
+    endpoint: `${API_BASE}/qc-analisa-documents`
   },
   resin: {
     label: "Resin Inspection",
     icon: "🧴",
     route: "/lab/pb/admin1/resin",
-    endpoint: `${API_BASE}/resin-inspection-documents`,
-    color: "resin"
+    endpoint: `${API_BASE}/resin-inspection-documents`
   },
   flakes: {
     label: "Flakes Inspection",
     icon: "🪵",
     route: "/lab/pb/admin1/flakes",
-    endpoint: `${API_BASE}/flakes-documents`,
-    color: "flakes"
+    endpoint: `${API_BASE}/flakes-documents`
   },
   labPBForm: {
     label: "Lab PB Form",
     icon: "🏭",
     route: "/lab/pb/admin1/lab-pb-form",
-    endpoint: `${API_BASE}/lab-pb-documents`,
-    color: "labpb"
+    endpoint: `${API_BASE}/lab-pb-documents`
   }
-};
-
-// 👇 Helper: Format tanggal konsisten
-const formatDate = (dateString) => {
-  if (!dateString) return "-";
-  return new Date(dateString).toLocaleDateString("id-ID", {
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
 };
 
 export default function DocumentList() {
@@ -49,37 +37,22 @@ export default function DocumentList() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   
-  // Filters & View
+  // 👇 NEW: Date Filter & Type Filter & View Mode
   const [dateFilter, setDateFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [viewMode, setViewMode] = useState("list");
-  const [sortBy, setSortBy] = useState("newest"); // newest | oldest | az
-  
-  // 👇 UX: Toast notification state (opsional, bisa dihapus jika prefer alert)
-  const [toast, setToast] = useState(null);
+  const [typeFilter, setTypeFilter] = useState("all"); // 'all' | 'qc' | 'resin' | 'flakes' | 'labPBForm'
+  const [viewMode, setViewMode] = useState("list"); // 'list' | 'grouped'
 
   useEffect(() => {
     fetchDocuments();
   }, []);
 
-  // 👇 UX: Auto-hide toast after 3 seconds
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
-
-  const showToast = useCallback((message, type = 'info') => {
-    setToast({ message, type });
-  }, []);
-
   const fetchDocuments = async () => {
     setLoading(true);
+
     const token = localStorage.getItem("token");
 
     if (!token) {
-      showToast("❌ Session habis. Silakan login ulang.", "error");
+      alert("❌ Session habis. Silakan login ulang.");
       setLoading(false);
       return;
     }
@@ -88,7 +61,9 @@ export default function DocumentList() {
       const requests = Object.entries(FORM_TYPES).map(
         async ([key, config]) => {
           const res = await fetch(config.endpoint, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
           });
 
           if (!res.ok) {
@@ -98,19 +73,25 @@ export default function DocumentList() {
 
           const data = await res.json();
           const docsArray = Array.isArray(data) ? data : data.documents || [];
-          return docsArray.map(doc => ({ ...doc, type: key }));
+
+          return docsArray.map(doc => ({
+            ...doc,
+            type: key
+          }));
         }
       );
 
       const results = await Promise.all(requests);
+
       const mergedDocs = results
         .flat()
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       setDocuments(mergedDocs);
+
     } catch (err) {
       console.error(err);
-      showToast("❌ Gagal memuat daftar dokumen", "error");
+      alert("❌ Gagal memuat daftar dokumen");
     } finally {
       setLoading(false);
     }
@@ -121,7 +102,7 @@ export default function DocumentList() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      showToast("❌ Session habis. Silakan login ulang.", "error");
+      alert("❌ Session habis. Silakan login ulang.");
       return;
     }
 
@@ -130,7 +111,9 @@ export default function DocumentList() {
     try {
       const res = await fetch(`${config.endpoint}/${doc.id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
 
       if (!res.ok) {
@@ -138,22 +121,32 @@ export default function DocumentList() {
         throw new Error(err.error || "Gagal hapus");
       }
 
-      showToast("✅ Dokumen berhasil dihapus", "success");
+      alert("✅ Dokumen berhasil dihapus");
       fetchDocuments();
+
     } catch (err) {
-      showToast(`❌ ${err.message}`, "error");
+      alert(`❌ ${err.message}`);
     }
   };
 
+  // 👇 Helper: Ambil judul dokumen (prioritaskan tag_name)
   const getDocumentTitle = (doc) => {
-    if (doc.document_name?.trim()) return doc.document_name.trim();
+    // 🔥 PRIORITAS PERTAMA: document_name (unique name)
+    if (doc.document_name?.trim()) {
+      return doc.document_name.trim();
+    }
+
+    // fallback lama
     const rawTag = doc.tag_name || doc.tagName || doc.tagname;
     if (rawTag?.trim()) return rawTag.trim();
+
     if (doc.title?.trim()) return doc.title.trim();
     if (doc.document_title?.trim()) return doc.document_title.trim();
+
     return `${FORM_TYPES[doc.type]?.label || "Dokumen"} #${doc.id}`;
   };
 
+  // 👇 Helper: Ambil detail header
   const getHeaderDetails = (doc) => {
     const details = [];
     
@@ -166,19 +159,29 @@ export default function DocumentList() {
     }
     
     const shiftVal = doc.shift || doc.shift_group || doc.shiftGroup;
-    if (shiftVal) details.push({ label: "Shift", value: shiftVal });
+    if (shiftVal) {
+      details.push({ label: "Shift", value: shiftVal });
+    }
     
     const groupVal = doc.group || doc.group_name || doc.groupName;
-    if (groupVal) details.push({ label: "Group", value: groupVal });
+    if (groupVal) {
+      details.push({ label: "Group", value: groupVal });
+    }
     
     const jamVal = doc.jam || doc.time;
-    if (jamVal) details.push({ label: "Jam", value: jamVal });
+    if (jamVal) {
+      details.push({ label: "Jam", value: jamVal });
+    }
     
     const boardVal = doc.board_no || doc.boardNo || doc.lot_no || doc.batch_no;
-    if (boardVal) details.push({ label: "Board", value: boardVal });
+    if (boardVal) {
+      details.push({ label: "Board", value: boardVal });
+    }
     
     const ukuranVal = doc.ukuranPapan || doc.ukuran_papan;
-    if (ukuranVal) details.push({ label: "Ukuran", value: ukuranVal });
+    if (ukuranVal) {
+      details.push({ label: "Ukuran", value: ukuranVal });
+    }
 
     if (doc.type === "resin") {
       const inspection = doc.inspection?.[0] || {};
@@ -191,7 +194,7 @@ export default function DocumentList() {
     return details;
   };
 
-  // 👇 Enhanced filtering + sorting
+  // 👇 Filter: Date + Type + Search
   const filteredDocs = useMemo(() => {
     let result = [...documents];
 
@@ -249,209 +252,112 @@ export default function DocumentList() {
       });
     }
 
-    // 👇 Sorting
-    if (sortBy === "newest") {
-      result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    } else if (sortBy === "oldest") {
-      result.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    } else if (sortBy === "az") {
-      result.sort((a, b) => getDocumentTitle(a).localeCompare(getDocumentTitle(b)));
-    }
-
     return result;
-  }, [documents, dateFilter, typeFilter, search, sortBy]);
+  }, [documents, dateFilter, typeFilter, search]);
 
+  // 👇 Group documents by type (untuk Grouped View)
   const groupedDocs = useMemo(() => {
     const groups = {};
     filteredDocs.forEach(doc => {
-      if (!groups[doc.type]) groups[doc.type] = [];
+      if (!groups[doc.type]) {
+        groups[doc.type] = [];
+      }
       groups[doc.type].push(doc);
     });
     return groups;
   }, [filteredDocs]);
 
-  // 👇 Filter management helpers
+  // 👇 Clear all filters
   const clearFilters = () => {
     setDateFilter("");
     setTypeFilter("all");
     setSearch("");
-    setSortBy("newest");
   };
-
-  const removeFilterChip = (filterType) => {
-    if (filterType === 'date') setDateFilter("");
-    if (filterType === 'type') setTypeFilter("all");
-    if (filterType === 'search') setSearch("");
-  };
-
-  const activeFilters = useMemo(() => {
-    const filters = [];
-    if (search) filters.push({ type: 'search', label: `🔍 "${search}"` });
-    if (dateFilter) {
-      const formatted = new Date(dateFilter).toLocaleDateString("id-ID");
-      filters.push({ type: 'date', label: `📅 ${formatted}` });
-    }
-    if (typeFilter !== "all") {
-      filters.push({ type: 'type', label: `${FORM_TYPES[typeFilter]?.icon} ${FORM_TYPES[typeFilter]?.label}` });
-    }
-    return filters;
-  }, [search, dateFilter, typeFilter]);
-
-  // 👇 Skeleton Loader Component
-  const SkeletonCard = () => (
-    <div className="doc-item skeleton">
-      <div className="doc-info">
-        <div className="doc-icon skeleton-box" />
-        <div className="doc-content">
-          <div className="skeleton-line title" />
-          <div className="skeleton-line short" />
-          <div className="skeleton-line short" />
-        </div>
-      </div>
-      <div className="doc-actions">
-        <div className="skeleton-box action" />
-        <div className="skeleton-box action" />
-        <div className="skeleton-box action" />
-      </div>
-    </div>
-  );
 
   return (
     <div className="doc-container">
-      {/* 👇 Toast Notification */}
-      {toast && (
-        <div className={`toast toast-${toast.type}`} role="alert">
-          {toast.message}
-        </div>
-      )}
-
       <h2>📁 My Documents</h2>
 
-      {/* 🔥 ENHANCED TOOLBAR */}
+      {/* 🔥 ENHANCED TOOLBAR WITH DATE & TYPE FILTER */}
       <div className="doc-toolbar">
         {/* Search */}
         <div className="search-section">
           <input
             type="text"
-            placeholder="🔍 Cari Tag, Board, Shift..."
+            placeholder="🔍 Cari Tag Name, Board, Shift..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="search-input"
-            aria-label="Cari dokumen"
           />
           {search && (
-            <button 
-              className="clear-btn" 
-              onClick={() => setSearch("")}
-              aria-label="Hapus pencarian"
-            >✕</button>
+            <button className="clear-btn" onClick={() => setSearch("")}>✕</button>
           )}
         </div>
 
-        {/* Filters Row */}
-        <div className="filters-row">
-          {/* Date Filter */}
-          <div className="filter-section">
-            <label className="filter-label" htmlFor="date-filter">📅</label>
-            <input
-              id="date-filter"
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="date-input"
-            />
-          </div>
-
-          {/* Type Filter */}
-          <div className="filter-section">
-            <label className="filter-label" htmlFor="type-filter">📋</label>
-            <select
-              id="type-filter"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="type-select"
-              aria-label="Filter jenis form"
-            >
-              <option value="all">🗂️ Semua</option>
-              <option value="qc">🧪 QC</option>
-              <option value="resin">🧴 Resin</option>
-              <option value="flakes">🪵 Flakes</option>
-              <option value="labPBForm">🏭 Lab PB</option>
-            </select>
-          </div>
-
-          {/* Sort */}
-          <div className="filter-section">
-            <label className="filter-label" htmlFor="sort-select">🔃</label>
-            <select
-              id="sort-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="type-select"
-              aria-label="Urutkan"
-            >
-              <option value="newest">🕐 Terbaru</option>
-              <option value="oldest">🕑 Terlama</option>
-              <option value="az">🔤 A-Z</option>
-            </select>
-          </div>
+        {/* Date Filter */}
+        <div className="filter-section">
+          <label className="filter-label">📅 Tanggal:</label>
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="date-input"
+          />
+          {dateFilter && (
+            <button className="clear-btn" onClick={() => setDateFilter("")}>✕</button>
+          )}
         </div>
 
-        {/* Actions */}
+        {/* Type Filter */}
+        <div className="filter-section">
+          <label className="filter-label">📋 Form:</label>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="type-select"
+          >
+            <option value="all">🗂️ Semua Form</option>
+            <option value="qc">🧪 QC Analisa</option>
+            <option value="resin">🧴 Resin Inspection</option>
+            <option value="flakes">🪵 Flakes Inspection</option>
+            <option value="labPBForm">🏭 Lab PB Form</option>
+          </select>
+        </div>
+
+        {/* View Toggle & Actions */}
         <div className="toolbar-actions">
-          <div className="view-toggle" role="tablist" aria-label="Mode tampilan">
+          <div className="view-toggle">
             <button 
               className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
               onClick={() => setViewMode('list')}
-              role="tab"
-              aria-selected={viewMode === 'list'}
-            >📄 List</button>
+            >
+              📄 List
+            </button>
             <button 
               className={`toggle-btn ${viewMode === 'grouped' ? 'active' : ''}`}
               onClick={() => setViewMode('grouped')}
-              role="tab"
-              aria-selected={viewMode === 'grouped'}
-            >📊 Group</button>
+            >
+              📊 Group
+            </button>
           </div>
-          <button onClick={fetchDocuments} className="refresh-btn" aria-label="Refresh data">🔄</button>
+          <button onClick={fetchDocuments} className="refresh-btn">🔄 Refresh</button>
+          {(dateFilter || typeFilter !== "all" || search) && (
+            <button onClick={clearFilters} className="reset-btn">🔄 Reset</button>
+          )}
         </div>
-      </div>
-
-      {/* 👇 Filter Chips */}
-      {activeFilters.length > 0 && (
-        <div className="filter-chips" aria-label="Filter aktif">
-          {activeFilters.map((chip, idx) => (
-            <span key={idx} className="filter-chip">
-              {chip.label}
-              <button 
-                onClick={() => removeFilterChip(chip.type)}
-                className="chip-remove"
-                aria-label={`Hapus filter ${chip.label}`}
-              >✕</button>
-            </span>
-          ))}
-          <button onClick={clearFilters} className="reset-chips">🔄 Reset Semua</button>
-        </div>
-      )}
-
-      {/* 👇 Result Count */}
-      <div className="result-count" aria-live="polite">
-        Menampilkan {filteredDocs.length} dari {documents.length} dokumen
       </div>
 
       {/* 👇 GROUPED VIEW */}
       {viewMode === "grouped" && (
         <div className="grouped-view">
-          {loading ? (
-            <div className="doc-grid">
-              {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+          {Object.keys(groupedDocs).length === 0 ? (
+            <div className="empty">
+              <div className="empty-icon">📭</div>
+              <p>Tidak ada dokumen</p>
+              {(dateFilter || typeFilter !== "all" || search) && (
+                <button onClick={clearFilters} className="reset-btn">🔄 Reset Filter</button>
+              )}
             </div>
-          ) : Object.keys(groupedDocs).length === 0 ? (
-            <EmptyState 
-              hasActiveFilters={activeFilters.length > 0} 
-              onReset={clearFilters} 
-              search={search}
-            />
           ) : (
             Object.entries(groupedDocs).map(([type, docs]) => {
               const config = FORM_TYPES[type];
@@ -465,18 +371,59 @@ export default function DocumentList() {
                       <span className="type-count">({docs.length})</span>
                     </h3>
                   </div>
+
                   <div className="doc-grid">
-                    {docs.map(doc => (
-                      <DocumentCard 
-                        key={`${doc.type}-${doc.id}`} 
-                        doc={doc} 
-                        config={config}
-                        getDocumentTitle={getDocumentTitle}
-                        getHeaderDetails={getHeaderDetails}
-                        onDelete={handleDelete}
-                        viewMode="grouped"
-                      />
-                    ))}
+                    {docs.map(doc => {
+                      const docTitle = getDocumentTitle(doc);
+                      const headerDetails = getHeaderDetails(doc);
+                      const displayName = getDocumentTitle(doc);
+
+                      return (
+                        <div className="doc-item" key={`${doc.type}-${doc.id}`}>
+                          <div className="doc-info">
+                            <div className="doc-icon">{config.icon}</div>
+                            <div className="doc-content">
+                              <div className="doc-title-wrapper">
+                                <div className="doc-title-main">
+                                  <span className="doc-title-default">🏷️ {displayName}</span>
+
+                                  {/* 🔥 Tampilkan tag_name sebagai sub info */}
+                                  {doc.tag_name && doc.document_name && (
+                                    <div className="doc-subtitle">
+                                      Tag: {doc.tag_name}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <span className={`badge badge-${doc.type}`}>
+                                  {config.label}
+                                </span>
+                              </div>
+
+                              {headerDetails.length > 0 && (
+                                <div className="doc-header-details">
+                                  {headerDetails.slice(0, 3).map((detail, idx) => (
+                                    <span key={idx} className="detail-item">
+                                      <strong>{detail.label}:</strong> {detail.value}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              <div className="doc-meta">
+                                Dibuat: {new Date(doc.created_at).toLocaleString("id-ID")}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="doc-actions">
+                            <Link to={`${config.route}/${doc.id}`} className="action-btn view-btn" title="Lihat Detail">👁</Link>
+                            <Link to={`${config.route}/${doc.id}/edit`} className="action-btn edit-btn" title="Edit Dokumen">✏️</Link>
+                            <button className="action-btn delete-btn" onClick={() => handleDelete(doc)} title="Hapus">🗑</button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -489,129 +436,64 @@ export default function DocumentList() {
       {viewMode === "list" && (
         <>
           {loading ? (
-            <div className="doc-list">
-              {[...Array(5)].map((_, i) => <SkeletonCard key={i} />)}
-            </div>
+            <div className="empty">⏳ Loading data...</div>
           ) : filteredDocs.length === 0 ? (
-            <EmptyState 
-              hasActiveFilters={activeFilters.length > 0} 
-              onReset={clearFilters} 
-              search={search}
-            />
+            <div className="empty">
+              <div className="empty-icon">📭</div>
+              <p>
+                {dateFilter || typeFilter !== "all" || search 
+                  ? "Tidak ada dokumen yang sesuai filter" 
+                  : "📭 Belum ada dokumen"}
+              </p>
+              {(dateFilter || typeFilter !== "all" || search) && (
+                <button onClick={clearFilters} className="reset-btn">🔄 Reset Filter</button>
+              )}
+            </div>
           ) : (
             <div className="doc-list">
               {filteredDocs.map(doc => {
                 const config = FORM_TYPES[doc.type];
+                const docTitle = getDocumentTitle(doc);
+                const headerDetails = getHeaderDetails(doc);
+                const displayName = getDocumentTitle(doc);
+
                 return (
-                  <DocumentCard 
-                    key={`${doc.type}-${doc.id}`} 
-                    doc={doc} 
-                    config={config}
-                    getDocumentTitle={getDocumentTitle}
-                    getHeaderDetails={getHeaderDetails}
-                    onDelete={handleDelete}
-                    viewMode="list"
-                  />
+                  <div className="doc-item" key={`${doc.type}-${doc.id}`}>
+                    <div className="doc-info">
+                      <div className="doc-icon">{config.icon}</div>
+                      <div className="doc-content">
+                        <div className="doc-title-wrapper">
+                          <span className="doc-title-default">🏷️ {displayName}</span>
+                          <span className={`badge badge-${doc.type}`}>{config.label}</span>
+                        </div>
+
+                        {headerDetails.length > 0 && (
+                          <div className="doc-header-details">
+                            {headerDetails.map((detail, idx) => (
+                              <span key={idx} className="detail-item">
+                                <strong>{detail.label}:</strong> {detail.value}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="doc-meta">
+                          Dibuat: {new Date(doc.created_at).toLocaleString("id-ID")}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="doc-actions">
+                      <Link to={`${config.route}/${doc.id}`} className="action-btn view-btn" title="Lihat Detail">👁</Link>
+                      <Link to={`${config.route}/${doc.id}/edit`} className="action-btn edit-btn" title="Edit Dokumen">✏️</Link>
+                      <button className="action-btn delete-btn" onClick={() => handleDelete(doc)} title="Hapus">🗑</button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
           )}
         </>
-      )}
-    </div>
-  );
-}
-
-// 👇 Reusable Document Card Component (DRY + Maintainable)
-function DocumentCard({ doc, config, getDocumentTitle, getHeaderDetails, onDelete, viewMode }) {
-  const docTitle = getDocumentTitle(doc);
-  const headerDetails = getHeaderDetails(doc);
-  const primaryDetail = headerDetails[0]; // Show most important detail prominently
-
-  return (
-    <div className={`doc-item ${viewMode === 'grouped' ? 'compact' : ''}`} role="article">
-      <div className="doc-info">
-        <div className="doc-icon" aria-hidden="true">{config.icon}</div>
-        <div className="doc-content">
-          <div className="doc-title-wrapper">
-            <div className="doc-title-main">
-              <span className="doc-title-default">🏷️ {docTitle}</span>
-              {doc.tag_name && doc.document_name && (
-                <div className="doc-subtitle" title={`Tag: ${doc.tag_name}`}>
-                  Tag: {doc.tag_name}
-                </div>
-              )}
-            </div>
-            <span className={`badge badge-${doc.type}`} aria-label={`Jenis: ${config.label}`}>
-              {config.label}
-            </span>
-          </div>
-
-          {/* 👇 Primary detail highlighted */}
-          {primaryDetail && (
-            <div className="doc-primary-detail">
-              <strong>{primaryDetail.label}:</strong> {primaryDetail.value}
-            </div>
-          )}
-
-          {/* 👇 Secondary details as chips */}
-          {headerDetails.length > 1 && (
-            <div className="doc-secondary-details">
-              {headerDetails.slice(1, 4).map((detail, idx) => (
-                <span key={idx} className="detail-chip">
-                  {detail.value}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="doc-meta" title={`Dibuat: ${formatDate(doc.created_at)}`}>
-            {formatDate(doc.created_at)}
-          </div>
-        </div>
-      </div>
-
-      <div className="doc-actions" role="group" aria-label="Aksi dokumen">
-        <Link 
-          to={`${config.route}/${doc.id}`} 
-          className="action-btn view-btn" 
-          title="Lihat Detail"
-          aria-label={`Lihat detail ${docTitle}`}
-        >👁</Link>
-        <Link 
-          to={`${config.route}/${doc.id}/edit`} 
-          className="action-btn edit-btn" 
-          title="Edit Dokumen"
-          aria-label={`Edit ${docTitle}`}
-        >✏️</Link>
-        <button 
-          className="action-btn delete-btn" 
-          onClick={() => onDelete(doc)} 
-          title="Hapus"
-          aria-label={`Hapus ${docTitle}`}
-        >🗑</button>
-      </div>
-    </div>
-  );
-}
-
-// 👇 Reusable Empty State Component
-function EmptyState({ hasActiveFilters, onReset, search }) {
-  return (
-    <div className="empty" role="status">
-      <div className="empty-icon" aria-hidden="true">📭</div>
-      <h3>
-        {hasActiveFilters || search ? "Tidak ada hasil" : "📭 Belum ada dokumen"}
-      </h3>
-      <p className="empty-message">
-        {hasActiveFilters 
-          ? "Coba hapus beberapa filter atau reset untuk melihat semua dokumen." 
-          : search 
-            ? `Tidak ditemukan dokumen untuk "${search}"` 
-            : "Dokumen yang kamu buat akan muncul di sini."}
-      </p>
-      {(hasActiveFilters || search) && (
-        <button onClick={onReset} className="reset-btn">🔄 Reset Filter</button>
       )}
     </div>
   );
