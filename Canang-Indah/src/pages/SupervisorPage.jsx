@@ -350,6 +350,8 @@ export default function SupervisorPage() {
       <div className="filter-toolbar">
         <div className="search-section">
           <div className="search-wrapper">
+
+            {/* Search semua dokumen */}
             <input
               type="text"
               placeholder="🔍 Search by Tag Name, Shift, Date..."
@@ -357,18 +359,25 @@ export default function SupervisorPage() {
               onChange={e => setSearch(e.target.value)}
               className="search-input"
             />
+
+            {/* 🔥 Search khusus LabPB Result */}
             <input
-              type="text"
-              placeholder="🔍 Search by Tag Name, Shift, Date..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              type="number"
+              placeholder="🏭 Lab PB Result ID"
               className="search-input"
+              onKeyDown={(e)=>{
+                if(e.key === "Enter"){
+                  fetchLabPBResult(e.target.value)
+                }
+              }}
             />
+
             <span className="search-count">
               {viewMode === 'list' 
                 ? `${filteredDocuments.length} dokumen` 
                 : `${groupedDocuments.length} grup`}
             </span>
+
           </div>
           {search && (
             <button className="clear-search-btn" onClick={() => setSearch("")}>✕</button>
