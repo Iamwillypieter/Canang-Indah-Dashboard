@@ -1138,3 +1138,39 @@
   color: #888;
   font-weight: 500;
 }
+
+/* 👇 Signature Footer - Pojok Kanan Bawah */
+.doc-signature {
+  position: fixed;
+  bottom: 16px;
+  right: 20px;
+  font-size: 0.85rem;
+  color: #666;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 6px 14px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  border: 1px solid #eee;
+  pointer-events: none; /* Biar tidak ganggu klik di area tersebut */
+}
+
+/* Optional: Hover effect halus */
+.doc-signature:hover {
+  color: #333;
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+/* Responsive: kecilkan di mobile */
+@media (max-width: 768px) {
+  .doc-signature {
+    bottom: 12px;
+    right: 12px;
+    font-size: 0.75rem;
+    padding: 4px 10px;
+  }
+}

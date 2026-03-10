@@ -41,9 +41,30 @@ export default function DocumentList() {
   const [dateFilter, setDateFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("all"); // 'all' | 'qc' | 'resin' | 'flakes' | 'labPBForm'
   const [viewMode, setViewMode] = useState("list"); // 'list' | 'grouped'
+  const [userName, setUserName] = useState("");
 
   useEffect(() => {
     fetchDocuments();
+  }, []);
+
+  useEffect(() => {
+    // Coba ambil dari localStorage dulu (paling simpel)
+    const storedName = localStorage.getItem("user_name"); 
+    if (storedName) {
+      setUserName(storedName.toUpperCase());
+    } else {
+      // 👇 Fallback: decode JWT token kalau nama ada di payload
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          const name = payload.name || payload.username || payload.user_name || "USER";
+          setUserName(name.toUpperCase());
+        } catch (e) {
+          setUserName("USER");
+        }
+      }
+    }
   }, []);
 
   const fetchDocuments = async () => {
@@ -494,6 +515,11 @@ export default function DocumentList() {
             </div>
           )}
         </>
+      )}
+      {userName && (
+        <div className="doc-signature">
+          by : <strong>{userName}</strong>
+        </div>
       )}
     </div>
   );
