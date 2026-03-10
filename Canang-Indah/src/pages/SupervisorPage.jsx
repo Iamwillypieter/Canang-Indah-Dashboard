@@ -267,7 +267,7 @@ export default function SupervisorPage() {
     if (!analysisTest) return [];
 
     const labDocs = filteredDocuments.filter(d => d.type === "labPBForm");
-
+    console.log("LAB DOC SAMPLE:", labDocs[0]);
     const shiftMap = {};
 
     labDocs.forEach(doc => {
