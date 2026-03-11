@@ -3000,62 +3000,158 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
   try {
 
-    const { type, search, shift, from, to, limit = 100 } = req.query;
+    const { type, search, shift, from, to } = req.query;
 
     if (!type) {
-      return res.status(400).json({
-        error: "type parameter is required"
-      });
+      return res.status(400).json({ error: "type required" });
     }
 
-    /* mapping test -> table */
-    const testTables = {
-      "internal-bonding": "lab_pb_internal_bonding",
-      "bending": "lab_pb_bending_strength",
-      "density": "lab_pb_density_profile",
-      "mc": "lab_pb_mc_board",
-      "surface": "lab_pb_surface_soundness"
-    };
-
-    const table = testTables[type];
-
-    if (!table) {
-      return res.status(400).json({
-        error: "Invalid test type"
-      });
-    }
-
-    /* query utama */
-    let query = `
-      SELECT
-        d.id,
-        d.tag_name,
-        d.timestamp,
-        d.board_no,
-        d.shift_group,
-        t.*
-      FROM lab_pb_documents d
-      LEFT JOIN ${table} t
-      ON t.document_id = d.id
-      WHERE 1=1
-    `;
-
+    let query = "";
     const params = [];
     let i = 1;
 
-    /* filter board */
+    /* ================= INTERNAL BONDING ================= */
+
+    if (type === "internal-bonding") {
+
+      query = `
+      SELECT
+        d.timestamp,
+        d.board_no,
+        d.shift_group,
+        MAX(t.avg_ib) AS result
+      FROM lab_pb_documents d
+      LEFT JOIN lab_pb_internal_bonding t
+      ON t.document_id = d.id
+      WHERE 1=1
+      `;
+
+    }
+
+    /* ================= BENDING ================= */
+
+    else if (type === "bending") {
+
+      query = `
+      SELECT
+        d.timestamp,
+        d.board_no,
+        d.shift_group,
+        MAX(t.avg_mor) AS result
+      FROM lab_pb_documents d
+      LEFT JOIN lab_pb_bending_strength t
+      ON t.document_id = d.id
+      WHERE 1=1
+      `;
+
+    }
+
+    /* ================= SCREW ================= */
+
+    else if (type === "screw") {
+
+      query = `
+      SELECT
+        d.timestamp,
+        d.board_no,
+        d.shift_group,
+        MAX(t.avg_face) AS result
+      FROM lab_pb_documents d
+      LEFT JOIN lab_pb_screw_test t
+      ON t.document_id = d.id
+      WHERE 1=1
+      `;
+
+    }
+
+    /* ================= DENSITY PROFILE ================= */
+
+    else if (type === "density") {
+
+      query = `
+      SELECT
+        d.timestamp,
+        d.board_no,
+        d.shift_group,
+        MAX(t.mean_value) AS result
+      FROM lab_pb_documents d
+      LEFT JOIN lab_pb_density_profile t
+      ON t.document_id = d.id
+      WHERE 1=1
+      `;
+
+    }
+
+    /* ================= MC BOARD ================= */
+
+    else if (type === "mc") {
+
+      query = `
+      SELECT
+        d.timestamp,
+        d.board_no,
+        d.shift_group,
+        MAX(t.avg_mc) AS result
+      FROM lab_pb_documents d
+      LEFT JOIN lab_pb_mc_board t
+      ON t.document_id = d.id
+      WHERE 1=1
+      `;
+
+    }
+
+    /* ================= SWELLING ================= */
+
+    else if (type === "swelling") {
+
+      query = `
+      SELECT
+        d.timestamp,
+        d.board_no,
+        d.shift_group,
+        MAX(t.avg_ts) AS result
+      FROM lab_pb_documents d
+      LEFT JOIN lab_pb_swelling t
+      ON t.document_id = d.id
+      WHERE 1=1
+      `;
+
+    }
+
+    /* ================= SURFACE SOUNDNESS ================= */
+
+    else if (type === "surface") {
+
+      query = `
+      SELECT
+        d.timestamp,
+        d.board_no,
+        d.shift_group,
+        MAX(t.avg_surface) AS result
+      FROM lab_pb_documents d
+      LEFT JOIN lab_pb_surface_soundness t
+      ON t.document_id = d.id
+      WHERE 1=1
+      `;
+
+    }
+
+    else {
+      return res.status(400).json({ error: "invalid test type" });
+    }
+
+    /* ================= FILTER ================= */
+
     if (search) {
       query += ` AND d.board_no ILIKE $${i++}`;
       params.push(`%${search}%`);
     }
 
-    /* filter shift */
     if (shift) {
       query += ` AND d.shift_group = $${i++}`;
       params.push(shift);
     }
 
-    /* filter tanggal */
     if (from) {
       query += ` AND DATE(d.timestamp) >= $${i++}`;
       params.push(from);
@@ -3067,22 +3163,18 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
     }
 
     query += `
+      GROUP BY d.id
       ORDER BY d.timestamp DESC
-      LIMIT ${parseInt(limit)}
+      LIMIT 200
     `;
 
     const result = await pool.query(query, params);
 
-    res.json({
-      success: true,
-      type,
-      total: result.rows.length,
-      data: result.rows
-    });
+    res.json(result.rows);
 
   } catch (err) {
 
-    console.error("LAB PB TEST ERROR:", err);
+    console.error("Supervisor Test Error:", err);
 
     res.status(500).json({
       error: "Server error",

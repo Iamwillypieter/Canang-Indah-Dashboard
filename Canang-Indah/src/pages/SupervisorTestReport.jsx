@@ -18,7 +18,6 @@ export default function SupervisorTestReport(){
   const [loading, setLoading] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [shift, setShift] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
@@ -35,7 +34,6 @@ export default function SupervisorTestReport(){
       params.append("type", selectedTest);
 
       if(search) params.append("search", search);
-      if(shift) params.append("shift", shift);
       if(fromDate) params.append("from", fromDate);
       if(toDate) params.append("to", toDate);
 
@@ -57,7 +55,6 @@ export default function SupervisorTestReport(){
         return;
       }
 
-      // FIX: ambil data dari response.data
       setResults(Array.isArray(data.data) ? data.data : []);
 
     }catch(err){
@@ -105,30 +102,13 @@ export default function SupervisorTestReport(){
 
 
         <div className="filter-group">
-          <label>Search Board</label>
+          <label>Search</label>
           <input
             type="text"
-            placeholder="Board Number..."
+            placeholder="Search Document Name / Shift..."
             value={search}
             onChange={(e)=>setSearch(e.target.value)}
           />
-        </div>
-
-
-        <div className="filter-group">
-          <label>Shift</label>
-          <select
-            value={shift}
-            onChange={(e)=>setShift(e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="1A">1A</option>
-            <option value="1B">1B</option>
-            <option value="2A">2A</option>
-            <option value="2B">2B</option>
-            <option value="3A">3A</option>
-            <option value="3B">3B</option>
-          </select>
         </div>
 
 
@@ -182,7 +162,7 @@ export default function SupervisorTestReport(){
             <tr>
               <th>Date</th>
               <th>Shift</th>
-              <th>Board No</th>
+              <th>Document</th>
               <th>Result</th>
             </tr>
           </thead>
@@ -202,10 +182,10 @@ export default function SupervisorTestReport(){
 
                 <td>{row.shift_group || "-"}</td>
 
-                <td>{row.board_no || "-"}</td>
+                <td>{row.document_name || "-"}</td>
 
                 <td>
-                  <b>{row.result ?? row.avg ?? "-"}</b>
+                  <b>{row.result ?? "-"}</b>
                 </td>
 
               </tr>
