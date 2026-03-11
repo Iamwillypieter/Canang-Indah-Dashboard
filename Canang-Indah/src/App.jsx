@@ -11,6 +11,7 @@ import Register from "./auth/Register.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import LabPBAdmin1 from "./pages/sub_menu/LabPBAdmin1.jsx";
 import SupervisorPage from "./pages/SupervisorPage.jsx";
+import SupervisorTestReport from "./pages/SupervisorTestReport.jsx";
 
 // Forms
 import QCAnalisaForm from "./forms/QCAnalisaForm.jsx";
@@ -79,7 +80,13 @@ export default function App() {
 
           {/* SUPERVISOR PAGE - SUPERVISOR ONLY */}
           <Route element={<RequireRole allowedRoles={['supervisor']} />}>
-            <Route path="supervisor" element={<SupervisorPage />} />
+            <Route path="supervisor">
+
+              <Route index element={<SupervisorPage />} />
+
+              <Route path="test-report" element={<SupervisorTestReport />} />
+
+            </Route>
           </Route>
 
         </Route>
