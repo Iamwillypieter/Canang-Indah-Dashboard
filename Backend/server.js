@@ -3000,48 +3000,40 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
   try {
 
-    const { type, search, shift, from, to } = req.query;
+    const { type, search, shift, from, to, limit = 100 } = req.query;
 
-    let table = "";
-    let column = "";
-
-    switch(type){
-
-      case "internal-bonding":
-        table = "lab_pb_internal_bonding";
-        column = "internal_bonding";
-        break;
-
-      case "bending":
-        table = "lab_pb_bending_strength";
-        column = "bending_strength";
-        break;
-
-      case "density":
-        table = "lab_pb_density_profile";
-        column = "density";
-        break;
-
-      case "mc":
-        table = "lab_pb_mc_board";
-        column = "mc";
-        break;
-
-      case "surface":
-        table = "lab_pb_surface_soundness";
-        column = "surface_soundness";
-        break;
-
-      default:
-        return res.status(400).json({ error:"Invalid test type"});
+    if (!type) {
+      return res.status(400).json({
+        error: "type parameter is required"
+      });
     }
 
+    /* mapping test -> table */
+    const testTables = {
+      "internal-bonding": "lab_pb_internal_bonding",
+      "bending": "lab_pb_bending_strength",
+      "density": "lab_pb_density_profile",
+      "mc": "lab_pb_mc_board",
+      "surface": "lab_pb_surface_soundness"
+    };
+
+    const table = testTables[type];
+
+    if (!table) {
+      return res.status(400).json({
+        error: "Invalid test type"
+      });
+    }
+
+    /* query utama */
     let query = `
       SELECT
+        d.id,
+        d.tag_name,
         d.timestamp,
-        d.shift_group,
         d.board_no,
-        t.${column} AS result
+        d.shift_group,
+        t.*
       FROM lab_pb_documents d
       LEFT JOIN ${table} t
       ON t.document_id = d.id
@@ -3051,39 +3043,50 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
     const params = [];
     let i = 1;
 
-    if(search){
+    /* filter board */
+    if (search) {
       query += ` AND d.board_no ILIKE $${i++}`;
       params.push(`%${search}%`);
     }
 
-    if(shift){
+    /* filter shift */
+    if (shift) {
       query += ` AND d.shift_group = $${i++}`;
       params.push(shift);
     }
 
-    if(from){
+    /* filter tanggal */
+    if (from) {
       query += ` AND DATE(d.timestamp) >= $${i++}`;
       params.push(from);
     }
 
-    if(to){
+    if (to) {
       query += ` AND DATE(d.timestamp) <= $${i++}`;
       params.push(to);
     }
 
-    query += ` ORDER BY d.timestamp DESC`;
+    query += `
+      ORDER BY d.timestamp DESC
+      LIMIT ${parseInt(limit)}
+    `;
 
     const result = await pool.query(query, params);
 
-    res.json(result.rows);
+    res.json({
+      success: true,
+      type,
+      total: result.rows.length,
+      data: result.rows
+    });
 
   } catch (err) {
 
-    console.error("Supervisor Test Error:", err);
+    console.error("LAB PB TEST ERROR:", err);
 
     res.status(500).json({
-      error:"Server error",
-      detail:err.message
+      error: "Server error",
+      detail: err.message
     });
 
   }

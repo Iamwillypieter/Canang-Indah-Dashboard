@@ -6,10 +6,8 @@ const API_BASE = import.meta.env.VITE_API_URL + "/api";
 const TEST_TYPES = [
   { label: "Internal Bonding", value: "internal-bonding" },
   { label: "Bending Strength", value: "bending" },
-  { label: "Screw Holding", value: "screw" },
   { label: "Density Profile", value: "density" },
   { label: "MC Board", value: "mc" },
-  { label: "Swelling", value: "swelling" },
   { label: "Surface Soundness", value: "surface" }
 ];
 
@@ -57,9 +55,10 @@ export default function SupervisorTestReport(){
         console.error("API ERROR:", data);
         setResults([]);
         return;
-     }
+      }
 
-setResults(Array.isArray(data) ? data : []);
+      // FIX: ambil data dari response.data
+      setResults(Array.isArray(data.data) ? data.data : []);
 
     }catch(err){
 
@@ -195,15 +194,18 @@ setResults(Array.isArray(data) ? data : []);
               <tr key={i}>
 
                 <td>
-                  {new Date(row.timestamp).toLocaleDateString("id-ID")}
+                  {row.timestamp
+                    ? new Date(row.timestamp).toLocaleDateString("id-ID")
+                    : "-"
+                  }
                 </td>
 
-                <td>{row.shift_group}</td>
+                <td>{row.shift_group || "-"}</td>
 
-                <td>{row.board_no}</td>
+                <td>{row.board_no || "-"}</td>
 
                 <td>
-                  <b>{row.result ?? "-"}</b>
+                  <b>{row.result ?? row.avg ?? "-"}</b>
                 </td>
 
               </tr>
