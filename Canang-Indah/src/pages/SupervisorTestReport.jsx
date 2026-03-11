@@ -6,8 +6,10 @@ const API_BASE = import.meta.env.VITE_API_URL + "/api";
 const TEST_TYPES = [
   { label: "Internal Bonding", value: "internal-bonding" },
   { label: "Bending Strength", value: "bending" },
+  { label: "Screw Holding", value: "screw" },
   { label: "Density Profile", value: "density" },
   { label: "MC Board", value: "mc" },
+  { label: "Thickness Swelling", value: "swelling" },
   { label: "Surface Soundness", value: "surface" }
 ];
 

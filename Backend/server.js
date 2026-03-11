@@ -3068,6 +3068,24 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
     }
 
+    /* ================= SCREW TEST ================= */
+
+    else if (type === "screw") {
+
+      query = `
+      SELECT
+        d.timestamp,
+        d.document_name,
+        d.shift_group,
+        MAX(t.avg_face) AS result
+      FROM lab_pb_documents d
+      LEFT JOIN lab_pb_screw_test t
+      ON t.document_id = d.id
+      WHERE 1=1
+      `;
+
+    }
+
     /* ================= DENSITY PROFILE ================= */
 
     else if (type === "density") {
@@ -3104,7 +3122,25 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
     }
 
-    /* ================= SURFACE ================= */
+    /* ================= SWELLING ================= */
+
+    else if (type === "swelling") {
+
+      query = `
+      SELECT
+        d.timestamp,
+        d.document_name,
+        d.shift_group,
+        MAX(t.avg_ts) AS result
+      FROM lab_pb_documents d
+      LEFT JOIN lab_pb_swelling t
+      ON t.document_id = d.id
+      WHERE 1=1
+      `;
+
+    }
+
+    /* ================= SURFACE SOUNDNESS ================= */
 
     else if (type === "surface") {
 
@@ -3154,7 +3190,7 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       params.push(to);
     }
 
-    /* ================= GROUP & ORDER ================= */
+    /* ================= GROUP ================= */
 
     query += `
       GROUP BY d.id, d.timestamp, d.document_name, d.shift_group
