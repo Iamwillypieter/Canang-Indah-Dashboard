@@ -3003,86 +3003,70 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
     const { type, search, shift, from, to } = req.query;
 
     let table = "";
-    let resultColumn = "result";
+    let column = "value";
 
-    switch (type) {
+    switch(type){
 
       case "internal-bonding":
         table = "lab_pb_internal_bonding";
-        resultColumn = "ib_value";
         break;
 
       case "bending":
         table = "lab_pb_bending_strength";
-        resultColumn = "value";
-        break;
-
-      case "screw":
-        table = "lab_pb_screw_holding";
-        resultColumn = "value";
         break;
 
       case "density":
         table = "lab_pb_density_profile";
-        resultColumn = "density";
         break;
 
       case "mc":
         table = "lab_pb_mc_board";
-        resultColumn = "mc_value";
-        break;
-
-      case "swelling":
-        table = "lab_pb_swelling";
-        resultColumn = "value";
         break;
 
       case "surface":
         table = "lab_pb_surface_soundness";
-        resultColumn = "value";
         break;
 
       default:
-        return res.status(400).json({ error: "Invalid test type" });
-
+        return res.status(400).json({ error:"Invalid test type" });
     }
 
     let query = `
       SELECT
-        h.timestamp,
-        h.shift_group,
-        h.board_no,
-        d.${resultColumn} as result
-      FROM lab_pb_header h
-      LEFT JOIN ${table} d
-      ON d.document_id = h.id
+        d.timestamp,
+        d.shift_group,
+        d.board_no,
+        t.${column} AS result
+      FROM lab_pb_documents d
+      LEFT JOIN ${table} t
+      ON t.document_id = d.id
       WHERE 1=1
     `;
 
     const params = [];
-    let index = 1;
+    let i = 1;
 
-    if (search) {
-      query += ` AND h.board_no ILIKE $${index++}`;
+    if(search){
+      query += ` AND d.board_no ILIKE $${i++}`;
       params.push(`%${search}%`);
     }
 
-    if (shift) {
-      query += ` AND h.shift_group = $${index++}`;
+    if(shift){
+      query += ` AND d.shift_group = $${i++}`;
       params.push(shift);
     }
 
-    if (from) {
-      query += ` AND DATE(h.timestamp) >= $${index++}`;
+    if(from){
+      query += ` AND DATE(d.timestamp) >= $${i++}`;
       params.push(from);
     }
 
-    if (to) {
-      query += ` AND DATE(h.timestamp) <= $${index++}`;
+    if(to){
+      query += ` AND DATE(d.timestamp) <= $${i++}`;
       params.push(to);
     }
 
-    query += ` ORDER BY h.timestamp DESC`;
+    query += ` ORDER BY d.timestamp DESC`;
 
     const result = await pool.query(query, params);
 
@@ -3090,11 +3074,11 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
   } catch (err) {
 
-    console.error("Lab PB Test Report Error:", err);
+    console.error("Supervisor Test Error:", err);
 
     res.status(500).json({
-      error: "Server error",
-      detail: err.message
+      error:"Server error",
+      detail:err.message
     });
 
   }
