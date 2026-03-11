@@ -170,15 +170,29 @@ export default function DashboardLayout() {
                 </li>
               )}
 
-              {userRole === 'supervisor' && (
+              {/* {userRole === 'supervisor' && (
                 <li className={location.pathname.startsWith('/supervisor') ? 'active' : ''}>
                   <Link to="/supervisor">
                     <span className="menu-icon">🧑‍💼</span>
                     <span className="menu-text">Supervisor</span>
                   </Link>
                 </li>
-              )}
+              )} */}
+              {userRole === 'supervisor' && (
+              <>
+              <li>
+                <Link to="/supervisor">
+                  📋 Documents
+                </Link>
+              </li>
 
+              <li>
+                <Link to="/supervisor/test-analysis">
+                  📊 Test Analysis
+                </Link>
+              </li>
+              </>
+              )}
             </ul>
 
             <div className="sidebar-footer">
