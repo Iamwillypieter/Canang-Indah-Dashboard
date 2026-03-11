@@ -3000,7 +3000,7 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
   try {
 
-    const { type, search, shift, from, to } = req.query;
+    const { type, search, from, to } = req.query;
 
     if (!type) {
       return res.status(400).json({ error: "type required" });
@@ -3017,7 +3017,7 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       query = `
       SELECT
         d.timestamp,
-        d.board_no,
+        d.document_name,
         d.shift_group,
         MAX(t.avg_ib) AS result
       FROM lab_pb_documents d
@@ -3035,29 +3035,11 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       query = `
       SELECT
         d.timestamp,
-        d.board_no,
+        d.document_name,
         d.shift_group,
         MAX(t.avg_mor) AS result
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_bending_strength t
-      ON t.document_id = d.id
-      WHERE 1=1
-      `;
-
-    }
-
-    /* ================= SCREW ================= */
-
-    else if (type === "screw") {
-
-      query = `
-      SELECT
-        d.timestamp,
-        d.board_no,
-        d.shift_group,
-        MAX(t.avg_face) AS result
-      FROM lab_pb_documents d
-      LEFT JOIN lab_pb_screw_test t
       ON t.document_id = d.id
       WHERE 1=1
       `;
@@ -3071,7 +3053,7 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       query = `
       SELECT
         d.timestamp,
-        d.board_no,
+        d.document_name,
         d.shift_group,
         MAX(t.mean_value) AS result
       FROM lab_pb_documents d
@@ -3089,7 +3071,7 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       query = `
       SELECT
         d.timestamp,
-        d.board_no,
+        d.document_name,
         d.shift_group,
         MAX(t.avg_mc) AS result
       FROM lab_pb_documents d
@@ -3100,32 +3082,14 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
     }
 
-    /* ================= SWELLING ================= */
-
-    else if (type === "swelling") {
-
-      query = `
-      SELECT
-        d.timestamp,
-        d.board_no,
-        d.shift_group,
-        MAX(t.avg_ts) AS result
-      FROM lab_pb_documents d
-      LEFT JOIN lab_pb_swelling t
-      ON t.document_id = d.id
-      WHERE 1=1
-      `;
-
-    }
-
-    /* ================= SURFACE SOUNDNESS ================= */
+    /* ================= SURFACE ================= */
 
     else if (type === "surface") {
 
       query = `
       SELECT
         d.timestamp,
-        d.board_no,
+        d.document_name,
         d.shift_group,
         MAX(t.avg_surface) AS result
       FROM lab_pb_documents d
@@ -3140,17 +3104,23 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "invalid test type" });
     }
 
-    /* ================= FILTER ================= */
+    /* ================= SEARCH ================= */
 
     if (search) {
-      query += ` AND d.board_no ILIKE $${i++}`;
+
+      query += `
+      AND (
+        d.document_name ILIKE $${i}
+        OR d.shift_group ILIKE $${i}
+      )
+      `;
+
       params.push(`%${search}%`);
+      i++;
+
     }
 
-    if (shift) {
-      query += ` AND d.shift_group = $${i++}`;
-      params.push(shift);
-    }
+    /* ================= DATE FILTER ================= */
 
     if (from) {
       query += ` AND DATE(d.timestamp) >= $${i++}`;
@@ -3162,15 +3132,19 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       params.push(to);
     }
 
+    /* ================= GROUP & ORDER ================= */
+
     query += `
-      GROUP BY d.id
+      GROUP BY d.id, d.timestamp, d.document_name, d.shift_group
       ORDER BY d.timestamp DESC
       LIMIT 200
     `;
 
     const result = await pool.query(query, params);
 
-    res.json(result.rows);
+    res.json({
+      data: result.rows
+    });
 
   } catch (err) {
 

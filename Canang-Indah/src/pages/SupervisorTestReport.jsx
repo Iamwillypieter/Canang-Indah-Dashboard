@@ -83,7 +83,6 @@ export default function SupervisorTestReport(){
         Supervisor dapat melihat hasil test seluruh produksi dan melakukan pencarian data.
       </p>
 
-
       <div className="filter-section">
 
         <div className="filter-group">
@@ -100,17 +99,15 @@ export default function SupervisorTestReport(){
           </select>
         </div>
 
-
         <div className="filter-group">
           <label>Search</label>
           <input
             type="text"
-            placeholder="Search Document Name / Shift..."
+            placeholder="Search Document / Shift..."
             value={search}
             onChange={(e)=>setSearch(e.target.value)}
           />
         </div>
-
 
         <div className="filter-group">
           <label>From</label>
@@ -121,7 +118,6 @@ export default function SupervisorTestReport(){
           />
         </div>
 
-
         <div className="filter-group">
           <label>To</label>
           <input
@@ -131,7 +127,6 @@ export default function SupervisorTestReport(){
           />
         </div>
 
-
         <div className="search-button">
           <button onClick={fetchResults}>
             🔎 Search
@@ -140,11 +135,9 @@ export default function SupervisorTestReport(){
 
       </div>
 
-
       <div className="result-info">
         Total Data : <b>{results.length}</b>
       </div>
-
 
       {loading ? (
 
