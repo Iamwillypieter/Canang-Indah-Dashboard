@@ -2998,160 +2998,103 @@ app.get('/api/lab-pb-form-documents', async (req, res) => {
 
 app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
-  const { type } = req.query;
-
-  if (!type) {
-    return res.status(400).json({
-      error: "Test type is required"
-    });
-  }
-
   try {
 
-    let query = "";
+    const { type, search, shift, from, to } = req.query;
 
-    /* ================= INTERNAL BONDING ================= */
+    let table = "";
+    let resultColumn = "result";
 
-    if (type === "internal-bonding") {
+    switch (type) {
 
-      query = `
-        SELECT
-          d.id,
-          d.timestamp,
-          d.board_no,
-          d.shift_group,
-          ib.ib_avg AS result
-        FROM lab_pb_internal_bonding ib
-        JOIN lab_pb_documents d
-          ON d.id = ib.document_id
-        ORDER BY d.timestamp DESC
-      `;
+      case "internal-bonding":
+        table = "lab_pb_internal_bonding";
+        resultColumn = "ib_value";
+        break;
+
+      case "bending":
+        table = "lab_pb_bending_strength";
+        resultColumn = "value";
+        break;
+
+      case "screw":
+        table = "lab_pb_screw_holding";
+        resultColumn = "value";
+        break;
+
+      case "density":
+        table = "lab_pb_density_profile";
+        resultColumn = "density";
+        break;
+
+      case "mc":
+        table = "lab_pb_mc_board";
+        resultColumn = "mc_value";
+        break;
+
+      case "swelling":
+        table = "lab_pb_swelling";
+        resultColumn = "value";
+        break;
+
+      case "surface":
+        table = "lab_pb_surface_soundness";
+        resultColumn = "value";
+        break;
+
+      default:
+        return res.status(400).json({ error: "Invalid test type" });
+
     }
 
-    /* ================= BENDING STRENGTH ================= */
+    let query = `
+      SELECT
+        h.timestamp,
+        h.shift_group,
+        h.board_no,
+        d.${resultColumn} as result
+      FROM lab_pb_header h
+      LEFT JOIN ${table} d
+      ON d.document_id = h.id
+      WHERE 1=1
+    `;
 
-    else if (type === "bending") {
+    const params = [];
+    let index = 1;
 
-      query = `
-        SELECT
-          d.id,
-          d.timestamp,
-          d.board_no,
-          d.shift_group,
-          b.mor_avg AS result
-        FROM lab_pb_bending_strength b
-        JOIN lab_pb_documents d
-          ON d.id = b.document_id
-        ORDER BY d.timestamp DESC
-      `;
+    if (search) {
+      query += ` AND h.board_no ILIKE $${index++}`;
+      params.push(`%${search}%`);
     }
 
-    /* ================= SCREW HOLDING ================= */
-
-    else if (type === "screw") {
-
-      query = `
-        SELECT
-          d.id,
-          d.timestamp,
-          d.board_no,
-          d.shift_group,
-          s.screw_avg AS result
-        FROM lab_pb_screw_holding s
-        JOIN lab_pb_documents d
-          ON d.id = s.document_id
-        ORDER BY d.timestamp DESC
-      `;
+    if (shift) {
+      query += ` AND h.shift_group = $${index++}`;
+      params.push(shift);
     }
 
-    /* ================= DENSITY PROFILE ================= */
-
-    else if (type === "density") {
-
-      query = `
-        SELECT
-          d.id,
-          d.timestamp,
-          d.board_no,
-          d.shift_group,
-          dp.density_avg AS result
-        FROM lab_pb_density_profile dp
-        JOIN lab_pb_documents d
-          ON d.id = dp.document_id
-        ORDER BY d.timestamp DESC
-      `;
+    if (from) {
+      query += ` AND DATE(h.timestamp) >= $${index++}`;
+      params.push(from);
     }
 
-    /* ================= SURFACE SOUNDNESS ================= */
-
-    else if (type === "surface") {
-
-      query = `
-        SELECT
-          d.id,
-          d.timestamp,
-          d.board_no,
-          d.shift_group,
-          ss.surface_avg AS result
-        FROM lab_pb_surface_soundness ss
-        JOIN lab_pb_documents d
-          ON d.id = ss.document_id
-        ORDER BY d.timestamp DESC
-      `;
+    if (to) {
+      query += ` AND DATE(h.timestamp) <= $${index++}`;
+      params.push(to);
     }
 
-    /* ================= SWELLING ================= */
+    query += ` ORDER BY h.timestamp DESC`;
 
-    else if (type === "swelling") {
-
-      query = `
-        SELECT
-          d.id,
-          d.timestamp,
-          d.board_no,
-          d.shift_group,
-          sw.swelling_avg AS result
-        FROM lab_pb_swelling sw
-        JOIN lab_pb_documents d
-          ON d.id = sw.document_id
-        ORDER BY d.timestamp DESC
-      `;
-    }
-
-    /* ================= MOISTURE CONTENT ================= */
-
-    else if (type === "mc") {
-
-      query = `
-        SELECT
-          d.id,
-          d.timestamp,
-          d.board_no,
-          d.shift_group,
-          mc.mc_avg AS result
-        FROM lab_pb_moisture mc
-        JOIN lab_pb_documents d
-          ON d.id = mc.document_id
-        ORDER BY d.timestamp DESC
-      `;
-    }
-
-    else {
-      return res.status(400).json({
-        error: "Invalid test type"
-      });
-    }
-
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
 
     res.json(result.rows);
 
-  } catch (error) {
+  } catch (err) {
 
-    console.error("Supervisor Test Analysis Error:", error);
+    console.error("Lab PB Test Report Error:", err);
 
     res.status(500).json({
-      error: "Server error"
+      error: "Server error",
+      detail: err.message
     });
 
   }

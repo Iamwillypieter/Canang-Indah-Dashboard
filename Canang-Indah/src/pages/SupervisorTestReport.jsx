@@ -53,7 +53,13 @@ export default function SupervisorTestReport(){
 
       const data = await res.json();
 
-      setResults(data || []);
+      if (!res.ok) {
+        console.error("API ERROR:", data);
+        setResults([]);
+        return;
+     }
+
+setResults(Array.isArray(data) ? data : []);
 
     }catch(err){
 
