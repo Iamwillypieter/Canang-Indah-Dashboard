@@ -1473,16 +1473,16 @@ app.post("/api/flakes-documents", authenticateToken, async (req, res) => {
        USER SHIFT & GROUP (FROM LOGIN)
     ============================== */
 
-    const shift = req.user?.shift;
-    const group = req.user?.group;
+    const shiftGroup = req.user?.shift_group;
 
-    if (!shift || !group) {
+    if (!shiftGroup) {
       return res.status(403).json({
-        error: "User tidak memiliki shift atau group"
+        error: "User tidak memiliki shift_group"
       });
     }
 
-    const shiftGroup = `${shift}${group}`;
+    const shift = shiftGroup.charAt(0);
+    const group = shiftGroup.charAt(1);
 
     /* ==============================
        AUTO RUNNING NUMBER
