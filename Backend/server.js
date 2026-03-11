@@ -1471,8 +1471,16 @@ app.post("/api/flakes-documents", async (req, res) => {
        PREPARE DATA
     ============================== */
 
-    const shift = header.shift || null;
-    const group = header.group || null;
+    const userShiftGroup = req.user?.shift_group;
+
+    if (!userShiftGroup) {
+      return res.status(403).json({
+        error: "User tidak memiliki shift_group"
+      });
+    }
+
+    const shift = userShiftGroup.charAt(0);
+    const group = userShiftGroup.charAt(1);
 
     /* ==============================
        AUTO GENERATE RUNNING NUMBER
@@ -1513,7 +1521,7 @@ app.post("/api/flakes-documents", async (req, res) => {
        SHIFT GROUP
     ============================== */
 
-    const shiftGroup = `${header.shift || ""}${header.group || ""}`;
+    const shiftGroup = userShiftGroup;
 
     /* ==============================
        JAM SERVER WIB
