@@ -3003,32 +3003,37 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
     const { type, search, shift, from, to } = req.query;
 
     let table = "";
-    let column = "value";
+    let column = "";
 
     switch(type){
 
       case "internal-bonding":
         table = "lab_pb_internal_bonding";
+        column = "internal_bonding";
         break;
 
       case "bending":
         table = "lab_pb_bending_strength";
+        column = "bending_strength";
         break;
 
       case "density":
         table = "lab_pb_density_profile";
+        column = "density";
         break;
 
       case "mc":
         table = "lab_pb_mc_board";
+        column = "mc";
         break;
 
       case "surface":
         table = "lab_pb_surface_soundness";
+        column = "surface_soundness";
         break;
 
       default:
-        return res.status(400).json({ error:"Invalid test type" });
+        return res.status(400).json({ error:"Invalid test type"});
     }
 
     let query = `
