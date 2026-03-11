@@ -1451,10 +1451,12 @@ app.delete("/api/resin-inspection-documents/:id", authenticateToken, async (req,
 ========================= */
 
 // ✅ CREATE Flakes Document Baru (dengan tag_name)
-app.post("/api/flakes-documents", async (req, res) => {
+app.post("/api/flakes-documents", authenticateToken, async (req, res) => {
+
   const client = await pool.connect();
 
   try {
+
     const { header, detail, total_jumlah, grand_total_ketebalan, rata_rata } = req.body;
 
     if (!header || !detail || detail.length === 0) {
@@ -1468,26 +1470,22 @@ app.post("/api/flakes-documents", async (req, res) => {
     await client.query("BEGIN");
 
     /* ==============================
-       PREPARE DATA
+       USER SHIFT & GROUP (FROM LOGIN)
     ============================== */
 
-    const userShiftGroup = req.user?.shift_group;
+    const shift = req.user?.shift;
+    const group = req.user?.group;
 
-    if (!userShiftGroup) {
+    if (!shift || !group) {
       return res.status(403).json({
-        error: "User tidak memiliki shift_group"
+        error: "User tidak memiliki shift atau group"
       });
     }
 
-    const shift = userShiftGroup.charAt(0);
-    const group = userShiftGroup.charAt(1);
+    const shiftGroup = `${shift}${group}`;
 
     /* ==============================
-       AUTO GENERATE RUNNING NUMBER
-       RESET PER:
-       - tanggal
-       - shift
-       - group
+       AUTO RUNNING NUMBER
     ============================== */
 
     const countResult = await client.query(
@@ -1518,16 +1516,11 @@ app.post("/api/flakes-documents", async (req, res) => {
     const formattedDate = `${dd}${mm}${yyyy}`;
 
     /* ==============================
-       SHIFT GROUP
-    ============================== */
-
-    const shiftGroup = userShiftGroup;
-
-    /* ==============================
        JAM SERVER WIB
     ============================== */
 
     const now = new Date();
+
     const timeWIB = new Date(
       now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
     );
@@ -1540,7 +1533,7 @@ app.post("/api/flakes-documents", async (req, res) => {
     const jamForDb = `${hh}:${min}:${sec}`;
 
     /* ==============================
-       FINAL TAG
+       GENERATE TAG
     ============================== */
 
     const generatedTag = `FLAKES ${runningNumber} ${shiftGroup} ${formattedDate} ${jamForTag}`;
@@ -1550,10 +1543,12 @@ app.post("/api/flakes-documents", async (req, res) => {
     ============================== */
 
     const docResult = await client.query(
-      `INSERT INTO flakes_documents 
-       (title, tag_name, created_at, updated_at)
-       VALUES ($1, $2, NOW(), NOW())
-       RETURNING id`,
+      `
+      INSERT INTO flakes_documents 
+      (title, tag_name, created_at, updated_at)
+      VALUES ($1,$2,NOW(),NOW())
+      RETURNING id
+      `,
       [
         `Flakes ${header.tanggal}`,
         generatedTag
@@ -1567,10 +1562,21 @@ app.post("/api/flakes-documents", async (req, res) => {
     ============================== */
 
     await client.query(
-      `INSERT INTO flakes_header (
-        document_id, tanggal, jam, shift, ukuran_papan, 
-        "group", jarak_pisau, keterangan, pemeriksa, created_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())`,
+      `
+      INSERT INTO flakes_header (
+        document_id,
+        tanggal,
+        jam,
+        shift,
+        ukuran_papan,
+        "group",
+        jarak_pisau,
+        keterangan,
+        pemeriksa,
+        created_at
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
+      `,
       [
         documentId,
         header.tanggal,
@@ -1594,9 +1600,11 @@ app.post("/api/flakes-documents", async (req, res) => {
       const jumlah = Number(row.jumlah) || 0;
 
       await client.query(
-        `INSERT INTO flakes_detail
+        `
+        INSERT INTO flakes_detail
         (document_id, tebal, jumlah, total_ketebalan, created_at)
-        VALUES ($1,$2,$3,$4,NOW())`,
+        VALUES ($1,$2,$3,$4,NOW())
+        `,
         [
           documentId,
           tebal,
@@ -1604,6 +1612,7 @@ app.post("/api/flakes-documents", async (req, res) => {
           tebal * jumlah
         ]
       );
+
     }
 
     /* ==============================
@@ -1611,14 +1620,16 @@ app.post("/api/flakes-documents", async (req, res) => {
     ============================== */
 
     await client.query(
-      `INSERT INTO flakes_summary (
+      `
+      INSERT INTO flakes_summary (
         document_id,
         total_jumlah,
         grand_total_ketebalan,
         rata_rata_ketebalan,
         created_at
       )
-      VALUES ($1,$2,$3,$4,NOW())`,
+      VALUES ($1,$2,$3,$4,NOW())
+      `,
       [
         documentId,
         Number(total_jumlah) || 0,
@@ -1647,8 +1658,11 @@ app.post("/api/flakes-documents", async (req, res) => {
     });
 
   } finally {
+
     client.release();
+
   }
+
 });
 
 // ✅ READ Flakes documents LIST (dengan tag_name)
