@@ -3162,11 +3162,11 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
         MAX(CASE WHEN t.position='mr' THEN t.mean_value END) AS mean_mr,
         MAX(CASE WHEN t.position='ri' THEN t.mean_value END) AS mean_ri,
 
-        MAX(CASE WHEN t.position='le' THEN t.min_mean END) AS min_mean_le,
-        MAX(CASE WHEN t.position='ml' THEN t.min_mean END) AS min_mean_ml,
-        MAX(CASE WHEN t.position='md' THEN t.min_mean END) AS min_mean_md,
-        MAX(CASE WHEN t.position='mr' THEN t.min_mean END) AS min_mean_mr,
-        MAX(CASE WHEN t.position='ri' THEN t.min_mean END) AS min_mean_ri
+        ROUND(MAX(CASE WHEN t.position='le' THEN (t.min_value / NULLIF(t.mean_value,0))*100 END),2) AS min_mean_le,
+        ROUND(MAX(CASE WHEN t.position='ml' THEN (t.min_value / NULLIF(t.mean_value,0))*100 END),2) AS min_mean_ml,
+        ROUND(MAX(CASE WHEN t.position='md' THEN (t.min_value / NULLIF(t.mean_value,0))*100 END),2) AS min_mean_md,
+        ROUND(MAX(CASE WHEN t.position='mr' THEN (t.min_value / NULLIF(t.mean_value,0))*100 END),2) AS min_mean_mr,
+        ROUND(MAX(CASE WHEN t.position='ri' THEN (t.min_value / NULLIF(t.mean_value,0))*100 END),2) AS min_mean_ri
 
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_density_profile t
