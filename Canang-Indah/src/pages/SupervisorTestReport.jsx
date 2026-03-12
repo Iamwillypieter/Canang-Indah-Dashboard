@@ -13,6 +13,8 @@ const TEST_TYPES = [
   { label: "Surface Soundness", value: "surface" }
 ];
 
+const POSITIONS = ["le","ml","md","mr","ri"];
+
 export default function SupervisorTestReport(){
 
   const [selectedTest, setSelectedTest] = useState("internal-bonding");
@@ -73,8 +75,6 @@ export default function SupervisorTestReport(){
   useEffect(()=>{
     fetchResults();
   },[selectedTest]);
-
-  const POSITIONS = ["le","ml","md","mr","ri"];
 
   return (
 
@@ -340,31 +340,54 @@ export default function SupervisorTestReport(){
 
       selectedTest === "mc" ? (
 
-        <table className="report-table">
+        <div className="ib-report-wrapper">
 
-          <thead>
-            <tr>
-              <th></th>
-              <th>W1 [gr]</th>
-              <th>W2 [gr]</th>
-              <th>MC [%]</th>
-            </tr>
-          </thead>
+          {results.map((row,i)=>(
 
-          <tbody>
+            <div key={i} className="ib-report-card">
 
-            {results.map((row,i)=>(
-              <tr key={i}>
-                <td>{row.position?.toUpperCase()}</td>
-                <td>{row.w1}</td>
-                <td>{row.w2}</td>
-                <td>{row.mc}</td>
-              </tr>
-            ))}
+              <div className="ib-header">
+                <b>{row.document_name}</b> | Shift {row.shift_group}
+              </div>
 
-          </tbody>
+              <table className="report-table">
 
-        </table>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>W1 [gr]</th>
+                    <th>W2 [gr]</th>
+                    <th>MC [%]</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {POSITIONS.map(pos => (
+                    <tr key={pos}>
+                      <td>{pos.toUpperCase()}</td>
+                      <td>{row[`w1_${pos}`]}</td>
+                      <td>{row[`w2_${pos}`]}</td>
+                      <td>{row[`mc_${pos}`]}</td>
+                    </tr>
+                  ))}
+
+                  <tr className="table-row-bold">
+                    <td>AVG</td>
+                    <td>{row.avg_w1}</td>
+                    <td>{row.avg_w2}</td>
+                    <td>{row.avg_mc}</td>
+                  </tr>
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          ))}
+
+        </div>
 
       ) :
 
@@ -372,31 +395,54 @@ export default function SupervisorTestReport(){
 
       selectedTest === "swelling" ? (
 
-        <table className="report-table">
+        <div className="ib-report-wrapper">
 
-          <thead>
-            <tr>
-              <th></th>
-              <th>T1 [mm]</th>
-              <th>T2 [mm]</th>
-              <th>TS [%]</th>
-            </tr>
-          </thead>
+          {results.map((row,i)=>(
 
-          <tbody>
+            <div key={i} className="ib-report-card">
 
-            {results.map((row,i)=>(
-              <tr key={i}>
-                <td>{row.position?.toUpperCase()}</td>
-                <td>{row.t1}</td>
-                <td>{row.t2}</td>
-                <td>{row.ts}</td>
-              </tr>
-            ))}
+              <div className="ib-header">
+                <b>{row.document_name}</b> | Shift {row.shift_group}
+              </div>
 
-          </tbody>
+              <table className="report-table">
 
-        </table>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>T1 [mm]</th>
+                    <th>T2 [mm]</th>
+                    <th>TS [%]</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {POSITIONS.map(pos => (
+                    <tr key={pos}>
+                      <td>{pos.toUpperCase()}</td>
+                      <td>{row[`t1_${pos}`]}</td>
+                      <td>{row[`t2_${pos}`]}</td>
+                      <td>{row[`ts_${pos}`]}</td>
+                    </tr>
+                  ))}
+
+                  <tr className="table-row-bold">
+                    <td>AVG</td>
+                    <td>{row.avg_t1}</td>
+                    <td>{row.avg_t2}</td>
+                    <td>{row.avg_ts}</td>
+                  </tr>
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          ))}
+
+        </div>
 
       ) :
 
@@ -424,8 +470,7 @@ export default function SupervisorTestReport(){
                 <td>
                   {row.timestamp
                     ? new Date(row.timestamp).toLocaleDateString("id-ID")
-                    : "-"
-                  }
+                    : "-"}
                 </td>
 
                 <td>{row.shift_group}</td>
