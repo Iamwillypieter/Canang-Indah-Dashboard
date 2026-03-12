@@ -3184,13 +3184,34 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
         d.timestamp,
         d.document_name,
         d.shift_group,
-        MAX(t.avg_mc) AS result
+
+        MAX(CASE WHEN t.position='le' THEN t.w1 END) AS w1_le,
+        MAX(CASE WHEN t.position='ml' THEN t.w1 END) AS w1_ml,
+        MAX(CASE WHEN t.position='md' THEN t.w1 END) AS w1_md,
+        MAX(CASE WHEN t.position='mr' THEN t.w1 END) AS w1_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.w1 END) AS w1_ri,
+
+        MAX(CASE WHEN t.position='le' THEN t.w2 END) AS w2_le,
+        MAX(CASE WHEN t.position='ml' THEN t.w2 END) AS w2_ml,
+        MAX(CASE WHEN t.position='md' THEN t.w2 END) AS w2_md,
+        MAX(CASE WHEN t.position='mr' THEN t.w2 END) AS w2_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.w2 END) AS w2_ri,
+
+        MAX(CASE WHEN t.position='le' THEN t.mc_value END) AS mc_le,
+        MAX(CASE WHEN t.position='ml' THEN t.mc_value END) AS mc_ml,
+        MAX(CASE WHEN t.position='md' THEN t.mc_value END) AS mc_md,
+        MAX(CASE WHEN t.position='mr' THEN t.mc_value END) AS mc_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.mc_value END) AS mc_ri,
+
+        MAX(t.avg_w1) AS avg_w1,
+        MAX(t.avg_w2) AS avg_w2,
+        MAX(t.avg_mc) AS avg_mc
+
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_mc_board t
       ON t.document_id = d.id
       WHERE 1=1
       `;
-
     }
 
     /* ================= SWELLING ================= */
@@ -3202,13 +3223,34 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
         d.timestamp,
         d.document_name,
         d.shift_group,
-        MAX(t.avg_ts) AS result
+
+        MAX(CASE WHEN t.position='le' THEN t.t1 END) AS t1_le,
+        MAX(CASE WHEN t.position='ml' THEN t.t1 END) AS t1_ml,
+        MAX(CASE WHEN t.position='md' THEN t.t1 END) AS t1_md,
+        MAX(CASE WHEN t.position='mr' THEN t.t1 END) AS t1_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.t1 END) AS t1_ri,
+
+        MAX(CASE WHEN t.position='le' THEN t.t2 END) AS t2_le,
+        MAX(CASE WHEN t.position='ml' THEN t.t2 END) AS t2_ml,
+        MAX(CASE WHEN t.position='md' THEN t.t2 END) AS t2_md,
+        MAX(CASE WHEN t.position='mr' THEN t.t2 END) AS t2_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.t2 END) AS t2_ri,
+
+        MAX(CASE WHEN t.position='le' THEN t.ts_value END) AS ts_le,
+        MAX(CASE WHEN t.position='ml' THEN t.ts_value END) AS ts_ml,
+        MAX(CASE WHEN t.position='md' THEN t.ts_value END) AS ts_md,
+        MAX(CASE WHEN t.position='mr' THEN t.ts_value END) AS ts_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.ts_value END) AS ts_ri,
+
+        MAX(t.avg_t1) AS avg_t1,
+        MAX(t.avg_t2) AS avg_t2,
+        MAX(t.avg_ts) AS avg_ts
+
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_swelling t
       ON t.document_id = d.id
       WHERE 1=1
       `;
-
     }
 
     /* ================= SURFACE SOUNDNESS ================= */

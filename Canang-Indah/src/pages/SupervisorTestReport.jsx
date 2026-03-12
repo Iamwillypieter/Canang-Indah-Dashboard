@@ -74,6 +74,8 @@ export default function SupervisorTestReport(){
     fetchResults();
   },[selectedTest]);
 
+  const POSITIONS = ["le","ml","md","mr","ri"];
+
   return (
 
     <div className="supervisor-page">
@@ -142,16 +144,12 @@ export default function SupervisorTestReport(){
       </div>
 
       {loading ? (
-
         <p className="loading-text">Loading data...</p>
-
       ) : results.length === 0 ? (
-
         <p className="empty-text">Tidak ada data ditemukan</p>
-
       ) :
 
-      /* ================= POSITION BASED TEST ================= */
+      /* ================= POSITION TEST ================= */
 
       selectedTest === "internal-bonding" ||
       selectedTest === "bending" ||
@@ -196,7 +194,7 @@ export default function SupervisorTestReport(){
 
                 <tbody>
 
-                  {["le","ml","md","mr","ri"].map(pos => (
+                  {POSITIONS.map(pos => (
 
                     <tr key={pos}>
 
@@ -204,15 +202,15 @@ export default function SupervisorTestReport(){
 
                       <td>
                         {selectedTest === "internal-bonding"
-                          ? row[`ib_${pos}`] ?? "-"
+                          ? row[`ib_${pos}`]
                           : selectedTest === "bending"
-                          ? row[`mor_${pos}`] ?? "-"
+                          ? row[`mor_${pos}`]
                           : row[`face_${pos}`] ?? "-"}
                       </td>
 
                       <td>
                         {selectedTest === "screw"
-                          ? row[`edge_${pos}`] ?? "-"
+                          ? row[`edge_${pos}`]
                           : row[`density_${pos}`] ?? "-"}
                       </td>
 
@@ -226,15 +224,15 @@ export default function SupervisorTestReport(){
 
                     <td>
                       {selectedTest === "internal-bonding"
-                        ? row.avg_ib ?? "-"
+                        ? row.avg_ib
                         : selectedTest === "bending"
-                        ? row.avg_mor ?? "-"
+                        ? row.avg_mor
                         : row.avg_face ?? "-"}
                     </td>
 
                     <td>
                       {selectedTest === "screw"
-                        ? row.avg_edge ?? "-"
+                        ? row.avg_edge
                         : row.avg_density ?? "-"}
                     </td>
 
@@ -263,11 +261,7 @@ export default function SupervisorTestReport(){
             <div key={i} className="ib-report-card">
 
               <div className="ib-header">
-                <b>{row.document_name}</b> | Shift {row.shift_group} |{" "}
-                {row.timestamp
-                  ? new Date(row.timestamp).toLocaleDateString("id-ID")
-                  : "-"
-                }
+                <b>{row.document_name}</b> | Shift {row.shift_group}
               </div>
 
               <table className="report-table">
@@ -286,48 +280,48 @@ export default function SupervisorTestReport(){
                 <tbody>
 
                   <tr>
-                    <td>MAX TOP [kg/m³]</td>
-                    <td>{row.max_top_le ?? "-"}</td>
-                    <td>{row.max_top_ml ?? "-"}</td>
-                    <td>{row.max_top_md ?? "-"}</td>
-                    <td>{row.max_top_mr ?? "-"}</td>
-                    <td>{row.max_top_ri ?? "-"}</td>
+                    <td>MAX TOP</td>
+                    <td>{row.max_top_le}</td>
+                    <td>{row.max_top_ml}</td>
+                    <td>{row.max_top_md}</td>
+                    <td>{row.max_top_mr}</td>
+                    <td>{row.max_top_ri}</td>
                   </tr>
 
                   <tr>
-                    <td>MAX BOT [kg/m³]</td>
-                    <td>{row.max_bot_le ?? "-"}</td>
-                    <td>{row.max_bot_ml ?? "-"}</td>
-                    <td>{row.max_bot_md ?? "-"}</td>
-                    <td>{row.max_bot_mr ?? "-"}</td>
-                    <td>{row.max_bot_ri ?? "-"}</td>
+                    <td>MAX BOT</td>
+                    <td>{row.max_bot_le}</td>
+                    <td>{row.max_bot_ml}</td>
+                    <td>{row.max_bot_md}</td>
+                    <td>{row.max_bot_mr}</td>
+                    <td>{row.max_bot_ri}</td>
                   </tr>
 
                   <tr>
-                    <td>MIN [kg/m³]</td>
-                    <td>{row.min_le ?? "-"}</td>
-                    <td>{row.min_ml ?? "-"}</td>
-                    <td>{row.min_md ?? "-"}</td>
-                    <td>{row.min_mr ?? "-"}</td>
-                    <td>{row.min_ri ?? "-"}</td>
+                    <td>MIN</td>
+                    <td>{row.min_le}</td>
+                    <td>{row.min_ml}</td>
+                    <td>{row.min_md}</td>
+                    <td>{row.min_mr}</td>
+                    <td>{row.min_ri}</td>
                   </tr>
 
                   <tr>
-                    <td>MEAN [kg/m³]</td>
-                    <td>{row.mean_le ?? "-"}</td>
-                    <td>{row.mean_ml ?? "-"}</td>
-                    <td>{row.mean_md ?? "-"}</td>
-                    <td>{row.mean_mr ?? "-"}</td>
-                    <td>{row.mean_ri ?? "-"}</td>
+                    <td>MEAN</td>
+                    <td>{row.mean_le}</td>
+                    <td>{row.mean_ml}</td>
+                    <td>{row.mean_md}</td>
+                    <td>{row.mean_mr}</td>
+                    <td>{row.mean_ri}</td>
                   </tr>
 
                   <tr>
-                    <td>MIN / MEAN [%]</td>
-                    <td>{row.min_mean_le ?? "-"}</td>
-                    <td>{row.min_mean_ml ?? "-"}</td>
-                    <td>{row.min_mean_md ?? "-"}</td>
-                    <td>{row.min_mean_mr ?? "-"}</td>
-                    <td>{row.min_mean_ri ?? "-"}</td>
+                    <td>MIN / MEAN %</td>
+                    <td>{row.min_mean_le}</td>
+                    <td>{row.min_mean_ml}</td>
+                    <td>{row.min_mean_md}</td>
+                    <td>{row.min_mean_mr}</td>
+                    <td>{row.min_mean_ri}</td>
                   </tr>
 
                 </tbody>
@@ -342,7 +336,71 @@ export default function SupervisorTestReport(){
 
       ) :
 
-      /* ================= SIMPLE RESULT ================= */
+      /* ================= MC BOARD ================= */
+
+      selectedTest === "mc" ? (
+
+        <table className="report-table">
+
+          <thead>
+            <tr>
+              <th></th>
+              <th>W1 [gr]</th>
+              <th>W2 [gr]</th>
+              <th>MC [%]</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            {results.map((row,i)=>(
+              <tr key={i}>
+                <td>{row.position?.toUpperCase()}</td>
+                <td>{row.w1}</td>
+                <td>{row.w2}</td>
+                <td>{row.mc}</td>
+              </tr>
+            ))}
+
+          </tbody>
+
+        </table>
+
+      ) :
+
+      /* ================= SWELLING ================= */
+
+      selectedTest === "swelling" ? (
+
+        <table className="report-table">
+
+          <thead>
+            <tr>
+              <th></th>
+              <th>T1 [mm]</th>
+              <th>T2 [mm]</th>
+              <th>TS [%]</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            {results.map((row,i)=>(
+              <tr key={i}>
+                <td>{row.position?.toUpperCase()}</td>
+                <td>{row.t1}</td>
+                <td>{row.t2}</td>
+                <td>{row.ts}</td>
+              </tr>
+            ))}
+
+          </tbody>
+
+        </table>
+
+      ) :
+
+      /* ================= SURFACE ================= */
 
       (
 
@@ -370,12 +428,12 @@ export default function SupervisorTestReport(){
                   }
                 </td>
 
-                <td>{row.shift_group || "-"}</td>
+                <td>{row.shift_group}</td>
 
-                <td>{row.document_name || "-"}</td>
+                <td>{row.document_name}</td>
 
                 <td>
-                  <b>{row.result ?? "-"}</b>
+                  <b>{row.result}</b>
                 </td>
 
               </tr>
