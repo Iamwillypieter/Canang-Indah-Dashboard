@@ -3251,11 +3251,25 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
         MAX(CASE WHEN t.position='mr' THEN t.t2 END) AS t2_mr,
         MAX(CASE WHEN t.position='ri' THEN t.t2 END) AS t2_ri,
 
-        MAX(CASE WHEN t.position='le' THEN ROUND(((t.t2 - t.t1)/NULLIF(t.t1,0))*100,2) END) AS ts_le,
-        MAX(CASE WHEN t.position='ml' THEN ROUND(((t.t2 - t.t1)/NULLIF(t.t1,0))*100,2) END) AS ts_ml,
-        MAX(CASE WHEN t.position='md' THEN ROUND(((t.t2 - t.t1)/NULLIF(t.t1,0))*100,2) END) AS ts_md,
-        MAX(CASE WHEN t.position='mr' THEN ROUND(((t.t2 - t.t1)/NULLIF(t.t1,0))*100,2) END) AS ts_mr,
-        MAX(CASE WHEN t.position='ri' THEN ROUND(((t.t2 - t.t1)/NULLIF(t.t1,0))*100,2) END) AS ts_ri,
+        MAX(CASE WHEN t.position='le'
+            THEN ROUND(((t.w1 - t.w2) / NULLIF(t.w2,0)) * 100, 2)
+        END) AS mc_le,
+
+        MAX(CASE WHEN t.position='ml'
+            THEN ROUND(((t.w1 - t.w2) / NULLIF(t.w2,0)) * 100, 2)
+        END) AS mc_ml,
+
+        MAX(CASE WHEN t.position='md'
+            THEN ROUND(((t.w1 - t.w2) / NULLIF(t.w2,0)) * 100, 2)
+        END) AS mc_md,
+
+        MAX(CASE WHEN t.position='mr'
+            THEN ROUND(((t.w1 - t.w2) / NULLIF(t.w2,0)) * 100, 2)
+        END) AS mc_mr,
+
+        MAX(CASE WHEN t.position='ri'
+            THEN ROUND(((t.w1 - t.w2) / NULLIF(t.w2,0)) * 100, 2)
+        END) AS mc_ri,
 
         MAX(t.avg_t1) AS avg_t1,
         MAX(t.avg_t2) AS avg_t2,
