@@ -149,6 +149,60 @@ export default function SupervisorTestReport(){
 
         <p className="empty-text">Tidak ada data ditemukan</p>
 
+      ) : selectedTest === "internal-bonding" ? (
+
+        <div className="ib-report-wrapper">
+
+          {results.map((row,i)=>(
+
+            <div key={i} className="ib-report-card">
+
+              <div className="ib-header">
+                <b>{row.document_name}</b> | Shift {row.shift_group} |{" "}
+                {row.timestamp
+                  ? new Date(row.timestamp).toLocaleDateString("id-ID")
+                  : "-"
+                }
+              </div>
+
+              <table className="report-table">
+
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>IB [n/mm²]</th>
+                    <th>Density [kg/m³]</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {["le","ml","md","mr","ri"].map(pos => (
+
+                    <tr key={pos}>
+                      <td>{pos.toUpperCase()}</td>
+                      <td>{row[`ib_${pos}`] ?? "-"}</td>
+                      <td>{row[`density_${pos}`] ?? "-"}</td>
+                    </tr>
+
+                  ))}
+
+                  <tr className="table-row-bold">
+                    <td>AVG</td>
+                    <td>{row.avg_ib ?? "-"}</td>
+                    <td>{row.avg_density ?? "-"}</td>
+                  </tr>
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          ))}
+
+        </div>
+
       ) : (
 
         <table className="report-table">
@@ -158,18 +212,7 @@ export default function SupervisorTestReport(){
               <th>Date</th>
               <th>Shift</th>
               <th>Document</th>
-              {selectedTest === "internal-bonding" ? (
-                <>
-                  <th>LE</th>
-                  <th>ML</th>
-                  <th>MD</th>
-                  <th>MR</th>
-                  <th>RI</th>
-                  <th>AVG</th>
-                </>
-              ) : (
-                <th>Result</th>
-              )}
+              <th>Result</th>
             </tr>
           </thead>
 
@@ -190,18 +233,7 @@ export default function SupervisorTestReport(){
 
                 <td>{row.document_name || "-"}</td>
 
-                {selectedTest === "internal-bonding" ? (
-                  <>
-                    <td>{row.ib_le ?? "-"}</td>
-                    <td>{row.ib_ml ?? "-"}</td>
-                    <td>{row.ib_md ?? "-"}</td>
-                    <td>{row.ib_mr ?? "-"}</td>
-                    <td>{row.ib_ri ?? "-"}</td>
-                    <td><b>{row.avg_ib ?? "-"}</b></td>
-                  </>
-                ) : (
-                  <td><b>{row.result ?? "-"}</b></td>
-                )}
+                <td><b>{row.result ?? "-"}</b></td>
 
               </tr>
 

@@ -3042,20 +3042,26 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
         d.document_name,
         d.shift_group,
 
-        MAX(t.ib_le) AS ib_le,
-        MAX(t.ib_ml) AS ib_ml,
-        MAX(t.ib_md) AS ib_md,
-        MAX(t.ib_mr) AS ib_mr,
-        MAX(t.ib_ri) AS ib_ri,
+        MAX(CASE WHEN t.position='le' THEN t.ib_value END) AS ib_le,
+        MAX(CASE WHEN t.position='ml' THEN t.ib_value END) AS ib_ml,
+        MAX(CASE WHEN t.position='md' THEN t.ib_value END) AS ib_md,
+        MAX(CASE WHEN t.position='mr' THEN t.ib_value END) AS ib_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.ib_value END) AS ib_ri,
 
-        MAX(t.avg_ib) AS avg_ib
+        MAX(CASE WHEN t.position='le' THEN t.density_value END) AS density_le,
+        MAX(CASE WHEN t.position='ml' THEN t.density_value END) AS density_ml,
+        MAX(CASE WHEN t.position='md' THEN t.density_value END) AS density_md,
+        MAX(CASE WHEN t.position='mr' THEN t.density_value END) AS density_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.density_value END) AS density_ri,
+
+        MAX(t.avg_ib) AS avg_ib,
+        MAX(t.avg_density) AS avg_density
 
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_internal_bonding t
       ON t.document_id = d.id
       WHERE 1=1
       `;
-
     }
 
     /* ================= BENDING ================= */
