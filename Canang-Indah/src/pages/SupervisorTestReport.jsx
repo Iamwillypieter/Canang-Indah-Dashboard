@@ -84,6 +84,7 @@ export default function SupervisorTestReport(){
         Supervisor dapat melihat hasil test seluruh produksi dan melakukan pencarian data.
       </p>
 
+      {/* FILTER */}
       <div className="filter-section">
 
         <div className="filter-group">
@@ -148,7 +149,13 @@ export default function SupervisorTestReport(){
 
         <p className="empty-text">Tidak ada data ditemukan</p>
 
-      ) : selectedTest === "internal-bonding" || selectedTest === "bending" ? (
+      ) :
+
+      /* ================= POSITION BASED TEST ================= */
+
+      selectedTest === "internal-bonding" ||
+      selectedTest === "bending" ||
+      selectedTest === "screw" ? (
 
         <div className="ib-report-wrapper">
 
@@ -173,10 +180,16 @@ export default function SupervisorTestReport(){
                     <th>
                       {selectedTest === "internal-bonding"
                         ? "IB [n/mm²]"
-                        : "MOR [n/mm²]"}
+                        : selectedTest === "bending"
+                        ? "MOR [n/mm²]"
+                        : "FACE [n/mm²]"}
                     </th>
 
-                    <th>Density [kg/m³]</th>
+                    <th>
+                      {selectedTest === "screw"
+                        ? "EDGE [n/mm²]"
+                        : "Density [kg/m³]"}
+                    </th>
 
                   </tr>
                 </thead>
@@ -191,11 +204,17 @@ export default function SupervisorTestReport(){
 
                       <td>
                         {selectedTest === "internal-bonding"
-                          ? row[`ib_${pos}`]
-                          : row[`mor_${pos}`] ?? "-"}
+                          ? row[`ib_${pos}`] ?? "-"
+                          : selectedTest === "bending"
+                          ? row[`mor_${pos}`] ?? "-"
+                          : row[`face_${pos}`] ?? "-"}
                       </td>
 
-                      <td>{row[`density_${pos}`] ?? "-"}</td>
+                      <td>
+                        {selectedTest === "screw"
+                          ? row[`edge_${pos}`] ?? "-"
+                          : row[`density_${pos}`] ?? "-"}
+                      </td>
 
                     </tr>
 
@@ -207,11 +226,17 @@ export default function SupervisorTestReport(){
 
                     <td>
                       {selectedTest === "internal-bonding"
-                        ? row.avg_ib
-                        : row.avg_mor}
+                        ? row.avg_ib ?? "-"
+                        : selectedTest === "bending"
+                        ? row.avg_mor ?? "-"
+                        : row.avg_face ?? "-"}
                     </td>
 
-                    <td>{row.avg_density ?? "-"}</td>
+                    <td>
+                      {selectedTest === "screw"
+                        ? row.avg_edge ?? "-"
+                        : row.avg_density ?? "-"}
+                    </td>
 
                   </tr>
 
@@ -225,7 +250,101 @@ export default function SupervisorTestReport(){
 
         </div>
 
-      ) : (
+      ) :
+
+      /* ================= DENSITY PROFILE ================= */
+
+      selectedTest === "density" ? (
+
+        <div className="ib-report-wrapper">
+
+          {results.map((row,i)=>(
+
+            <div key={i} className="ib-report-card">
+
+              <div className="ib-header">
+                <b>{row.document_name}</b> | Shift {row.shift_group} |{" "}
+                {row.timestamp
+                  ? new Date(row.timestamp).toLocaleDateString("id-ID")
+                  : "-"
+                }
+              </div>
+
+              <table className="report-table">
+
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>LE</th>
+                    <th>ML</th>
+                    <th>MD</th>
+                    <th>MR</th>
+                    <th>RI</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  <tr>
+                    <td>MAX TOP [kg/m³]</td>
+                    <td>{row.max_top_le ?? "-"}</td>
+                    <td>{row.max_top_ml ?? "-"}</td>
+                    <td>{row.max_top_md ?? "-"}</td>
+                    <td>{row.max_top_mr ?? "-"}</td>
+                    <td>{row.max_top_ri ?? "-"}</td>
+                  </tr>
+
+                  <tr>
+                    <td>MAX BOT [kg/m³]</td>
+                    <td>{row.max_bot_le ?? "-"}</td>
+                    <td>{row.max_bot_ml ?? "-"}</td>
+                    <td>{row.max_bot_md ?? "-"}</td>
+                    <td>{row.max_bot_mr ?? "-"}</td>
+                    <td>{row.max_bot_ri ?? "-"}</td>
+                  </tr>
+
+                  <tr>
+                    <td>MIN [kg/m³]</td>
+                    <td>{row.min_le ?? "-"}</td>
+                    <td>{row.min_ml ?? "-"}</td>
+                    <td>{row.min_md ?? "-"}</td>
+                    <td>{row.min_mr ?? "-"}</td>
+                    <td>{row.min_ri ?? "-"}</td>
+                  </tr>
+
+                  <tr>
+                    <td>MEAN [kg/m³]</td>
+                    <td>{row.mean_le ?? "-"}</td>
+                    <td>{row.mean_ml ?? "-"}</td>
+                    <td>{row.mean_md ?? "-"}</td>
+                    <td>{row.mean_mr ?? "-"}</td>
+                    <td>{row.mean_ri ?? "-"}</td>
+                  </tr>
+
+                  <tr>
+                    <td>MIN / MEAN [%]</td>
+                    <td>{row.min_mean_le ?? "-"}</td>
+                    <td>{row.min_mean_ml ?? "-"}</td>
+                    <td>{row.min_mean_md ?? "-"}</td>
+                    <td>{row.min_mean_mr ?? "-"}</td>
+                    <td>{row.min_mean_ri ?? "-"}</td>
+                  </tr>
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          ))}
+
+        </div>
+
+      ) :
+
+      /* ================= SIMPLE RESULT ================= */
+
+      (
 
         <table className="report-table">
 
@@ -255,7 +374,9 @@ export default function SupervisorTestReport(){
 
                 <td>{row.document_name || "-"}</td>
 
-                <td><b>{row.result ?? "-"}</b></td>
+                <td>
+                  <b>{row.result ?? "-"}</b>
+                </td>
 
               </tr>
 

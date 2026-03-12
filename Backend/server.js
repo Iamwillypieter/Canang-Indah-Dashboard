@@ -3105,13 +3105,27 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
         d.timestamp,
         d.document_name,
         d.shift_group,
-        MAX(t.avg_face) AS result
+
+        MAX(CASE WHEN t.position='le' THEN t.face_value END) AS face_le,
+        MAX(CASE WHEN t.position='ml' THEN t.face_value END) AS face_ml,
+        MAX(CASE WHEN t.position='md' THEN t.face_value END) AS face_md,
+        MAX(CASE WHEN t.position='mr' THEN t.face_value END) AS face_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.face_value END) AS face_ri,
+
+        MAX(CASE WHEN t.position='le' THEN t.edge_value END) AS edge_le,
+        MAX(CASE WHEN t.position='ml' THEN t.edge_value END) AS edge_ml,
+        MAX(CASE WHEN t.position='md' THEN t.edge_value END) AS edge_md,
+        MAX(CASE WHEN t.position='mr' THEN t.edge_value END) AS edge_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.edge_value END) AS edge_ri,
+
+        MAX(t.avg_face) AS avg_face,
+        MAX(t.avg_edge) AS avg_edge
+
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_screw_test t
       ON t.document_id = d.id
       WHERE 1=1
       `;
-
     }
 
     /* ================= DENSITY PROFILE ================= */
@@ -3123,13 +3137,42 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
         d.timestamp,
         d.document_name,
         d.shift_group,
-        MAX(t.mean_value) AS result
+
+        MAX(CASE WHEN t.position='le' THEN t.max_top END) AS max_top_le,
+        MAX(CASE WHEN t.position='ml' THEN t.max_top END) AS max_top_ml,
+        MAX(CASE WHEN t.position='md' THEN t.max_top END) AS max_top_md,
+        MAX(CASE WHEN t.position='mr' THEN t.max_top END) AS max_top_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.max_top END) AS max_top_ri,
+
+        MAX(CASE WHEN t.position='le' THEN t.max_bot END) AS max_bot_le,
+        MAX(CASE WHEN t.position='ml' THEN t.max_bot END) AS max_bot_ml,
+        MAX(CASE WHEN t.position='md' THEN t.max_bot END) AS max_bot_md,
+        MAX(CASE WHEN t.position='mr' THEN t.max_bot END) AS max_bot_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.max_bot END) AS max_bot_ri,
+
+        MAX(CASE WHEN t.position='le' THEN t.min_value END) AS min_le,
+        MAX(CASE WHEN t.position='ml' THEN t.min_value END) AS min_ml,
+        MAX(CASE WHEN t.position='md' THEN t.min_value END) AS min_md,
+        MAX(CASE WHEN t.position='mr' THEN t.min_value END) AS min_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.min_value END) AS min_ri,
+
+        MAX(CASE WHEN t.position='le' THEN t.mean_value END) AS mean_le,
+        MAX(CASE WHEN t.position='ml' THEN t.mean_value END) AS mean_ml,
+        MAX(CASE WHEN t.position='md' THEN t.mean_value END) AS mean_md,
+        MAX(CASE WHEN t.position='mr' THEN t.mean_value END) AS mean_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.mean_value END) AS mean_ri,
+
+        MAX(CASE WHEN t.position='le' THEN t.min_mean END) AS min_mean_le,
+        MAX(CASE WHEN t.position='ml' THEN t.min_mean END) AS min_mean_ml,
+        MAX(CASE WHEN t.position='md' THEN t.min_mean END) AS min_mean_md,
+        MAX(CASE WHEN t.position='mr' THEN t.min_mean END) AS min_mean_mr,
+        MAX(CASE WHEN t.position='ri' THEN t.min_mean END) AS min_mean_ri
+
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_density_profile t
       ON t.document_id = d.id
       WHERE 1=1
       `;
-
     }
 
     /* ================= MC BOARD ================= */
