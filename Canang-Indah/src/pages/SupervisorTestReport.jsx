@@ -32,7 +32,6 @@ export default function SupervisorTestReport(){
       const token = localStorage.getItem("token");
 
       const params = new URLSearchParams();
-
       params.append("type", selectedTest);
 
       if(search) params.append("search", search);
@@ -149,7 +148,7 @@ export default function SupervisorTestReport(){
 
         <p className="empty-text">Tidak ada data ditemukan</p>
 
-      ) : selectedTest === "internal-bonding" ? (
+      ) : selectedTest === "internal-bonding" || selectedTest === "bending" ? (
 
         <div className="ib-report-wrapper">
 
@@ -170,8 +169,15 @@ export default function SupervisorTestReport(){
                 <thead>
                   <tr>
                     <th></th>
-                    <th>IB [n/mm²]</th>
+
+                    <th>
+                      {selectedTest === "internal-bonding"
+                        ? "IB [n/mm²]"
+                        : "MOR [n/mm²]"}
+                    </th>
+
                     <th>Density [kg/m³]</th>
+
                   </tr>
                 </thead>
 
@@ -180,17 +186,33 @@ export default function SupervisorTestReport(){
                   {["le","ml","md","mr","ri"].map(pos => (
 
                     <tr key={pos}>
+
                       <td>{pos.toUpperCase()}</td>
-                      <td>{row[`ib_${pos}`] ?? "-"}</td>
+
+                      <td>
+                        {selectedTest === "internal-bonding"
+                          ? row[`ib_${pos}`]
+                          : row[`mor_${pos}`] ?? "-"}
+                      </td>
+
                       <td>{row[`density_${pos}`] ?? "-"}</td>
+
                     </tr>
 
                   ))}
 
                   <tr className="table-row-bold">
+
                     <td>AVG</td>
-                    <td>{row.avg_ib ?? "-"}</td>
+
+                    <td>
+                      {selectedTest === "internal-bonding"
+                        ? row.avg_ib
+                        : row.avg_mor}
+                    </td>
+
                     <td>{row.avg_density ?? "-"}</td>
+
                   </tr>
 
                 </tbody>

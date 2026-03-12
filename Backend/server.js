@@ -3068,19 +3068,33 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
     else if (type === "bending") {
 
-      query = `
-      SELECT
-        d.timestamp,
-        d.document_name,
-        d.shift_group,
-        MAX(t.avg_mor) AS result
-      FROM lab_pb_documents d
-      LEFT JOIN lab_pb_bending_strength t
-      ON t.document_id = d.id
-      WHERE 1=1
-      `;
+    query = `
+    SELECT
+      d.timestamp,
+      d.document_name,
+      d.shift_group,
 
-    }
+      MAX(CASE WHEN t.position='le' THEN t.mor_value END) AS mor_le,
+      MAX(CASE WHEN t.position='ml' THEN t.mor_value END) AS mor_ml,
+      MAX(CASE WHEN t.position='md' THEN t.mor_value END) AS mor_md,
+      MAX(CASE WHEN t.position='mr' THEN t.mor_value END) AS mor_mr,
+      MAX(CASE WHEN t.position='ri' THEN t.mor_value END) AS mor_ri,
+
+      MAX(CASE WHEN t.position='le' THEN t.density_value END) AS density_le,
+      MAX(CASE WHEN t.position='ml' THEN t.density_value END) AS density_ml,
+      MAX(CASE WHEN t.position='md' THEN t.density_value END) AS density_md,
+      MAX(CASE WHEN t.position='mr' THEN t.density_value END) AS density_mr,
+      MAX(CASE WHEN t.position='ri' THEN t.density_value END) AS density_ri,
+
+      MAX(t.avg_mor) AS avg_mor,
+      MAX(t.avg_density) AS avg_density
+
+    FROM lab_pb_documents d
+    LEFT JOIN lab_pb_bending_strength t
+    ON t.document_id = d.id
+    WHERE 1=1
+    `;
+  }
 
     /* ================= SCREW TEST ================= */
 
