@@ -158,7 +158,18 @@ export default function SupervisorTestReport(){
               <th>Date</th>
               <th>Shift</th>
               <th>Document</th>
-              <th>Result</th>
+              {selectedTest === "internal-bonding" ? (
+                <>
+                  <th>LE</th>
+                  <th>ML</th>
+                  <th>MD</th>
+                  <th>MR</th>
+                  <th>RI</th>
+                  <th>AVG</th>
+                </>
+              ) : (
+                <th>Result</th>
+              )}
             </tr>
           </thead>
 
@@ -179,9 +190,18 @@ export default function SupervisorTestReport(){
 
                 <td>{row.document_name || "-"}</td>
 
-                <td>
-                  <b>{row.result ?? "-"}</b>
-                </td>
+                {selectedTest === "internal-bonding" ? (
+                  <>
+                    <td>{row.ib_le ?? "-"}</td>
+                    <td>{row.ib_ml ?? "-"}</td>
+                    <td>{row.ib_md ?? "-"}</td>
+                    <td>{row.ib_mr ?? "-"}</td>
+                    <td>{row.ib_ri ?? "-"}</td>
+                    <td><b>{row.avg_ib ?? "-"}</b></td>
+                  </>
+                ) : (
+                  <td><b>{row.result ?? "-"}</b></td>
+                )}
 
               </tr>
 

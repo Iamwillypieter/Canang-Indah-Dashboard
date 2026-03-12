@@ -3017,7 +3017,7 @@ app.get('/api/lab-pb-form-documents', async (req, res) => {
   }
 });
 
-
+// Endpoint Supervisor Page untuk fetch beberapa test
 app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
   try {
@@ -3041,7 +3041,15 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
         d.timestamp,
         d.document_name,
         d.shift_group,
-        MAX(t.avg_ib) AS result
+
+        MAX(t.ib_le) AS ib_le,
+        MAX(t.ib_ml) AS ib_ml,
+        MAX(t.ib_md) AS ib_md,
+        MAX(t.ib_mr) AS ib_mr,
+        MAX(t.ib_ri) AS ib_ri,
+
+        MAX(t.avg_ib) AS avg_ib
+
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_internal_bonding t
       ON t.document_id = d.id
