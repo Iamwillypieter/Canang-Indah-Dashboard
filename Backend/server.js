@@ -3210,7 +3210,14 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_mc_board t
       ON t.document_id = d.id
-      WHERE 1=1
+
+      GROUP BY
+        d.id,
+        d.timestamp,
+        d.document_name,
+        d.shift_group
+
+      ORDER BY d.timestamp DESC
       `;
     }
 
@@ -3249,7 +3256,14 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_swelling t
       ON t.document_id = d.id
-      WHERE 1=1
+
+      GROUP BY
+        d.id,
+        d.timestamp,
+        d.document_name,
+        d.shift_group
+
+      ORDER BY d.timestamp DESC
       `;
     }
 
