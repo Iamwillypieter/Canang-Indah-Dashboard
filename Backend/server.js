@@ -3212,14 +3212,6 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       ON t.document_id = d.id
 
       WHERE 1=1
-
-      GROUP BY
-        d.id,
-        d.timestamp,
-        d.document_name,
-        d.shift_group
-
-      ORDER BY d.timestamp DESC
       `;
     }
 
@@ -3260,14 +3252,6 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
       ON t.document_id = d.id
 
       WHERE 1=1
-
-      GROUP BY
-        d.id,
-        d.timestamp,
-        d.document_name,
-        d.shift_group
-
-      ORDER BY d.timestamp DESC
       `;
     }
 
