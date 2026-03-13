@@ -3294,10 +3294,10 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
         d.document_name,
         d.shift_group,
 
-        MAX(CASE WHEN s.position='le' THEN s.t1 END) AS t1_le,
-        MAX(CASE WHEN s.position='ri' THEN s.t1 END) AS t1_ri,
+        MAX(CASE WHEN s.position='le' THEN s.t1_value END) AS t1_le,
+        MAX(CASE WHEN s.position='ri' THEN s.t1_value END) AS t1_ri,
 
-        ROUND(AVG(s.t1)::numeric,2) AS avg_t1
+        MAX(s.avg_surface) AS avg_t1
 
       FROM lab_pb_documents d
       LEFT JOIN lab_pb_surface_soundness s
@@ -3305,7 +3305,6 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
       WHERE 1=1
       `;
-
     }
 
     else {
