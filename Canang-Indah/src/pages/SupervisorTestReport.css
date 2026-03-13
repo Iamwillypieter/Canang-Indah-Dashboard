@@ -1,178 +1,190 @@
-/* PAGE */
+/* ===============================
+PAGE
+=============================== */
 
 .supervisor-page{
-  padding:40px;
-  background:#f4f6f9;
-  min-height:100vh;
-  font-family:Arial, Helvetica, sans-serif;
+  padding:20px;
+  width:100%;
+  box-sizing:border-box;
 }
 
 .supervisor-page h1{
   margin-bottom:5px;
-  font-size:26px;
 }
 
 .supervisor-page p{
   color:#666;
-  margin-bottom:25px;
+  margin-bottom:20px;
 }
 
 
-/* ================= FILTER ================= */
+/* ===============================
+FILTER
+=============================== */
 
 .filter-section{
   display:flex;
   flex-wrap:wrap;
   gap:15px;
   align-items:flex-end;
-  background:white;
-  padding:20px;
-  border-radius:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom:20px;
 }
 
 .filter-group{
   display:flex;
   flex-direction:column;
+  min-width:150px;
 }
 
 .filter-group label{
-  font-size:12px;
-  color:#555;
+  font-size:13px;
   margin-bottom:4px;
+  color:#555;
 }
 
 .filter-group input,
 .filter-group select{
-  padding:8px 10px;
+  padding:7px 10px;
   border-radius:6px;
   border:1px solid #ccc;
-  min-width:150px;
-  font-size:13px;
 }
-
-.filter-group input:focus,
-.filter-group select:focus{
-  outline:none;
-  border-color:#1976d2;
-}
-
-
-/* SEARCH BUTTON */
 
 .search-button button{
-  padding:10px 20px;
-  background:#1976d2;
-  color:white;
+  padding:8px 18px;
   border:none;
+  background:#1d6be3;
+  color:white;
   border-radius:6px;
   cursor:pointer;
-  font-size:13px;
 }
 
 .search-button button:hover{
-  background:#125aa6;
+  background:#1552af;
 }
 
 
-/* ================= RESULT INFO ================= */
-
-.result-info{
-  margin-top:20px;
-  font-size:14px;
-}
-
-.result-info b{
-  color:#1976d2;
-}
-
-
-/* ================= REPORT GRID ================= */
+/* ===============================
+REPORT WRAPPER (HORIZONTAL)
+=============================== */
 
 .ib-report-wrapper{
-  margin-top:20px;
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));
+
+  display:flex;
+
   gap:20px;
+
+  overflow-x:auto;
+
+  padding-bottom:10px;
+
 }
 
 
-/* ================= REPORT CARD ================= */
+/* scrollbar nice */
+
+.ib-report-wrapper::-webkit-scrollbar{
+  height:8px;
+}
+
+.ib-report-wrapper::-webkit-scrollbar-thumb{
+  background:#ccc;
+  border-radius:4px;
+}
+
+
+/* ===============================
+CARD
+=============================== */
 
 .ib-report-card{
+
+  min-width:380px;
+
+  flex-shrink:0;
+
   background:white;
+
   border-radius:10px;
-  padding:16px;
-  box-shadow:0 3px 8px rgba(0,0,0,0.1);
-  transition:all 0.2s ease;
+
+  box-shadow:0 2px 8px rgba(0,0,0,0.08);
+
+  padding:15px;
+
 }
 
-.ib-report-card:hover{
-  transform:translateY(-3px);
-  box-shadow:0 5px 14px rgba(0,0,0,0.15);
-}
 
 .ib-header{
+
   font-size:14px;
-  margin-bottom:12px;
-  color:#333;
-  border-bottom:1px solid #eee;
+
+  margin-bottom:10px;
+
   padding-bottom:6px;
+
+  border-bottom:1px solid #eee;
+
 }
 
 
-/* ================= TABLE ================= */
+/* ===============================
+TABLE
+=============================== */
 
 .report-table{
+
   width:100%;
+
   border-collapse:collapse;
+
   font-size:13px;
+
+}
+
+.report-table th,
+.report-table td{
+
+  border:1px solid #ddd;
+
+  padding:6px 8px;
+
+  text-align:center;
+
 }
 
 .report-table th{
-  background:#f1f3f6;
-  padding:8px;
-  text-align:center;
-  font-weight:600;
+
+  background:#f4f6fa;
+
 }
-
-.report-table td{
-  padding:7px;
-  text-align:center;
-  border-top:1px solid #eee;
-}
-
-/* row hover */
-
-.report-table tbody tr:hover{
-  background:#f9fbff;
-}
-
-/* AVG row */
 
 .table-row-bold{
+
   font-weight:bold;
+
   background:#fafafa;
+
 }
 
 
-/* ================= STATUS ================= */
+/* ===============================
+INFO
+=============================== */
 
-.loading-text{
-  margin-top:40px;
-  text-align:center;
-  font-size:14px;
+.result-info{
+  margin-bottom:10px;
 }
 
+.loading-text,
 .empty-text{
-  margin-top:40px;
+  margin-top:30px;
   text-align:center;
-  font-size:14px;
   color:#777;
 }
 
 
-/* ================= RESPONSIVE ================= */
+/* ===============================
+MOBILE
+=============================== */
 
 @media (max-width:768px){
 
@@ -181,13 +193,12 @@
     align-items:stretch;
   }
 
-  .filter-group input,
-  .filter-group select{
+  .search-button button{
     width:100%;
   }
 
-  .ib-report-wrapper{
-    grid-template-columns:1fr;
+  .ib-report-card{
+    min-width:300px;
   }
 
 }
