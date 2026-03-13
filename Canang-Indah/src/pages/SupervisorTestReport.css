@@ -1,118 +1,193 @@
-/* ================= PAGE ================= */
+/* PAGE */
 
-.supervisor-page {
-  padding: 20px;
+.supervisor-page{
+  padding:40px;
+  background:#f4f6f9;
+  min-height:100vh;
+  font-family:Arial, Helvetica, sans-serif;
 }
 
-.supervisor-page h1 {
-  margin-bottom: 5px;
+.supervisor-page h1{
+  margin-bottom:5px;
+  font-size:26px;
 }
 
-.supervisor-page p {
-  color: #555;
-  margin-bottom: 20px;
+.supervisor-page p{
+  color:#666;
+  margin-bottom:25px;
 }
+
 
 /* ================= FILTER ================= */
 
-.filter-section {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-  background: #f5f5f5;
-  padding: 15px;
-  border-radius: 6px;
+.filter-section{
+  display:flex;
+  flex-wrap:wrap;
+  gap:15px;
+  align-items:flex-end;
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  font-size: 14px;
+.filter-group{
+  display:flex;
+  flex-direction:column;
 }
 
-.filter-group label {
-  margin-bottom: 4px;
+.filter-group label{
+  font-size:12px;
+  color:#555;
+  margin-bottom:4px;
 }
 
 .filter-group input,
-.filter-group select {
-  padding: 6px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+.filter-group select{
+  padding:8px 10px;
+  border-radius:6px;
+  border:1px solid #ccc;
+  min-width:150px;
+  font-size:13px;
 }
 
-/* ================= BUTTON ================= */
-
-.search-button {
-  align-self: flex-end;
+.filter-group input:focus,
+.filter-group select:focus{
+  outline:none;
+  border-color:#1976d2;
 }
 
-.search-button button {
-  padding: 6px 14px;
-  background: #1976d2;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+
+/* SEARCH BUTTON */
+
+.search-button button{
+  padding:10px 20px;
+  background:#1976d2;
+  color:white;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:13px;
 }
 
-.search-button button:hover {
-  background: #145ca8;
+.search-button button:hover{
+  background:#125aa6;
 }
 
-/* ================= INFO ================= */
 
-.result-info {
-  margin-bottom: 10px;
+/* ================= RESULT INFO ================= */
+
+.result-info{
+  margin-top:20px;
+  font-size:14px;
 }
 
-/* ================= TABLE ================= */
-
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
+.result-info b{
+  color:#1976d2;
 }
 
-.report-table th {
-  background: #eee;
-  padding: 10px;
-  border: 1px solid #ddd;
-}
 
-.report-table td {
-  padding: 8px;
-  border: 1px solid #ddd;
-}
-
-.report-table tr:hover {
-  background: #fafafa;
-}
-
-/* ================= STATES ================= */
-
-.loading-text {
-  color: #777;
-}
-
-.empty-text {
-  color: #777;
-}
+/* ================= REPORT GRID ================= */
 
 .ib-report-wrapper{
-  display:flex;
-  flex-direction:column;
+  margin-top:20px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));
   gap:20px;
 }
 
+
+/* ================= REPORT CARD ================= */
+
 .ib-report-card{
-  background:#fff;
+  background:white;
+  border-radius:10px;
   padding:16px;
-  border-radius:8px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  box-shadow:0 3px 8px rgba(0,0,0,0.1);
+  transition:all 0.2s ease;
+}
+
+.ib-report-card:hover{
+  transform:translateY(-3px);
+  box-shadow:0 5px 14px rgba(0,0,0,0.15);
 }
 
 .ib-header{
+  font-size:14px;
+  margin-bottom:12px;
+  color:#333;
+  border-bottom:1px solid #eee;
+  padding-bottom:6px;
+}
+
+
+/* ================= TABLE ================= */
+
+.report-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+
+.report-table th{
+  background:#f1f3f6;
+  padding:8px;
+  text-align:center;
+  font-weight:600;
+}
+
+.report-table td{
+  padding:7px;
+  text-align:center;
+  border-top:1px solid #eee;
+}
+
+/* row hover */
+
+.report-table tbody tr:hover{
+  background:#f9fbff;
+}
+
+/* AVG row */
+
+.table-row-bold{
   font-weight:bold;
-  margin-bottom:10px;
+  background:#fafafa;
+}
+
+
+/* ================= STATUS ================= */
+
+.loading-text{
+  margin-top:40px;
+  text-align:center;
+  font-size:14px;
+}
+
+.empty-text{
+  margin-top:40px;
+  text-align:center;
+  font-size:14px;
+  color:#777;
+}
+
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width:768px){
+
+  .filter-section{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .filter-group input,
+  .filter-group select{
+    width:100%;
+  }
+
+  .ib-report-wrapper{
+    grid-template-columns:1fr;
+  }
+
 }
