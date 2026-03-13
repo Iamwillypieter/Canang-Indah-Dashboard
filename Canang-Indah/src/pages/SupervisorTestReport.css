@@ -1,11 +1,21 @@
 /* ===============================
+GLOBAL
+=============================== */
+
+*{
+  box-sizing:border-box;
+}
+
+
+/* ===============================
 PAGE
 =============================== */
 
 .supervisor-page{
   padding:20px;
   width:100%;
-  box-sizing:border-box;
+  max-width:1200px;
+  margin:auto;
 }
 
 .supervisor-page h1{
@@ -44,9 +54,10 @@ FILTER
 
 .filter-group input,
 .filter-group select{
-  padding:7px 10px;
+  padding:8px 10px;
   border-radius:6px;
   border:1px solid #ccc;
+  font-size:14px;
 }
 
 .search-button button{
@@ -64,31 +75,32 @@ FILTER
 
 
 /* ===============================
-REPORT WRAPPER (HORIZONTAL)
+INFO
+=============================== */
+
+.result-info{
+  margin-bottom:15px;
+}
+
+.loading-text,
+.empty-text{
+  margin-top:30px;
+  text-align:center;
+  color:#777;
+}
+
+
+/* ===============================
+REPORT WRAPPER
+CARD KE BAWAH
 =============================== */
 
 .ib-report-wrapper{
 
   display:flex;
-
+  flex-direction:column;
   gap:20px;
 
-  overflow-x:auto;
-
-  padding-bottom:10px;
-
-}
-
-
-/* scrollbar nice */
-
-.ib-report-wrapper::-webkit-scrollbar{
-  height:8px;
-}
-
-.ib-report-wrapper::-webkit-scrollbar-thumb{
-  background:#ccc;
-  border-radius:4px;
 }
 
 
@@ -98,9 +110,7 @@ CARD
 
 .ib-report-card{
 
-  min-width:380px;
-
-  flex-shrink:0;
+  width:100%;
 
   background:white;
 
@@ -123,6 +133,8 @@ CARD
 
   border-bottom:1px solid #eee;
 
+  font-weight:600;
+
 }
 
 
@@ -138,6 +150,8 @@ TABLE
 
   font-size:13px;
 
+  table-layout:fixed;
+
 }
 
 .report-table th,
@@ -145,15 +159,19 @@ TABLE
 
   border:1px solid #ddd;
 
-  padding:6px 8px;
+  padding:7px 8px;
 
   text-align:center;
+
+  word-break:break-word;
 
 }
 
 .report-table th{
 
   background:#f4f6fa;
+
+  font-weight:600;
 
 }
 
@@ -167,18 +185,12 @@ TABLE
 
 
 /* ===============================
-INFO
+TABLE MOBILE SCROLL
+(untuk tabel besar seperti density)
 =============================== */
 
-.result-info{
-  margin-bottom:10px;
-}
-
-.loading-text,
-.empty-text{
-  margin-top:30px;
-  text-align:center;
-  color:#777;
+.ib-report-card{
+  overflow-x:auto;
 }
 
 
@@ -188,17 +200,29 @@ MOBILE
 
 @media (max-width:768px){
 
+  .supervisor-page{
+    padding:15px;
+  }
+
   .filter-section{
     flex-direction:column;
     align-items:stretch;
+  }
+
+  .filter-group{
+    width:100%;
+  }
+
+  .search-button{
+    width:100%;
   }
 
   .search-button button{
     width:100%;
   }
 
-  .ib-report-card{
-    min-width:300px;
+  .report-table{
+    font-size:12px;
   }
 
 }
