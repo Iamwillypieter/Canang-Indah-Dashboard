@@ -3289,21 +3289,23 @@ app.get("/api/lab-pb-test", authenticateToken, async (req, res) => {
 
       query = `
       SELECT
+        d.id,
         d.timestamp,
         d.document_name,
         d.shift_group,
 
-        MAX(CASE WHEN t.position='le' THEN t.t1 END) AS t1_le,
-        MAX(CASE WHEN t.position='ri' THEN t.t1 END) AS t1_ri,
+        MAX(CASE WHEN s.position='le' THEN s.t1 END) AS t1_le,
+        MAX(CASE WHEN s.position='ri' THEN s.t1 END) AS t1_ri,
 
-        MAX(t.avg_t1) AS avg_t1
+        ROUND(AVG(s.t1)::numeric,2) AS avg_t1
 
       FROM lab_pb_documents d
-      LEFT JOIN lab_pb_surface t
-      ON t.document_id = d.id
+      LEFT JOIN lab_pb_surface_soundness s
+        ON s.document_id = d.id
 
       WHERE 1=1
       `;
+
     }
 
     else {
