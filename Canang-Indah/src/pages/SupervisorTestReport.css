@@ -99,7 +99,6 @@ CARD
 .ib-report-card{
 
   min-width:380px;
-  width:380px;
 
   flex-shrink:0;
 
@@ -110,8 +109,6 @@ CARD
   box-shadow:0 2px 8px rgba(0,0,0,0.08);
 
   padding:15px;
-
-  box-sizing:border-box;
 
 }
 
@@ -168,18 +165,6 @@ TABLE
 
 }
 
-.report-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-  table-layout:fixed;
-}
-
-.report-table th,
-.report-table td{
-  word-break:break-word;
-}
-
 
 /* ===============================
 INFO
@@ -213,8 +198,7 @@ MOBILE
   }
 
   .ib-report-card{
-    width:90vw;
-    min-width:90vw;
+    min-width:300px;
   }
 
 }
