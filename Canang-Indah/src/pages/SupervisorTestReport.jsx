@@ -165,8 +165,7 @@ export default function SupervisorTestReport(){
                 <b>{row.document_name}</b> | Shift {row.shift_group} |{" "}
                 {row.timestamp
                   ? new Date(row.timestamp).toLocaleDateString("id-ID")
-                  : "-"
-                }
+                  : "-"}
               </div>
 
               <table className="report-table">
@@ -446,50 +445,57 @@ export default function SupervisorTestReport(){
 
       ) :
 
-      /* ================= SURFACE ================= */
+      /* ================= SURFACE SOUNDNESS ================= */
 
-      (
+      selectedTest === "surface" ? (
 
-        <table className="report-table">
+        <div className="ib-report-wrapper">
 
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Shift</th>
-              <th>Document</th>
-              <th>Result</th>
-            </tr>
-          </thead>
+          {results.map((row,i)=>(
 
-          <tbody>
+            <div key={i} className="ib-report-card">
 
-            {results.map((row,i)=>(
+              <div className="ib-header">
+                <b>{row.document_name}</b> | Shift {row.shift_group}
+              </div>
 
-              <tr key={i}>
+              <table className="report-table">
 
-                <td>
-                  {row.timestamp
-                    ? new Date(row.timestamp).toLocaleDateString("id-ID")
-                    : "-"}
-                </td>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>T1 [n/mm²]</th>
+                  </tr>
+                </thead>
 
-                <td>{row.shift_group}</td>
+                <tbody>
 
-                <td>{row.document_name}</td>
+                  <tr>
+                    <td>LE</td>
+                    <td>{row.t1_le}</td>
+                  </tr>
 
-                <td>
-                  <b>{row.result}</b>
-                </td>
+                  <tr>
+                    <td>RI</td>
+                    <td>{row.t1_ri}</td>
+                  </tr>
 
-              </tr>
+                  <tr className="table-row-bold">
+                    <td>AVG</td>
+                    <td>{row.avg_t1}</td>
+                  </tr>
 
-            ))}
+                </tbody>
 
-          </tbody>
+              </table>
 
-        </table>
+            </div>
 
-      )}
+          ))}
+
+        </div>
+
+      ) : null}
 
     </div>
 
