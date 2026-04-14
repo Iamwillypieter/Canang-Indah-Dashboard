@@ -19,25 +19,27 @@ const app = express();
 app.set("trust proxy", 1);
 
 // Update CORS untuk akses jaringan lokal
+app.use(cors({
+  origin: function(origin, callback) {
+    // Izinkan akses tanpa origin (direct browser access) dan dari jaringan lokal
+    if (!origin || origin.startsWith('http://192.168.') || origin.startsWith('http://localhost')) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
+
+// CORS Untuk produksi dan development
 // app.use(cors({
-//   origin: function(origin, callback) {
-//     // Izinkan akses tanpa origin (direct browser access) dan dari jaringan lokal
-//     if (!origin || origin.startsWith('http://192.168.') || origin.startsWith('http://localhost')) {
-//       return callback(null, true);
-//     }
-//     return callback(new Error('Not allowed by CORS'));
-//   },
+//   origin: [
+//     "http://localhost:5173",
+//     "https://canang-indah-dashboard.vercel.app"
+//   ],
 //   credentials: true
 // }));
 
-// // Untuk deploy dari vercel
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://canang-indah-dashboard.vercel.app"
-  ],
-  credentials: true
-}));
+
 
 app.use(helmet());
 
@@ -148,8 +150,23 @@ app.use((req, res, next) => {
 });
 
 // Middleware untuk verifikasi token
+const isBypass = process.env.BYPASS_AUTH === "true";
 const authenticateToken = (req, res, next) => {
   try {
+    // BYPASS
+    if (isBypass) {
+      console.log("🚧 BYPASS AUTH AKTIF");
+
+      req.user = {
+        id: "dev-001",
+        username: "devuser",
+        role: "admin",
+        shift: "1",
+        group: "A"
+      };
+
+      return next();
+    }
     const authHeader = req.headers['authorization'];
     
     // ✨ Validasi format: "Bearer <token>"

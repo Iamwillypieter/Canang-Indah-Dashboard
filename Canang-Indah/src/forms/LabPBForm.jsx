@@ -33,6 +33,7 @@ import SurfaceSoundnessSection from '../sections/SurfaceSoundnessSection';
 import TebalFlakesSection from '../sections/TebalFlakesSection';
 import ConsHardenerSection from '../sections/ConsHardenerSection';
 import GeltimeSection from '../sections/GeltimeSection';
+import SampleCharts from '../sections/SampleCharts.jsx';
 
 export default function LabPBForm() {
   console.log('✅ LabPBForm dirender!');
@@ -318,18 +319,25 @@ export default function LabPBForm() {
   };
 
   return (
-    <div className="lab-form-container">
+    <div className="lab-form-container" >
       <h2 className="lab-form-title">📝 Input Laporan Lab PB</h2>
       
       <form onSubmit={handleSubmit}>
-        <DataUtamaSection 
-          formData={formData} 
-          samples={samples} 
-          onChange={handleChange} 
-          onSamplesChange={setSamples} 
-          tagName={formData.tagName}           // 👈 Oper value tagName
-          onTagNameChange={handleTagNameChange}
-        />
+        <div style={{ flex: 2 }}>
+          <DataUtamaSection 
+            formData={formData} 
+            samples={samples} 
+            onChange={handleChange} 
+            onSamplesChange={setSamples} 
+            tagName={formData.tagName}
+            onTagNameChange={handleTagNameChange}
+          />
+        </div>
+
+        {/* KANAN → CHART */}
+        <div style={{ flex: 1 }}>
+          <SampleCharts samples={samples} />
+        </div>
         
         <InternalBondingSection 
           ibData={ibData} 
