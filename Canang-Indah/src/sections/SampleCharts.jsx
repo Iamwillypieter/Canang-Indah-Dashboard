@@ -8,7 +8,7 @@ import {
 export default function SampleCharts({ samples }) {
 
   // ===============================
-  // 🔥 HELPER
+  //  HELPER
   // ===============================
   const toNum = (v) => {
     const n = parseFloat(v);
@@ -33,7 +33,7 @@ export default function SampleCharts({ samples }) {
   };
 
   // ===============================
-  // 🔥 HITUNG DATA
+  //  HITUNG DATA
   // ===============================
   const kgValues = samples.map(calculateKg).filter(v => v !== null);
 
@@ -58,7 +58,7 @@ export default function SampleCharts({ samples }) {
   });
 
   // ===============================
-  // 🔥 WEIGHT SUPPORT (SIMETRIS)
+  // WEIGHT SUPPORT (SIMETRIS)
   // ===============================
   const weightDiffValues = chartData
     .map(d => d.weightDiff)
@@ -81,7 +81,7 @@ export default function SampleCharts({ samples }) {
     : null;
 
   // ===============================
-  // 🔥 THICKNESS SUPPORT
+  //  THICKNESS SUPPORT
   // ===============================
   const thicknessValues = chartData
     .map(d => d.thickness)
@@ -100,13 +100,13 @@ export default function SampleCharts({ samples }) {
     : null;
 
   // ===============================
-  // 🔥 DENSITY AREA (FIX)
+  //  DENSITY AREA (FIX)
   // ===============================
   const densitySupport = 630.0;
   const densityResistance = 650.0;
 
   // ===============================
-  // 🔥 AXIS
+  //  AXIS
   // ===============================
   const weightTicks = Array.from({ length: 21 }, (_, i) => -10 + i);
   const densityTicks = Array.from({ length: 21 }, (_, i) => 550 + (i * 10));
@@ -115,11 +115,9 @@ export default function SampleCharts({ samples }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "50px" }}>
 
-      {/* =============================== */}
       {/* WEIGHT */}
-      {/* =============================== */}
       <div>
-        <h3 style={{ textAlign: "center" }}>Weight Distribution (%) Chart</h3>
+        <h3 style={{ textAlign: "center" }}>Weight Distribution Chart</h3>
 
         <ResponsiveContainer width="100%" height={400}>
           <BarChart data={chartData}>
@@ -155,11 +153,9 @@ export default function SampleCharts({ samples }) {
         </ResponsiveContainer>
       </div>
 
-      {/* =============================== */}
       {/* DENSITY */}
-      {/* =============================== */}
       <div>
-        <h3 style={{ textAlign: "center" }}>Density (kg/m³) Chart</h3>
+        <h3 style={{ textAlign: "center" }}>Density Distribution Chart</h3>
 
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={chartData}>
@@ -174,7 +170,7 @@ export default function SampleCharts({ samples }) {
 
             <Tooltip formatter={(v) => v?.toFixed(2)} />
 
-            {/* 🔥 AREA TENGAH */}
+            {/* AREA TENGAH */}
             <ReferenceLine y={densitySupport} stroke="blue" strokeDasharray="4 4" />
             <ReferenceLine y={densityResistance} stroke="red" strokeDasharray="4 4" />
 
@@ -183,11 +179,9 @@ export default function SampleCharts({ samples }) {
         </ResponsiveContainer>
       </div>
 
-      {/* =============================== */}
       {/* THICKNESS */}
-      {/* =============================== */}
       <div>
-        <h3 style={{ textAlign: "center" }}>Thickness (mm) Chart</h3>
+        <h3 style={{ textAlign: "center" }}>Thickness Distribution Chart</h3>
 
         <ResponsiveContainer width="100%" height={400}>
           <BarChart data={chartData}>

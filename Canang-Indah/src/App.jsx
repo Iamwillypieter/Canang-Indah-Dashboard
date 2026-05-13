@@ -18,6 +18,7 @@ import QCAnalisaForm from "./forms/QCAnalisaForm.jsx";
 import ResinInspectionForm from "./forms/ResinInspectionForm.jsx";
 import FlakesForm from "./forms/FlakesForm.jsx";
 import LabPBForm from "./forms/LabPBForm.jsx";
+import CustomSpread from "./forms/CustomSpread.jsx";
 
 // Views
 import QCAnalisaView from "./forms/QCAnalisaView.jsx";
@@ -110,7 +111,7 @@ export default function App() {
 
       {/* ===== PROTECTED ===== */}
       <Route element={<RequireAuth />}>
-        <Route path="/" element={<LabPBForm />}>
+        <Route path="/" element={<CustomSpread />}>
 
           {/*  HOME PAGE - ALL ROLES */}
           {/* <Route index element={<HomePage />} /> */}
@@ -143,6 +144,8 @@ export default function App() {
               <Route path="moisture" element={<LabPBForm />} />
               <Route path="lab-pb-form/:id" element={<LabPBFormView mode="view" />} />
               <Route path="lab-pb-form/:id/edit" element={<LabPBFormView mode="edit" />} />
+
+              <Route path="custom-report" element={<CustomSpread/>} />
 
               <Route path="dokumen" element={<DokumenList />} />
             </Route>

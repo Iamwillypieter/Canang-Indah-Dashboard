@@ -334,10 +334,10 @@ export default function LabPBForm() {
           />
         </div>
 
-        {/* KANAN → CHART */}
+        {/* KANAN → CHART
         <div style={{ flex: 1 }}>
           <SampleCharts samples={samples} />
-        </div>
+        </div> */}
         
         <InternalBondingSection 
           ibData={ibData} 

@@ -88,9 +88,7 @@ export default function SampleTable({ samples = [], onSamplesChange }) {
 
   const weightDiffValues = kgValues.map(calculateWeightDiff).filter(v => v !== null);
 
-  // ===============================
   // RENDER
-  // ===============================
 
   return (
     <table border="1" cellPadding="8" style={{ width: '100%', marginTop: '16px', borderCollapse: 'collapse' }}>

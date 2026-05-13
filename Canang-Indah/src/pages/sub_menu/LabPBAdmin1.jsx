@@ -90,6 +90,10 @@ export default function LabPBAdmin1() {
           <h3>🛠️ Raw Resin Inspection</h3>
           <p>Form Pengecekan Raw Resin</p>
         </div>
+        <div className="card" onClick={() => handleNavigate("custom-report")}>
+          <h3>📝 Custom Report</h3>
+          <p>Form Untuk Custom</p>
+        </div>
 
         <div className="card" onClick={() => handleNavigate("dokumen")}>
           <h3>📂 Edit & Lihat Form</h3>

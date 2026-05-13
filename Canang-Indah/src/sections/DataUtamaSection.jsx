@@ -1,4 +1,5 @@
 import SampleTable from '../components/SampleTable.jsx';
+import SampleCharts from '../sections/SampleCharts.jsx';
 
 export default function DataUtamaSection({ 
   formData, 
@@ -190,10 +191,36 @@ export default function DataUtamaSection({
       </div>
 
       <h4 className="sub-section-title">📊 Data Sample (24 pcs)</h4>
-      <SampleTable
-        samples={samples}
-        onSamplesChange={onSamplesChange}
-      />
+
+      <div style={{ overflowX: "auto" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: "30px",
+            alignItems: "flex-start",
+            minWidth: "1900px"
+          }}
+        >
+
+          {/* =============================== */}
+          {/* TABEL */}
+          {/* =============================== */}
+          <div style={{ width: "1100px" }}>
+            <SampleTable
+              samples={samples}
+              onSamplesChange={onSamplesChange}
+            />
+          </div>
+
+          {/* =============================== */}
+          {/* CHART */}
+          {/* =============================== */}
+          <div style={{ width: "800px" }}>
+            <SampleCharts samples={samples} />
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 }
