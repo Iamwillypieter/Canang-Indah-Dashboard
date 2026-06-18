@@ -1,0 +1,21 @@
+CREATE TABLE qc_analisa_screen (
+  id integer DEFAULT nextval('qc_analisa_screen_id_seq'::regclass) NOT NULL PRIMARY KEY,
+  document_id integer NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  tanggal date,
+  shift_group character varying(50),
+  jam character varying(10),
+  material character varying(100),
+  fraction_gt_8 character varying(50),
+  fraction_gt_4 character varying(50),
+  fraction_gt_3_15 character varying(50),
+  fraction_gt_2 character varying(50),
+  fraction_gt_1 character varying(50),
+  fraction_0_5 character varying(50),
+  fraction_0_25 character varying(50),
+  fraction_lt_0_25 character varying(50),
+  jumlah_gr character varying(50),
+  keterangan text,
+  diperiksa_oleh character varying(100),
+  FOREIGN KEY (document_id) REFERENCES qc_analisa_documents(id)
+);

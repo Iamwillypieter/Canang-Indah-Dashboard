@@ -1,4 +1,3 @@
-// App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import DashboardLayout from "./dashboard/DashboardLayout.jsx";
 import RequireAuth, { RequireRole } from "./utils/RequireAuth.jsx";
@@ -29,100 +28,19 @@ import LabPBFormView from "./forms/LabPBFormView.jsx";
 // Shared
 import DokumenList from "./forms/DokumenList.jsx";
 
-// export default function App() {
-//   return (
-//     <Routes>
-
-//       {/* ===== AUTH ===== */}
-//       <Route path="/login" element={<Login />} />
-//       <Route path="/register" element={<Register />} />
-
-//       {/* ===== PROTECTED ===== */}
-//       <Route element={<RequireAuth />}>
-//         <Route path="/" element={<DashboardLayout />}>
-
-//           {/*  HOME PAGE - ALL ROLES */}
-//           <Route index element={<HomePage />} />
-
-//           {/* LAB PB - ADMIN ONLY */}
-//           <Route element={<RequireRole allowedRoles={['admin']} />}>
-//             <Route path="lab/pb/admin1">
-//               <Route index element={<LabPBAdmin1 />} />
-
-//               <Route path="analisa" element={<QCAnalisaForm />} />
-//               <Route path="analisa/:id" element={<QCAnalisaView mode="view" />} />
-//               <Route path="analisa/:id/edit" element={<QCAnalisaView mode="edit" />} />
-
-//               <Route path="resin" element={<ResinInspectionForm />} />
-//               <Route path="resin/:id" element={<ResinInspectionView />} />
-//               <Route path="resin/:id/edit" element={<ResinInspectionView isEditing />} />
-
-//               <Route path="flakes" element={<FlakesForm />} />
-//               <Route path="flakes/:id" element={<FlakesFormView mode="view" />} />
-//               <Route path="flakes/:id/edit" element={<FlakesFormView mode="edit" />} />
-
-//               <Route path="moisture" element={<LabPBForm />} />
-//               <Route path="lab-pb-form/:id" element={<LabPBFormView mode="view" />} />
-//               <Route path="lab-pb-form/:id/edit" element={<LabPBFormView mode="edit" />} />
-
-//               <Route path="dokumen" element={<DokumenList />} />
-//             </Route>
-//           </Route>
-
-//           {/* VIEW DOKUMEN - ADMIN & SUPERVISOR */}
-//           <Route element={<RequireRole allowedRoles={['admin', 'supervisor']} />}>
-//             <Route path="view">
-//               <Route path="qc/:id" element={<QCAnalisaView mode="view" />} />
-//               <Route path="resin/:id" element={<ResinInspectionView mode="view" />} />
-//               <Route path="flakes/:id" element={<FlakesFormView mode="view" />} />
-//               <Route path="lab-pb/:id" element={<LabPBFormView mode="view" />} />
-//             </Route>
-//           </Route>
-
-//           {/* SUPERVISOR PAGE - SUPERVISOR ONLY */}
-//           <Route element={<RequireRole allowedRoles={['supervisor']} />}>
-//             <Route path="supervisor">
-
-//               <Route index element={<SupervisorPage />} />
-
-//               <Route path="test-report" element={<SupervisorTestReport />} />
-
-//             </Route>
-//           </Route>
-
-//         </Route>
-//       </Route>
-
-//       {/* ===== FALLBACK ===== */}
-//       <Route path="*" element={<Navigate to="/" replace />} />
-
-//     </Routes>
-//   );
-// }
-
 export default function App() {
-  const isDevBypass = import.meta.env.VITE_BYPASS_AUTH === 'true';
   return (
     <Routes>
-
       {/* ===== AUTH ===== */}
-      {/* <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} /> */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
       {/* ===== PROTECTED ===== */}
       <Route element={<RequireAuth />}>
-        <Route path="/" element={<CustomSpread />}>
+        <Route path="/" element={<DashboardLayout />}>
 
           {/*  HOME PAGE - ALL ROLES */}
-          {/* <Route index element={<HomePage />} /> */}
-          <Route 
-            index
-            element={
-              isDevBypass
-                ? <Navigate to="/lab/pb/moisture" replace />
-                : <HomePage />
-            }
-          />
+          <Route index element={<HomePage />} />
 
           {/* LAB PB - ADMIN ONLY */}
           <Route element={<RequireRole allowedRoles={['admin']} />}>
@@ -145,8 +63,6 @@ export default function App() {
               <Route path="lab-pb-form/:id" element={<LabPBFormView mode="view" />} />
               <Route path="lab-pb-form/:id/edit" element={<LabPBFormView mode="edit" />} />
 
-              <Route path="custom-report" element={<CustomSpread/>} />
-
               <Route path="dokumen" element={<DokumenList />} />
             </Route>
           </Route>
@@ -164,11 +80,8 @@ export default function App() {
           {/* SUPERVISOR PAGE - SUPERVISOR ONLY */}
           <Route element={<RequireRole allowedRoles={['supervisor']} />}>
             <Route path="supervisor">
-
               <Route index element={<SupervisorPage />} />
-
               <Route path="test-report" element={<SupervisorTestReport />} />
-
             </Route>
           </Route>
 
@@ -177,7 +90,6 @@ export default function App() {
 
       {/* ===== FALLBACK ===== */}
       <Route path="*" element={<Navigate to="/" replace />} />
-
     </Routes>
   );
 }

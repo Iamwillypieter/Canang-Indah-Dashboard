@@ -1,0 +1,21 @@
+CREATE TABLE lab_pb_documents (
+  id integer DEFAULT nextval('lab_pb_documents_id_seq'::regclass) NOT NULL PRIMARY KEY,
+  timestamp timestamp with time zone NOT NULL,
+  board_no text NOT NULL,
+  set_weight numeric,
+  shift_group text DEFAULT 'Shift A'::text NOT NULL,
+  tested_by text NOT NULL,
+  density_min numeric,
+  density_max numeric,
+  board_type text,
+  glue_sl text,
+  glue_cl text,
+  thick_min numeric,
+  thick_max numeric,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  status character varying(20) DEFAULT 'draft'::character varying,
+  submitted_at timestamp without time zone,
+  tag_name character varying(50) DEFAULT ''::character varying,
+  document_name text
+);

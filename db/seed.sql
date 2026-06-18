@@ -1,0 +1,1 @@
+INSERT INTO users (username, password, role, shift_group) VALUES ('admin', '$2b$12$3YIlzh0D8qZs8YlgMFwj/ecwlKAYicga/sHJy2wHM/eii6JCrXgXO', 'admin', '1A'), ('supervisor', '$2b$12$LFk2AqMxSFQmd7ZT/UlvyeJurP2BXRLaqXOc4lxTHUhzo4lFrIOF6', 'supervisor', NULL);
